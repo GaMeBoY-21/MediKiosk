@@ -1,0 +1,495 @@
+{
+  "_comment": "Mock API fixture for the frontend. Served at /mocks/sample_session.json. Clinical content lives here, NOT in components — this file stands in for the API until app/ and ai/ are ready.",
+
+  "session": {
+    "session_id": "mock-session-001",
+    "status": "in_progress",
+    "started_at": "2026-08-30T09:14:00+05:30"
+  },
+
+  "red_flag_when": {
+    "node_id": "associated",
+    "value": "breathlessness",
+    "code": "RESP_DISTRESS",
+    "reason": "breathlessness with chest pain"
+  },
+
+  "interview": [
+    {
+      "node_id": "duration",
+      "question": {
+        "en": "How long have you had this problem?",
+        "hi": "यह तकलीफ़ आपको कब से है?",
+        "kn": "ಈ ತೊಂದರೆ ನಿಮಗೆ ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?",
+        "ta": "இந்தப் பிரச்சனை எவ்வளவு காலமாக உள்ளது?",
+        "te": "ఈ సమస్య మీకు ఎంతకాలంగా ఉంది?",
+        "mr": "हा त्रास तुम्हाला किती दिवसांपासून आहे?",
+        "bn": "এই সমস্যা কতদিন ধরে আছে?"
+      },
+      "options": [
+        {
+          "value": "days",
+          "label": {
+            "en": "1–2 days",
+            "hi": "एक-दो दिन",
+            "kn": "ಒಂದು-ಎರಡು ದಿನ",
+            "ta": "ஒன்று-இரண்டு நாள்",
+            "te": "ఒకటి-రెండు రోజులు",
+            "mr": "एक-दोन दिवस",
+            "bn": "এক-দুই দিন"
+          }
+        },
+        {
+          "value": "week",
+          "label": {
+            "en": "About a week",
+            "hi": "करीब एक हफ़्ता",
+            "kn": "ಸುಮಾರು ಒಂದು ವಾರ",
+            "ta": "சுமார் ஒரு வாரம்",
+            "te": "సుమారు ఒక వారం",
+            "mr": "सुमारे एक आठवडा",
+            "bn": "প্রায় এক সপ্তাহ"
+          }
+        },
+        {
+          "value": "month_plus",
+          "label": {
+            "en": "More than a month",
+            "hi": "एक महीने से ज़्यादा",
+            "kn": "ಒಂದು ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು",
+            "ta": "ஒரு மாதத்திற்கு மேல்",
+            "te": "ఒక నెల కంటే ఎక్కువ",
+            "mr": "एक महिन्यापेक्षा जास्त",
+            "bn": "এক মাসের বেশি"
+          }
+        }
+      ]
+    },
+    {
+      "node_id": "severity",
+      "question": {
+        "en": "How strong is the discomfort?",
+        "hi": "तकलीफ़ कितनी तेज़ है?",
+        "kn": "ತೊಂದರೆ ಎಷ್ಟು ತೀವ್ರವಾಗಿದೆ?",
+        "ta": "தொந்தரவு எவ்வளவு கடுமையானது?",
+        "te": "ఇబ్బంది ఎంత తీవ్రంగా ఉంది?",
+        "mr": "त्रास किती तीव्र आहे?",
+        "bn": "কষ্ট কতটা তীব্র?"
+      },
+      "options": [
+        {
+          "value": "mild",
+          "label": {
+            "en": "Mild",
+            "hi": "हल्की",
+            "kn": "ಸೌಮ್ಯ",
+            "ta": "லேசானது",
+            "te": "తక్కువ",
+            "mr": "सौम्य",
+            "bn": "হালকা"
+          }
+        },
+        {
+          "value": "moderate",
+          "label": {
+            "en": "Moderate",
+            "hi": "मध्यम",
+            "kn": "ಮಧ್ಯಮ",
+            "ta": "மிதமானது",
+            "te": "మధ్యస్థం",
+            "mr": "मध्यम",
+            "bn": "মাঝারি"
+          }
+        },
+        {
+          "value": "severe",
+          "label": {
+            "en": "Severe",
+            "hi": "बहुत तेज़",
+            "kn": "ತೀವ್ರ",
+            "ta": "கடுமையானது",
+            "te": "తీవ్రం",
+            "mr": "तीव्र",
+            "bn": "তীব্র"
+          }
+        }
+      ]
+    },
+    {
+      "node_id": "pattern",
+      "question": {
+        "en": "Is it there all the time, or does it come and go?",
+        "hi": "क्या यह हर समय रहती है या आती-जाती है?",
+        "kn": "ಇದು ಯಾವಾಗಲೂ ಇರುತ್ತದೆಯೇ ಅಥವಾ ಬಂದು ಹೋಗುತ್ತದೆಯೇ?",
+        "ta": "இது எப்போதும் இருக்கிறதா அல்லது வந்து போகிறதா?",
+        "te": "ఇది ఎప్పుడూ ఉంటుందా లేక వచ్చిపోతుందా?",
+        "mr": "हे सतत असते की येते-जाते?",
+        "bn": "এটি কি সবসময় থাকে নাকি আসে-যায়?"
+      },
+      "options": [
+        {
+          "value": "intermittent",
+          "label": {
+            "en": "Comes and goes",
+            "hi": "आती-जाती है",
+            "kn": "ಬಂದು ಹೋಗುತ್ತದೆ",
+            "ta": "வந்து போகிறது",
+            "te": "వచ్చిపోతుంది",
+            "mr": "येते-जाते",
+            "bn": "আসে-যায়"
+          }
+        },
+        {
+          "value": "constant",
+          "label": {
+            "en": "All the time",
+            "hi": "हर समय",
+            "kn": "ಯಾವಾಗಲೂ",
+            "ta": "எப்போதும்",
+            "te": "ఎప్పుడూ",
+            "mr": "सतत",
+            "bn": "সবসময়"
+          }
+        }
+      ]
+    },
+    {
+      "node_id": "associated",
+      "question": {
+        "en": "Do you also have any of these?",
+        "hi": "क्या आपको इनमें से कुछ भी है?",
+        "kn": "ನಿಮಗೆ ಇವುಗಳಲ್ಲಿ ಏನಾದರೂ ಇದೆಯೇ?",
+        "ta": "இவற்றில் ஏதேனும் உள்ளதா?",
+        "te": "వీటిలో ఏవైనా ఉన్నాయా?",
+        "mr": "यापैकी काही आहे का?",
+        "bn": "এর মধ্যে কিছু আছে কি?"
+      },
+      "options": [
+        {
+          "value": "fever",
+          "label": {
+            "en": "Fever",
+            "hi": "बुखार",
+            "kn": "ಜ್ವರ",
+            "ta": "காய்ச்சல்",
+            "te": "జ్వరం",
+            "mr": "ताप",
+            "bn": "জ্বর"
+          }
+        },
+        {
+          "value": "vomiting",
+          "label": {
+            "en": "Vomiting",
+            "hi": "उल्टी",
+            "kn": "ವಾಂತಿ",
+            "ta": "வாந்தி",
+            "te": "వాంతులు",
+            "mr": "उलटी",
+            "bn": "বমি"
+          }
+        },
+        {
+          "value": "breathlessness",
+          "label": {
+            "en": "Breathlessness",
+            "hi": "साँस फूलना",
+            "kn": "ಉಸಿರಾಟದ ತೊಂದರೆ",
+            "ta": "மூச்சுத் திணறல்",
+            "te": "ఊపిరి ఆడకపోవడం",
+            "mr": "श्वास लागणे",
+            "bn": "শ্বাসকষ্ট"
+          }
+        },
+        {
+          "value": "none",
+          "label": {
+            "en": "None of these",
+            "hi": "इनमें से कुछ नहीं",
+            "kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ",
+            "ta": "இவை எதுவும் இல்லை",
+            "te": "వీటిలో ఏదీ లేదు",
+            "mr": "यापैकी काहीही नाही",
+            "bn": "এগুলোর কোনোটিই নয়"
+          }
+        }
+      ]
+    },
+    {
+      "node_id": "medicines",
+      "question": {
+        "en": "Are you taking any medicines now? Please say their names.",
+        "hi": "क्या आप अभी कोई दवा ले रहे हैं? कृपया उनके नाम बताएँ।",
+        "kn": "ನೀವು ಈಗ ಯಾವುದಾದರೂ ಔಷಧಿ ತೆಗೆದುಕೊಳ್ಳುತ್ತಿದ್ದೀರಾ? ದಯವಿಟ್ಟು ಹೆಸರು ಹೇಳಿ.",
+        "ta": "நீங்கள் இப்போது ஏதேனும் மருந்து எடுக்கிறீர்களா? பெயரைச் சொல்லுங்கள்.",
+        "te": "మీరు ప్రస్తుతం ఏవైనా మందులు వాడుతున్నారా? పేర్లు చెప్పండి.",
+        "mr": "तुम्ही सध्या काही औषध घेत आहात का? कृपया नावे सांगा.",
+        "bn": "আপনি কি এখন কোনো ওষুধ খাচ্ছেন? নাম বলুন।"
+      },
+      "options": []
+    },
+    {
+      "node_id": "conditions",
+      "question": {
+        "en": "Do you have any of these long-term illnesses?",
+        "hi": "क्या आपको इनमें से कोई पुरानी बीमारी है?",
+        "kn": "ನಿಮಗೆ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ದೀರ್ಘಕಾಲದ ಕಾಯಿಲೆ ಇದೆಯೇ?",
+        "ta": "இவற்றில் ஏதேனும் நீண்டகால நோய் உள்ளதா?",
+        "te": "వీటిలో ఏవైనా దీర్ఘకాల వ్యాధులు ఉన్నాయా?",
+        "mr": "यापैकी काही जुना आजार आहे का?",
+        "bn": "এর মধ্যে কোনো দীর্ঘমেয়াদী রোগ আছে কি?"
+      },
+      "options": [
+        {
+          "value": "diabetes",
+          "label": {
+            "en": "Diabetes",
+            "hi": "मधुमेह",
+            "kn": "ಮಧುಮೇಹ",
+            "ta": "நீரிழிவு",
+            "te": "మధుమేహం",
+            "mr": "मधुमेह",
+            "bn": "ডায়াবেটিস"
+          }
+        },
+        {
+          "value": "hypertension",
+          "label": {
+            "en": "Blood pressure",
+            "hi": "रक्तचाप",
+            "kn": "ರಕ್ತದೊತ್ತಡ",
+            "ta": "இரத்த அழுத்தம்",
+            "te": "రక్తపోటు",
+            "mr": "रक्तदाब",
+            "bn": "রক্তচাপ"
+          }
+        },
+        {
+          "value": "asthma",
+          "label": {
+            "en": "Asthma",
+            "hi": "दमा",
+            "kn": "ಅಸ್ತಮಾ",
+            "ta": "ஆஸ்துமா",
+            "te": "ఆస్తమా",
+            "mr": "दमा",
+            "bn": "হাঁপানি"
+          }
+        },
+        {
+          "value": "none",
+          "label": {
+            "en": "None of these",
+            "hi": "इनमें से कुछ नहीं",
+            "kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ",
+            "ta": "இவை எதுவும் இல்லை",
+            "te": "వీటిలో ఏదీ లేదు",
+            "mr": "यापैकी काहीही नाही",
+            "bn": "এগুলোর কোনোটিই নয়"
+          }
+        }
+      ]
+    }
+  ],
+
+  "summary": {
+    "token": "A-42",
+    "room": "12",
+    "generated_at": "2026-08-30T09:22:00+05:30"
+  },
+
+  "physician": {
+    "patients": [
+      {
+        "session_id": "mock-session-001",
+        "token": "A-42",
+        "name": "Lakshmi Devi",
+        "age": 65,
+        "sex": "F",
+        "complaint": "Chest discomfort, 2 days",
+        "red_flag": "Breathlessness",
+        "waiting_since": "09:14"
+      },
+      {
+        "session_id": "mock-session-002",
+        "token": "A-43",
+        "name": "Ramesh Kumar",
+        "age": 48,
+        "sex": "M",
+        "complaint": "Joint pain, 3 months",
+        "red_flag": null,
+        "waiting_since": "09:21"
+      },
+      {
+        "session_id": "mock-session-003",
+        "token": "A-44",
+        "name": "Fatima Bi",
+        "age": 71,
+        "sex": "F",
+        "complaint": "Fever, 4 days",
+        "red_flag": null,
+        "waiting_since": "09:26"
+      }
+    ],
+
+    "cases": {
+      "mock-session-001": {
+        "session_id": "mock-session-001",
+        "patient": { "name": "Lakshmi Devi", "age": 65, "sex": "F", "abha": "14-2233-4455-6677" },
+        "summary": {
+          "chief_complaint": "Chest discomfort for 2 days",
+          "hpi": "Central chest discomfort for 2 days, constant, moderate in intensity. Reports associated breathlessness on exertion. No radiation to the arm or jaw reported. No syncope. Symptoms reportedly worse on climbing stairs at home.",
+          "past_history": "Type 2 diabetes mellitus, 12 years. Hypertension, 8 years. No prior cardiac event reported by the patient.",
+          "drugs_allergies": "Metformin 500 mg twice daily. Amlodipine 5 mg once daily. Patient reports no known drug allergy.",
+          "family": "Father died of a heart attack at 60. One brother with diabetes.",
+          "personal": "Non-smoker. No alcohol. Mixed diet. Sedentary. Sleep reported as disturbed for the last week.",
+          "ros": "Cardiovascular: chest discomfort, exertional breathlessness. Respiratory: no cough, no wheeze. GI: no vomiting. Neuro: no giddiness."
+        },
+        "documents": [
+          {
+            "id": "doc-1",
+            "date": "2026-06-12",
+            "title": "Lipid profile — District Lab",
+            "findings": [
+              { "label": "Total cholesterol", "value": 244, "unit": "mg/dL", "ref": "<200", "out_of_range": true },
+              { "label": "LDL", "value": 168, "unit": "mg/dL", "ref": "<100", "out_of_range": true },
+              { "label": "HDL", "value": 38, "unit": "mg/dL", "ref": ">40", "out_of_range": true }
+            ]
+          },
+          {
+            "id": "doc-2",
+            "date": "2026-07-03",
+            "title": "HbA1c — District Lab",
+            "findings": [
+              { "label": "HbA1c", "value": 8.9, "unit": "%", "ref": "<7.0", "out_of_range": true }
+            ]
+          },
+          {
+            "id": "doc-3",
+            "date": "2026-07-03",
+            "title": "Prescription — Dr. S. Menon",
+            "findings": [
+              { "label": "Metformin", "value": "500 mg BD", "unit": "", "ref": "as prescribed", "out_of_range": false },
+              { "label": "Amlodipine", "value": "5 mg OD", "unit": "", "ref": "as prescribed", "out_of_range": false }
+            ]
+          }
+        ],
+        "fhir": {
+          "resourceType": "Bundle",
+          "type": "document",
+          "entry": [
+            {
+              "resource": {
+                "resourceType": "Composition",
+                "status": "preliminary",
+                "title": "OPD intake summary",
+                "subject": { "reference": "Patient/mock-001" }
+              }
+            },
+            {
+              "resource": {
+                "resourceType": "Patient",
+                "id": "mock-001",
+                "name": [{ "text": "Lakshmi Devi" }],
+                "gender": "female"
+              }
+            },
+            {
+              "resource": {
+                "resourceType": "Condition",
+                "code": { "text": "Chest discomfort" },
+                "clinicalStatus": { "coding": [{ "code": "active" }] }
+              }
+            },
+            {
+              "resource": {
+                "resourceType": "Observation",
+                "code": { "text": "HbA1c" },
+                "valueQuantity": { "value": 8.9, "unit": "%" },
+                "interpretation": [{ "coding": [{ "code": "H", "display": "High" }] }]
+              }
+            }
+          ]
+        }
+      },
+
+      "mock-session-002": {
+        "session_id": "mock-session-002",
+        "patient": { "name": "Ramesh Kumar", "age": 48, "sex": "M", "abha": null },
+        "summary": {
+          "chief_complaint": "Joint pain for 3 months",
+          "hpi": "Pain in both knees for about 3 months, worse in the morning and after sitting for long periods. Intermittent. Reports stiffness lasting roughly 20 minutes on waking.",
+          "past_history": "No known chronic illness reported.",
+          "drugs_allergies": "Occasional over-the-counter painkillers, name not known to the patient. No known allergy.",
+          "family": "Mother had knee problems in old age.",
+          "personal": "Tobacco chewing, roughly 5 times a day, 20 years. No alcohol.",
+          "ros": "Musculoskeletal: bilateral knee pain and morning stiffness. No fever. No rash. No eye symptoms."
+        },
+        "documents": [
+          {
+            "id": "doc-4",
+            "date": "2026-05-20",
+            "title": "X-ray both knees — District Hospital",
+            "findings": [
+              { "label": "Joint space", "value": "Reduced, medial", "unit": "", "ref": "normal", "out_of_range": true }
+            ]
+          }
+        ],
+        "fhir": {
+          "resourceType": "Bundle",
+          "type": "document",
+          "entry": [
+            {
+              "resource": {
+                "resourceType": "Composition",
+                "status": "preliminary",
+                "title": "OPD intake summary",
+                "subject": { "reference": "Patient/mock-002" }
+              }
+            }
+          ]
+        }
+      },
+
+      "mock-session-003": {
+        "session_id": "mock-session-003",
+        "patient": { "name": "Fatima Bi", "age": 71, "sex": "F", "abha": "14-9988-7766-5544" },
+        "summary": {
+          "chief_complaint": "Fever for 4 days",
+          "hpi": "Fever for 4 days, intermittent, with chills in the evening. Reports body ache and poor appetite. No cough. No burning on passing urine reported.",
+          "past_history": "Hypertension, 15 years.",
+          "drugs_allergies": "Telmisartan 40 mg once daily. No known allergy.",
+          "family": "Not significant.",
+          "personal": "Non-smoker. Vegetarian. Lives alone.",
+          "ros": "General: fever, body ache, reduced appetite. Respiratory: no cough. GU: no dysuria."
+        },
+        "documents": [
+          {
+            "id": "doc-5",
+            "date": "2026-08-28",
+            "title": "Complete blood count — District Lab",
+            "findings": [
+              { "label": "Hb", "value": 9.8, "unit": "g/dL", "ref": "12–15", "out_of_range": true },
+              { "label": "WBC", "value": 12400, "unit": "/µL", "ref": "4000–11000", "out_of_range": true },
+              { "label": "Platelets", "value": 210000, "unit": "/µL", "ref": "150000–410000", "out_of_range": false }
+            ]
+          }
+        ],
+        "fhir": {
+          "resourceType": "Bundle",
+          "type": "document",
+          "entry": [
+            {
+              "resource": {
+                "resourceType": "Composition",
+                "status": "preliminary",
+                "title": "OPD intake summary",
+                "subject": { "reference": "Patient/mock-003" }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

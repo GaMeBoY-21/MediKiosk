@@ -1,0 +1,43 @@
+/* Owner: Ranjith */
+/* MediKiosk design tokens. Government utility, not a product.
+   Austere on purpose: max contrast under OPD tube lighting, glare-heavy tablets. */
+
+:root {
+  /* Colour */
+  --bg: #FFFFFF;
+  --surface: #F1F3F2;
+  --ink: #1A1A1A;
+  --ink-soft: #5A625E;
+  --primary: #0B6B4F;
+  --primary-d: #084B38;
+  --border: #C4CBC8;
+  --alert: #C62828;
+
+  /* Type scale */
+  --fs-question: 40px;
+  --fs-button: 28px;
+  --fs-body: 24px;
+  --fs-caption: 18px;
+  --lh: 1.5;
+
+  /* Layout */
+  --page-max: 720px;
+  --page-pad: 32px;
+  --gap: 24px;
+  --touch-min: 80px;
+  --bottom-bar-h: 96px;
+  --radius: 8px;
+  --border-w: 1px;
+
+  /* Motion — only two in the whole product: mic pulse, 150ms screen fade */
+  --dur: 150ms;
+}
+
+/* Physician console only. Different audience, different rules. */
+.physician {
+  --fs-body: 16px;
+  --fs-caption: 13px;
+  --fs-heading: 20px;
+  --gap: 12px;
+  --touch-min: 32px;
+}

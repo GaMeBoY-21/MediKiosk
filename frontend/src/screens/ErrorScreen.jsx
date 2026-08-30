@@ -1,0 +1,28 @@
+// Owner: Ranjith
+// A patient never sees a stack trace or an error code. They get a spoken
+// sentence and a staff-attention screen; the detail goes to the console.
+
+import { useEffect } from 'react';
+import BigButton from '../components/BigButton.jsx';
+import { t, bcp47, DEFAULT_LANG } from '../i18n/strings.js';
+import { useSpeechSynthesis } from '../speech/useSpeechSynthesis.js';
+
+export default function ErrorScreen({ lang = DEFAULT_LANG, onRestart }) {
+  const { speak } = useSpeechSynthesis();
+  const title = t(lang, 'error.title');
+
+  useEffect(() => {
+    speak(title.audio, bcp47(lang));
+  }, [title.audio, lang, speak]);
+
+  return (
+    <div className="errorscreen fade-in" role="alert">
+      <h1 className="errorscreen__title">{title.label}</h1>
+      <p className="errorscreen__body">{t(lang, 'error.body').label}</p>
+      <p className="errorscreen__staff">{t(lang, 'error.staff').label}</p>
+      <BigButton variant="outline" center onClick={onRestart}>
+        {t(lang, 'error.restart').label}
+      </BigButton>
+    </div>
+  );
+}

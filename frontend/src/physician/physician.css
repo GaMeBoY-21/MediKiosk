@@ -1,0 +1,302 @@
+/* Owner: Ranjith */
+/* Physician console. Different audience, inverted rules: a literate doctor
+   with 90 seconds. Small type, multiple columns, tables are fine. */
+
+.physician {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--fs-body); /* 16px inside .physician */
+  user-select: text;
+}
+
+.physician__banner {
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: var(--border-w) solid var(--border);
+}
+
+/* Nothing is written outbound until Accept. Say so, loudly, until it is. */
+.physician__banner--draft {
+  background: var(--alert);
+  color: #fff;
+}
+
+.physician__banner--accepted {
+  background: var(--primary);
+  color: #fff;
+}
+
+.physician__layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  min-height: calc(100vh - 37px);
+}
+
+/* ------------------------------------------------------------ patient list */
+
+.queue {
+  border-right: var(--border-w) solid var(--border);
+  overflow-y: auto;
+}
+
+.queue__head {
+  padding: 12px 16px;
+  font-weight: 600;
+  border-bottom: var(--border-w) solid var(--border);
+  background: var(--surface);
+}
+
+.queue__row {
+  width: 100%;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: var(--border-w) solid var(--border);
+  display: block;
+}
+
+.queue__row:hover {
+  background: var(--surface);
+}
+
+.queue__row--active {
+  background: var(--surface);
+  border-left: 4px solid var(--primary);
+}
+
+.queue__row--flag {
+  border-left: 4px solid var(--alert);
+}
+
+.queue__name {
+  font-weight: 600;
+}
+
+.queue__meta {
+  font-size: var(--fs-caption);
+  color: var(--ink-soft);
+}
+
+.queue__flag {
+  color: var(--alert);
+  font-weight: 600;
+  font-size: var(--fs-caption);
+}
+
+/* --------------------------------------------------------------- summary */
+
+.case {
+  padding: 20px 24px 80px;
+  overflow-y: auto;
+}
+
+.case__header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: var(--border-w) solid var(--border);
+  margin-bottom: 16px;
+}
+
+.case__name {
+  font-size: var(--fs-heading);
+  font-weight: 600;
+}
+
+.case__meta {
+  color: var(--ink-soft);
+  font-size: var(--fs-caption);
+}
+
+/* Two columns of clinical sections; the timeline spans both. */
+.case__cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 32px;
+  align-items: start;
+}
+
+.section {
+  margin-bottom: 18px;
+  break-inside: avoid;
+}
+
+.section__title {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  border-bottom: var(--border-w) solid var(--border);
+}
+
+.section--wide {
+  grid-column: 1 / -1;
+}
+
+.field {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  line-height: 1.45;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+.field:hover {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.field__input {
+  display: block;
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.field--empty {
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.list li {
+  margin-bottom: 2px;
+}
+
+/* -------------------------------------------------------------- timeline */
+
+.timeline {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-body);
+}
+
+.timeline th,
+.timeline td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: var(--border-w) solid var(--border);
+  vertical-align: top;
+}
+
+.timeline th {
+  font-size: var(--fs-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.timeline__date {
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+
+.lab {
+  display: inline-block;
+  margin-right: 14px;
+  white-space: nowrap;
+}
+
+.lab--out {
+  color: var(--alert);
+  font-weight: 600;
+}
+
+.lab__ref {
+  color: var(--ink-soft);
+  font-weight: 400;
+}
+
+/* ----------------------------------------------------------------- FHIR */
+
+.fhir summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 0;
+}
+
+.fhir pre {
+  margin: 0;
+  padding: 12px;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.45;
+  max-height: 380px;
+  overflow: auto;
+}
+
+/* --------------------------------------------------------------- actions */
+
+.actions {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 320px;
+  padding: 10px 24px;
+  background: var(--bg);
+  border-top: var(--border-w) solid var(--border);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.action {
+  min-height: var(--touch-min);
+  padding: 8px 20px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  border: 2px solid var(--ink);
+  background: var(--bg);
+}
+
+.action--accept {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.action--reject {
+  border-color: var(--alert);
+  color: var(--alert);
+}
+
+.action[disabled] {
+  opacity: 0.45;
+}
+
+.actions__status {
+  margin-left: auto;
+  font-size: var(--fs-caption);
+  color: var(--ink-soft);
+}
+
+.physician__empty {
+  padding: 40px;
+  color: var(--ink-soft);
+}

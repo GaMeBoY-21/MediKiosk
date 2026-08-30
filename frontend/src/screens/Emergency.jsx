@@ -1,0 +1,83 @@
+// Owner: Ranjith
+// Screen 10. Interstitial shown when the API returns a red flag.
+//
+// The patient cannot dismiss this — that is the point. It clears only on a
+// deliberate 3-second staff press-and-hold, which a confused or distressed
+// patient will not produce by accident.
+//
+// --alert is reserved for exactly this screen.
+
+import { useEffect, useRef, useState } from 'react';
+import { Warning } from '../components/Icons.jsx';
+import { useT } from '../i18n/useT.js';
+import { useSpeech } from '../speech/SpeechProvider.jsx';
+import { useSession, SCREENS } from '../state/SessionContext.jsx';
+
+const HOLD_MS = 3000;
+const TICK_MS = 50;
+
+export default function Emergency() {
+  const { tx, voice } = useT();
+  const { speak } = useSpeech();
+  const { redFlag, clearRedFlag, go } = useSession();
+  const [held, setHeld] = useState(0);
+  const timer = useRef(null);
+
+  const patient = tx('emergency.patient');
+
+  useEffect(() => {
+    speak(patient.audio, voice);
+    return () => clearInterval(timer.current);
+  }, [patient.audio, voice, speak]);
+
+  const startHold = () => {
+    clearInterval(timer.current);
+    const began = Date.now();
+    timer.current = setInterval(() => {
+      const progress = Math.min(1, (Date.now() - began) / HOLD_MS);
+      setHeld(progress);
+      if (progress >= 1) {
+        clearInterval(timer.current);
+        clearRedFlag();
+        go(SCREENS.DOCUMENTS);
+      }
+    }, TICK_MS);
+  };
+
+  const cancelHold = () => {
+    clearInterval(timer.current);
+    setHeld(0);
+  };
+
+  return (
+    <div className="emergency" role="alertdialog" aria-modal="true">
+      <div className="emergency__inner">
+        <Warning size={96} />
+
+        <h1 className="emergency__headline">{patient.label}</h1>
+
+        {/* Staff-facing, always English — the person reading this is clinical. */}
+        <p className="emergency__staff">
+          {tx('emergency.staff').label}
+          {redFlag?.reason ? ` (${redFlag.reason})` : ''}
+        </p>
+
+        <button
+          type="button"
+          className="emergency__hold"
+          onPointerDown={startHold}
+          onPointerUp={cancelHold}
+          onPointerLeave={cancelHold}
+          onPointerCancel={cancelHold}
+        >
+          <span
+            className="emergency__hold-fill"
+            style={{ width: `${held * 100}%` }}
+            aria-hidden="true"
+          />
+          <span>{tx('emergency.hold').label}</span>
+        </button>
+      </div>
+    </div>
+  );
+}

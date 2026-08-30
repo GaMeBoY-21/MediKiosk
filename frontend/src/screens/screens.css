@@ -1,0 +1,338 @@
+/* Owner: Ranjith */
+/* Screen-specific layout. Shared pieces live in components.css. */
+
+/* -------------------------------------------------------------------- Idle */
+
+.idle {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: var(--page-pad);
+  gap: var(--gap);
+  background: var(--bg);
+  text-align: left;
+  width: 100%;
+  border: none;
+}
+
+.idle__header {
+  border-bottom: var(--border-w) solid var(--border);
+  padding-bottom: var(--gap);
+}
+
+.idle__ministry {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.idle__hospital {
+  font-size: var(--fs-caption);
+  color: var(--ink-soft);
+}
+
+.idle__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.idle__icon {
+  color: var(--primary);
+}
+
+/* Motion exception: the idle attractor. It is the only thing on the screen and
+   the only way a passer-by learns the kiosk is live. Stops on interaction. */
+.idle__icon--beckon {
+  animation: beckon 2.4s ease-in-out infinite;
+}
+
+@keyframes beckon {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+.idle__cta {
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  max-width: 16ch;
+  text-align: center;
+}
+
+.idle__cycle {
+  font-size: var(--fs-caption);
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------------- Language */
+
+.language__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--gap);
+}
+
+/* --------------------------------------------------------------- Consent */
+
+.consent__text {
+  font-size: var(--fs-body);
+  line-height: var(--lh);
+  color: var(--ink);
+  padding: 20px;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+}
+
+.consent__actions {
+  display: flex;
+  gap: var(--gap);
+}
+
+.consent__actions > * {
+  flex: 1;
+}
+
+/* --------------------------------------------------------------- Documents */
+
+.camera {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 52vh;
+  background: var(--ink);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.camera video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Rectangular guide: tells the patient where to hold the paper. */
+.camera__guide {
+  position: absolute;
+  inset: 8%;
+  border: 4px solid #fff;
+  border-radius: var(--radius);
+  pointer-events: none;
+}
+
+.shutter {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex: none;
+}
+
+.shutter svg {
+  width: 56px;
+  height: 56px;
+}
+
+.shutter:active {
+  background: var(--primary-d);
+}
+
+/* ----------------------------------------------------------------- Confirm */
+
+.readback {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.readback__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+}
+
+.readback__text {
+  flex: 1;
+  font-size: var(--fs-body);
+  line-height: var(--lh);
+}
+
+.readback__edit {
+  flex: none;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.readback__edit svg {
+  width: 40px;
+  height: 40px;
+}
+
+/* -------------------------------------------------------------------- Done */
+
+.done {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 32px;
+  padding: var(--page-pad);
+  max-width: var(--page-max);
+  margin: 0 auto;
+}
+
+.done__title {
+  font-size: var(--fs-question);
+  font-weight: 600;
+}
+
+.done__panel {
+  border: 3px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.done__caption {
+  font-size: var(--fs-body);
+  color: var(--ink-soft);
+}
+
+.done__token {
+  font-size: 120px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--primary);
+}
+
+.done__room {
+  font-size: 56px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.done__wait {
+  font-size: var(--fs-body);
+}
+
+/* --------------------------------------------------------------- Emergency */
+
+/* --alert is reserved. This screen is the only place it fills a background. */
+.emergency {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--alert);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 32px;
+  padding: var(--page-pad);
+}
+
+.emergency__inner {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.emergency__headline {
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.emergency__staff {
+  font-size: var(--fs-body);
+  line-height: var(--lh);
+  border: 2px solid #fff;
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.emergency__hold {
+  position: relative;
+  align-self: flex-start;
+  min-height: var(--touch-min);
+  padding: 18px 28px;
+  border: 2px solid #fff;
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.emergency__hold-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.28);
+  width: 0;
+}
+
+.emergency__hold span {
+  position: relative;
+}
+
+/* ------------------------------------------------------------------- Error */
+
+.errorscreen {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--gap);
+  padding: var(--page-pad);
+  max-width: var(--page-max);
+  margin: 0 auto;
+}
+
+.errorscreen__title {
+  font-size: var(--fs-question);
+  font-weight: 600;
+}
+
+.errorscreen__body {
+  font-size: var(--fs-body);
+}
+
+.errorscreen__staff {
+  font-size: var(--fs-caption);
+  color: var(--ink-soft);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
