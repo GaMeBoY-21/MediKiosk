@@ -4,6 +4,9 @@
 Red flags are evaluated inline on the answer request and returned on the same
 response. They never wait for the summary — a patient reporting breathlessness
 must see the emergency screen on their next tap, not at the end of the interview.
+
+Transcripts go to the in-process session store only. Nothing verbatim is written
+to the database; what persists is the structured extraction.
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DbSession
 
-from app import fixtures, models
+from app import ai_bridge, fixtures, models
 from app.database import get_db
 from app.routers.session import load_session
 from app.schemas import (
@@ -24,6 +27,7 @@ from app.schemas import (
     Progress,
     QuestionOption,
 )
+from app.session_store import store
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/interview", tags=["interview"])
@@ -35,27 +39,21 @@ def _to_response(node: dict | None, answered: int, red_flag=None) -> AnswerRespo
     `options` is always populated, [] when the node takes free text only. The
     frontend's rendering breaks if the key is ever missing.
     """
+    progress = Progress(answered=answered, total=len(fixtures.NODE_ORDER))
+
     if red_flag is not None:
-        return AnswerResponse(
-            red_flag=red_flag,
-            options=[],
-            progress=Progress(answered=answered, total=len(fixtures.NODE_ORDER)),
-        )
+        return AnswerResponse(red_flag=red_flag, options=[], progress=progress)
 
     if node is None:
-        return AnswerResponse(
-            done=True,
-            options=[],
-            progress=Progress(answered=answered, total=len(fixtures.NODE_ORDER)),
-        )
+        return AnswerResponse(done=True, options=[], progress=progress)
 
     return AnswerResponse(
         node_id=node["node_id"],
         question=node["question"],
-        options=[QuestionOption(**o) for o in node["options"]],
-        allow_free_text=node["allow_free_text"],
-        node_type=NodeType(node["node_type"]),
-        progress=Progress(answered=answered, total=len(fixtures.NODE_ORDER)),
+        options=[QuestionOption(**o) for o in node.get("options", [])],
+        allow_free_text=node.get("allow_free_text", True),
+        node_type=NodeType(node.get("node_type", NodeType.free_text.value)),
+        progress=progress,
         done=False,
     )
 
@@ -64,20 +62,32 @@ def _to_response(node: dict | None, answered: int, red_flag=None) -> AnswerRespo
 def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depends(get_db)):
     """Record an answer and return the next question.
 
-    Order matters: the safety check runs before the state machine is consulted,
-    so a red flag short-circuits the interview rather than being queued behind
-    another question.
+    Order matters. Extraction and the safety check run before the state machine
+    is consulted, so a red flag short-circuits the interview rather than being
+    queued behind another question.
     """
     row = load_session(db, session_id)
 
-    # Deterministic, synchronous, no model call.
-    red_flag = fixtures.evaluate_red_flags(
-        payload.node_id, payload.selected_option, payload.transcript
+    state = store.record_answer(
+        session_id, payload.node_id, payload.transcript, payload.selected_option
+    )
+    state.language = payload.language.value
+
+    # Structured fields out of the transcript. Degrades to {} without ai/.
+    extracted = ai_bridge.extract_fields(payload.transcript or "")
+    if extracted:
+        state.extracted.update(extracted)
+    store.save(state)
+
+    # Deterministic, synchronous, no model call, no waiting on the summary.
+    red_flag = ai_bridge.check_red_flags(
+        payload.node_id, payload.selected_option, payload.transcript, state.extracted
     )
 
-    answered = fixtures.NODE_ORDER.index(payload.node_id) + 1 if payload.node_id in fixtures.NODE_ORDER else 0
-
     if red_flag is not None:
+        state.red_flags.append(red_flag.model_dump(mode="json"))
+        store.save(state)
+        _persist_red_flag(db, session_id, red_flag)
         models.write_audit(
             db,
             action="interview.red_flag",
@@ -87,22 +97,45 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
         )
         db.commit()
         log.warning("red flag %s on session %s", red_flag.rule_id, session_id)
-        return _to_response(None, answered, red_flag=red_flag)
+        return _to_response(None, state.answered_count(), red_flag=red_flag)
 
-    # TODO(block 4): ai.interview.state_machine.transition() decides this.
-    next_id = fixtures.next_node_id(payload.node_id)
-    row.current_node = next_id
+    node = ai_bridge.next_node(payload.node_id, payload.language.value)
+    state.current_node = node["node_id"] if node else None
+    store.save(state)
+
+    row.current_node = state.current_node
     models.write_audit(
         db,
         action="interview.answer",
         actor="kiosk",
         session_id=session_id,
-        detail={"node_id": payload.node_id, "answered_with": "option" if payload.selected_option else "speech"},
+        detail={
+            "node_id": payload.node_id,
+            "answered_with": "option" if payload.selected_option else "speech",
+            "fields_extracted": sorted(extracted) if extracted else [],
+        },
     )
     db.commit()
 
-    node = fixtures.render_node(next_id, payload.language.value) if next_id else None
-    return _to_response(node, answered)
+    return _to_response(node, state.answered_count())
+
+
+def _persist_red_flag(db: DbSession, session_id: str, red_flag) -> None:
+    """Store the flag on the clinical record so the queue can sort by it."""
+    record = (
+        db.query(models.ClinicalRecord)
+        .filter(models.ClinicalRecord.session_id == session_id)
+        .one_or_none()
+    )
+    if record is None:
+        record = models.ClinicalRecord(session_id=session_id, history={}, red_flags=[])
+        db.add(record)
+        db.flush()
+    existing = list(record.red_flags or [])
+    if not any(f.get("rule_id") == red_flag.rule_id for f in existing):
+        existing.append(red_flag.model_dump(mode="json"))
+    # Reassign rather than mutate: SQLAlchemy does not track in-place JSON edits.
+    record.red_flags = existing
 
 
 @router.get("/{session_id}/node/{node_id}", response_model=AnswerResponse)
@@ -124,5 +157,6 @@ def get_node(
     if node is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"unknown node {node_id}")
 
-    answered = fixtures.NODE_ORDER.index(node_id) if node_id in fixtures.NODE_ORDER else 0
+    state = store.get(session_id)
+    answered = state.answered_count() if state else 0
     return _to_response(node, answered)

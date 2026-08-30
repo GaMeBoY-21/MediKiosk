@@ -22,6 +22,7 @@ from app.schemas import (
     SessionStartResponse,
     SessionStatus,
 )
+from app.session_store import store
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/session", tags=["session"])
@@ -56,6 +57,14 @@ def start_session(payload: SessionStartRequest | None = None, db: DbSession = De
     db.add(row)
     models.write_audit(db, action="session.start", actor="kiosk", session_id=session_id)
     db.commit()
+
+    state = store.create(session_id, body.language.value)
+    state.current_node = fixtures.first_node_id()
+    store.save(state)
+
+    # Opportunistic sweep: no scheduler needed for a kiosk that sees a few
+    # hundred sessions a day, and it keeps abandoned transcripts from lingering.
+    store.purge_expired()
 
     node = fixtures.render_node(fixtures.first_node_id(), body.language.value)
     return SessionStartResponse(
@@ -131,8 +140,16 @@ def end_session(session_id: str, db: DbSession = Depends(get_db)):
     row.status = SessionStatus.awaiting_physician.value
     row.ended_at = datetime.now(timezone.utc)
 
-    # TODO(block 4): session_store.purge(session_id) once the store exists.
-    models.write_audit(db, action="session.end", actor="kiosk", session_id=session_id)
+    # Evicts the transcripts. They only ever existed in memory.
+    purged = store.purge(session_id)
+
+    models.write_audit(
+        db,
+        action="session.end",
+        actor="kiosk",
+        session_id=session_id,
+        detail={"transcripts_purged": purged},
+    )
     db.commit()
 
     return SessionEndResponse(ok=True, session_id=session_id, transcripts_purged=True)

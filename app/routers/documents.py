@@ -15,7 +15,7 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile
 from sqlalchemy.orm import Session as DbSession
 
-from app import models
+from app import ai_bridge, models
 from app.database import SessionLocal, get_db
 from app.routers.session import load_session
 from app.schemas import (
@@ -59,11 +59,25 @@ def _extract_in_background(doc_id: str) -> None:
         if row is None:
             return
         row.status = DocumentStatus.processing.value
+        db.commit()
 
-        # TODO(block 4): ai.documents.extract.extract_document(image_bytes).
-        # Until that exists the document stays queued rather than claiming a
-        # false 'done' - the console must not show findings we never read.
-        row.status = DocumentStatus.queued.value
+        extracted = {}
+        if row.storage_path:
+            try:
+                extracted = ai_bridge.extract_document(Path(row.storage_path).read_bytes())
+            except OSError:
+                log.exception("could not read %s", row.storage_path)
+
+        if extracted:
+            row.extracted = extracted
+            row.findings = extracted.get("findings", [])
+            row.title = extracted.get("title") or row.title
+            row.doc_date = extracted.get("date") or row.doc_date
+            row.status = DocumentStatus.done.value
+        else:
+            # No extractor yet. Stay queued rather than claim a false 'done' —
+            # the console must never show findings we did not actually read.
+            row.status = DocumentStatus.queued.value
 
         models.write_audit(
             db, action="document.extract", actor="system", session_id=row.session_id,

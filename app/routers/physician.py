@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session as DbSession
 from app import fixtures, models
 from app.database import get_db
 from app.routers.session import load_session
-from app.routers.summary import _build_summary
+from app.routers.summary import _build_summary, current_red_flags
 from app.schemas import (
     ClinicalSummary,
     DocumentRecord,
@@ -79,8 +79,11 @@ def _load_summary(db: DbSession, row: models.Session) -> ClinicalSummary:
         .one_or_none()
     )
     if record is not None and record.summary:
-        return ClinicalSummary.model_validate(record.summary)
-    return _build_summary(row)
+        summary = ClinicalSummary.model_validate(record.summary)
+        # Live flags win over the snapshot - see current_red_flags().
+        summary.red_flags = current_red_flags(db, row.session_id) or summary.red_flags
+        return summary
+    return _build_summary(row, db)
 
 
 # /queue must be declared before /{session_id}, or "queue" is captured as an id.
@@ -169,7 +172,7 @@ def verify_case(session_id: str, payload: VerifyRequest, db: DbSession = Depends
     )
     if record is None:
         record = models.ClinicalRecord(
-            session_id=session_id, history={}, summary=_build_summary(row).model_dump(mode="json")
+            session_id=session_id, history={}, summary=_build_summary(row, db).model_dump(mode="json")
         )
         db.add(record)
         db.flush()
