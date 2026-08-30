@@ -9,3 +9,7 @@ uploads/
 *.db
 .DS_Store
 .vscode/
+
+# local db side files (WAL mode)
+*.db-shm
+*.db-wal
