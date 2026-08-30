@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import init_db
-from app.routers import documents, interview, physician, session, summary
+from app.routers import documents, identity, interview, physician, session, summary
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -49,7 +49,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for router in (session.router, interview.router, documents.router, summary.router, physician.router):
+for router in (
+    session.router,
+    interview.router,
+    documents.router,
+    summary.router,
+    physician.router,
+    identity.router,
+):
     app.include_router(router, prefix=API_PREFIX)
 
 
