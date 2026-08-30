@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session as DbSession
 
 from app import fixtures, models
 from app.database import get_db
+from app.fhir import build_fhir_bundle
 from app.routers.session import load_session
 from app.routers.summary import _build_summary, current_red_flags
 from app.schemas import (
@@ -53,23 +54,31 @@ def _flatten(summary: ClinicalSummary) -> FlatSummary:
     )
 
 
-def _safe_fhir(summary: ClinicalSummary, patient_id: str) -> Dict[str, Any]:
-    """Build the FHIR bundle, tolerating app/fhir.py not being written yet.
+def _bundle_for(db: DbSession, row: models.Session, summary: ClinicalSummary) -> Dict[str, Any]:
+    """Build the FHIR bundle for one session.
 
-    TODO(block 5): drop the guard once build_fhir_bundle is implemented. Until
-    then the console's FHIR panel shows an empty Bundle rather than 500-ing the
-    whole case view.
-
-    TypeError is caught alongside NotImplementedError because the current stub
-    still has the scaffold's one-argument signature.
+    Structured history comes from the clinical record when it exists; the demo
+    history stands in until ai/ populates it. Conditions, medications and
+    allergies are built from those lists, never parsed out of the prose sections.
     """
-    from app.fhir import build_fhir_bundle
+    record = (
+        db.query(models.ClinicalRecord)
+        .filter(models.ClinicalRecord.session_id == row.session_id)
+        .one_or_none()
+    )
+    history = (record.history if record and record.history else None) or fixtures.DEMO_HISTORY
 
-    try:
-        return build_fhir_bundle(summary, patient_id=patient_id)
-    except (NotImplementedError, TypeError):
-        log.info("fhir builder not implemented yet; returning empty bundle")
-        return {"resourceType": "Bundle", "type": "document", "entry": []}
+    return build_fhir_bundle(
+        summary,
+        patient_id=row.session_id,
+        history=history,
+        patient={
+            "name": row.patient_name or fixtures.DEMO_PATIENT["name"],
+            "age": row.age or fixtures.DEMO_PATIENT["age"],
+            "sex": row.sex or fixtures.DEMO_PATIENT["sex"],
+            "abha": row.abha_id or fixtures.DEMO_PATIENT["abha"],
+        },
+    )
 
 
 def _load_summary(db: DbSession, row: models.Session) -> ClinicalSummary:
@@ -151,7 +160,7 @@ def fetch_case(session_id: str, db: DbSession = Depends(get_db)):
         summary=_flatten(summary),
         documents=summary.document_timeline or [DocumentRecord(**d) for d in fixtures.DEMO_DOCUMENTS],
         red_flags=summary.red_flags,
-        fhir=_safe_fhir(summary, session_id),
+        fhir=_bundle_for(db, row, summary),
         verified_by=summary.verified_by,
         verified_at=summary.verified_at,
     )
@@ -256,4 +265,4 @@ def fetch_fhir(session_id: str, db: DbSession = Depends(get_db)) -> Dict[str, An
 
     models.write_audit(db, action="fhir.read", actor="physician", session_id=session_id)
     db.commit()
-    return _safe_fhir(summary, session_id)
+    return _bundle_for(db, row, summary)

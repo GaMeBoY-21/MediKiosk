@@ -339,3 +339,22 @@ DEMO_PATIENT: Dict[str, Any] = {
     "sex": "F",
     "abha": "14-2233-4455-6677",
 }
+
+
+# Structured demo history.
+#
+# FHIR needs lists, not prose. The console renders DEMO_SECTIONS as paragraphs;
+# app/fhir.py builds Condition / MedicationStatement / AllergyIntolerance from
+# these lists instead. Nothing regexes clinical facts out of free text — a
+# wrongly parsed drug name is a patient safety problem, not a formatting one.
+DEMO_HISTORY: Dict[str, Any] = {
+    "chief_complaint": DEMO_CHIEF_COMPLAINT,
+    "past_medical": ["Type 2 diabetes mellitus", "Hypertension"],
+    "past_surgical": [],
+    "medications": ["Metformin 500 mg twice daily", "Amlodipine 5 mg once daily"],
+    "allergies": [],
+    "family": ["Father: myocardial infarction at 60"],
+    "personal": {"tobacco": "never", "alcohol": "never", "activity": "sedentary"},
+    "ros": {"cardiovascular": "chest discomfort, exertional breathlessness",
+            "respiratory": "no cough"},
+}
