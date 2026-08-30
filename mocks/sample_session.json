@@ -1,0 +1,8 @@
+{
+  "session_id": "mock-session-001",
+  "status": "in_progress",
+  "consent": true,
+  "current_question": "TODO: mock question text",
+  "clinical_record": {},
+  "summary": null
+}
