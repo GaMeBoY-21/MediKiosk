@@ -74,9 +74,12 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
     state.language = payload.language.value
 
     # Structured fields out of the transcript. Genuinely live — no fallback.
-    extracted = ai_bridge.extract_fields(payload.node_id, payload.transcript or "")
+    extracted_fields = ai_bridge.extract_fields(payload.node_id, payload.transcript or "")
+    extracted = {f.name: f.value for f in extracted_fields}
     if extracted:
         state.extracted.update(extracted)
+        for f in extracted_fields:
+            state.field_confidence[f.name] = f.confidence
         _persist_extracted_fields(db, session_id, extracted)
     store.save(state)
 

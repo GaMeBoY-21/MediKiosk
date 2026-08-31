@@ -13,7 +13,7 @@ from typing import List
 from app import ai_bridge, fixtures, models
 from app.database import get_db
 from app.routers.session import load_session
-from app.schemas import ClinicalSummary, DocumentRecord, RedFlag
+from app.schemas import ClinicalSummary, DocumentRecord, ExtractedField, FieldSource, RedFlag
 from app.session_store import store
 
 log = logging.getLogger(__name__)
@@ -28,15 +28,15 @@ def _build_summary(row: models.Session, db: DbSession | None = None) -> Clinical
     """
     state = store.get(row.session_id)
 
-    clinical_record = {
-        "session_id": row.session_id,
-        "language": row.language,
-        "answers": state.answers if state else [],
-        "extracted": state.extracted if state else {},
-    }
-
-    # Falls back to the canned narrative while ai/ is still stubs.
-    narrative = ai_bridge.generate_summary(clinical_record) or fixtures.DEMO_HPI_NARRATIVE
+    extracted_fields = [
+        ExtractedField(
+            name=name,
+            value=value,
+            confidence=(state.field_confidence.get(name, 1.0) if state else 1.0),
+            source=FieldSource.speech,
+        )
+        for name, value in (state.extracted.items() if state else {}.items())
+    ]
 
     red_flags: List[RedFlag] = []
     if state and state.red_flags:
@@ -69,19 +69,17 @@ def _build_summary(row: models.Session, db: DbSession | None = None) -> Clinical
             .all()
         ]
     if not documents:
+        # ai.documents.extract isn't wired live yet (not part of this pass) —
+        # this is the one piece of _build_summary still canned.
         documents = [DocumentRecord(**d) for d in fixtures.DEMO_DOCUMENTS]
 
-    return ClinicalSummary(
-        chief_complaint=fixtures.DEMO_CHIEF_COMPLAINT,
-        hpi_narrative=narrative,
-        sections=dict(fixtures.DEMO_SECTIONS),
-        document_timeline=documents,
-        red_flags=red_flags,
-        verified_by=None,
-        verified_at=None,
-        token=row.token or fixtures.DEMO_TOKEN,
-        room=row.room or fixtures.DEMO_ROOM,
-    )
+    # Genuinely live — no fallback. chief_complaint, hpi_narrative and
+    # sections all come from what the patient actually said this session.
+    summary = ai_bridge.generate_summary(extracted_fields, documents)
+    summary.red_flags = red_flags
+    summary.token = row.token or fixtures.DEMO_TOKEN
+    summary.room = row.room or fixtures.DEMO_ROOM
+    return summary
 
 
 def current_red_flags(db: DbSession, session_id: str) -> List[RedFlag]:

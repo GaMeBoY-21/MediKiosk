@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from app import fixtures
 from app.config import settings
-from app.schemas import FlagSeverity, RedFlag
+from app.schemas import ClinicalSummary, DocumentRecord, ExtractedField, FlagSeverity, RedFlag
 
 log = logging.getLogger(__name__)
 
@@ -95,8 +95,13 @@ def next_node(
     }
 
 
-def extract_fields(node_id: str, transcript: str) -> Dict[str, Any]:
+def extract_fields(node_id: str, transcript: str) -> List[ExtractedField]:
     """Turn free speech into structured fields via ai.interview.extraction.
+
+    Returns the full ExtractedField list rather than a flat {name: value}
+    dict, so the caller can keep each field's confidence alongside its value
+    — the summary needs that to hedge low-confidence fields instead of
+    asserting every value with equal certainty.
 
     No fallback: this is genuinely live. A failure here (missing
     GEMINI_API_KEY, a malformed model response that survives ai/'s own
@@ -104,7 +109,7 @@ def extract_fields(node_id: str, transcript: str) -> Dict[str, Any]:
     silently swallowed into canned output.
     """
     if not transcript:
-        return {}
+        return []
 
     from ai.interview import extraction
     from ai.interview.nodes import InterviewNode, get_node
@@ -117,8 +122,7 @@ def extract_fields(node_id: str, transcript: str) -> Dict[str, Any]:
         # a single field named after the node itself rather than refusing.
         node = InterviewNode(id=node_id, phase_label=node_id, required_fields=(), optional_fields=(node_id,))
 
-    extracted = extraction.extract_fields(transcript, node, _llm())
-    return extraction.fields_to_dict(extracted)
+    return extraction.extract_fields(transcript, node, _llm())
 
 
 def check_red_flags(
@@ -165,15 +169,16 @@ def check_red_flags(
     return None
 
 
-def generate_summary(clinical_record: Dict[str, Any]) -> Optional[str]:
-    """Narrative HPI for the physician. None falls back to the canned narrative."""
-    try:
-        from ai.summary import generator
+def generate_summary(
+    extracted_fields: List[ExtractedField], document_timeline: List[DocumentRecord]
+) -> ClinicalSummary:
+    """Physician-facing clinical summary, genuinely generated from the
+    session's extracted fields and document timeline. No fallback: red_flags,
+    token and room are not ai/'s to set, so the caller fills those in after.
+    """
+    from ai.summary import generator
 
-        return generator.generate_summary(clinical_record) or None
-    except Exception as exc:  # noqa: BLE001
-        _degrade("summary.generator", exc)
-        return None
+    return generator.generate_summary(extracted_fields, document_timeline, _llm())
 
 
 def extract_document(image_bytes: bytes) -> Dict[str, Any]:

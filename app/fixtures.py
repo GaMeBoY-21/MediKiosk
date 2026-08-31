@@ -1,10 +1,28 @@
 # Owner: Tharun
-"""TEMPORARY canned interview content and demo records.
+"""Canned interview content and demo records.
 
-This module exists so the frontend can develop against real response shapes
-before ai/ is finished. Block 4 replaces every read of INTERVIEW_NODES with a
-call into ai.interview.state_machine, and this file becomes the fallback that
-keeps the API answering while Nikki is mid-build.
+extraction, follow-up generation and summary generation are now genuinely
+live (app/ai_bridge.py calls into ai/ with no fallback for those three), so
+INTERVIEW_NODES / NODE_ORDER / render_node / first_node_id / next_node_id
+are dead code — nothing calls them any more. Left in place rather than
+deleted piecemeal; safe to remove together in one pass.
+
+Everything else here is still a live dependency, not a leftover:
+  - RED_FLAG_RULES / TRANSCRIPT_RULES / evaluate_red_flags: the deterministic
+    safety net app/ai_bridge.check_red_flags runs FIRST, before ai.safety is
+    even consulted. This never gets replaced by ai/ — it's meant to stay
+    dependency-free.
+  - DEMO_TOKEN / DEMO_ROOM: app/routers/session.py and app/routers/summary.py
+    fall back to these — there is no real token/room allocation system.
+  - DEMO_DOCUMENTS: app/routers/summary.py and app/routers/physician.py fall
+    back to this when a session has no uploaded documents — ai.documents.extract
+    isn't wired live yet, that's a separate pass.
+  - DEMO_HISTORY / DEMO_PATIENT / DEMO_CHIEF_COMPLAINT / DEMO_QUEUE: only
+    app/routers/physician.py, entirely untouched by the extraction/follow-up/
+    summary wiring — the physician console still reads demo data.
+  - fixtures.render_node: app/routers/interview.py's GET .../node/{node_id}
+    falls back to it only if a node was never actually rendered into
+    state.rendered_nodes for this session (e.g. after a process restart).
 
 The node set and the red-flag trigger deliberately mirror
 frontend/public/mocks/sample_session.json so that flipping VITE_USE_MOCKS to
