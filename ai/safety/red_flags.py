@@ -9,7 +9,7 @@ matching over already-extracted fields, no network, no LLM.
 from dataclasses import dataclass
 from typing import Callable
 
-from ai.types import RedFlag
+from app.schemas import FlagSeverity, RedFlag
 
 # The only fields this module reads. Free-text or list-of-string fields that
 # extraction may have filled with the patient's symptoms.
@@ -116,20 +116,20 @@ def _rule_pregnancy_complication(fields: dict) -> bool:
 class RedFlagRule:
     rule_id: str
     label: str
-    severity: str  # "critical" | "urgent"
+    severity: FlagSeverity
     match: Callable[[dict], bool]
 
 
 RED_FLAG_RULES: tuple[RedFlagRule, ...] = (
-    RedFlagRule("chest_pain_breathlessness", "Chest pain with breathlessness", "critical", _rule_chest_pain_breathlessness),
-    RedFlagRule("chest_pain_radiation", "Chest pain radiating to arm or jaw", "critical", _rule_chest_pain_radiation),
-    RedFlagRule("fast_stroke_signs", "Possible stroke signs (face, arm, or speech)", "critical", _rule_fast_stroke_signs),
-    RedFlagRule("altered_consciousness", "Altered consciousness", "critical", _rule_altered_consciousness),
-    RedFlagRule("active_bleeding", "Active bleeding", "critical", _rule_active_bleeding),
-    RedFlagRule("severe_breathlessness_at_rest", "Severe breathlessness at rest", "critical", _rule_severe_breathlessness_at_rest),
-    RedFlagRule("suicidal_ideation", "Suicidal ideation", "critical", _rule_suicidal_ideation),
-    RedFlagRule("high_fever_neck_stiffness", "High fever with neck stiffness", "urgent", _rule_high_fever_neck_stiffness),
-    RedFlagRule("pregnancy_complication", "Pregnancy with bleeding or severe abdominal pain", "critical", _rule_pregnancy_complication),
+    RedFlagRule("chest_pain_breathlessness", "Chest pain with breathlessness", FlagSeverity.critical, _rule_chest_pain_breathlessness),
+    RedFlagRule("chest_pain_radiation", "Chest pain radiating to arm or jaw", FlagSeverity.critical, _rule_chest_pain_radiation),
+    RedFlagRule("fast_stroke_signs", "Possible stroke signs (face, arm, or speech)", FlagSeverity.critical, _rule_fast_stroke_signs),
+    RedFlagRule("altered_consciousness", "Altered consciousness", FlagSeverity.critical, _rule_altered_consciousness),
+    RedFlagRule("active_bleeding", "Active bleeding", FlagSeverity.critical, _rule_active_bleeding),
+    RedFlagRule("severe_breathlessness_at_rest", "Severe breathlessness at rest", FlagSeverity.critical, _rule_severe_breathlessness_at_rest),
+    RedFlagRule("suicidal_ideation", "Suicidal ideation", FlagSeverity.critical, _rule_suicidal_ideation),
+    RedFlagRule("high_fever_neck_stiffness", "High fever with neck stiffness", FlagSeverity.high, _rule_high_fever_neck_stiffness),
+    RedFlagRule("pregnancy_complication", "Pregnancy with bleeding or severe abdominal pain", FlagSeverity.critical, _rule_pregnancy_complication),
 )
 
 
@@ -140,7 +140,7 @@ def evaluate(fields: dict) -> list[RedFlag]:
     after every answer.
     """
     return [
-        RedFlag(rule_id=rule.rule_id, label=rule.label, severity=rule.severity)
+        RedFlag(rule_id=rule.rule_id, label=rule.label, severity=rule.severity, triggered_by=[])
         for rule in RED_FLAG_RULES
         if rule.match(fields)
     ]

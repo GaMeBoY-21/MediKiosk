@@ -13,16 +13,6 @@ from typing import Any
 
 
 @dataclass
-class RedFlag:
-    """TODO: replace with app.schemas.RedFlag"""
-
-    rule_id: str
-    label: str
-    severity: str  # "critical" | "urgent"
-    matched_fields: list[str] = field(default_factory=list)
-
-
-@dataclass
 class ExtractedField:
     """TODO: replace with app.schemas.ExtractedField"""
 
