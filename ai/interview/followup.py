@@ -48,15 +48,22 @@ def _parse_options(raw_options) -> list[QuestionOption]:
 
 def generate_followup(
     node: InterviewNode, filled_fields: dict, language: str, llm: LLMAdapter
-) -> tuple[str, list[QuestionOption]]:
+) -> tuple[str, str, list[QuestionOption]]:
     """Generate the next follow-up question for the current node.
 
-    Returns (question text, tappable options). `options` is [] for a
-    genuinely open-ended question — never omitted, never None.
+    Returns (target field, question text, tappable options).
+
+    The target field is what makes touch input work: when a patient taps an
+    option instead of speaking, there is no transcript to extract from, so the
+    caller stores the tapped value straight into this field. Without it a
+    tapped answer has nowhere to go and is silently lost.
+
+    `options` is [] for a genuinely open-ended question — never omitted,
+    never None.
     """
     remaining = _unanswered_fields(node, filled_fields)
     if not remaining:
-        return node.phase_label, []
+        return "", node.phase_label, []
 
     prompt = _load_prompt_template().format(
         phase_label=node.phase_label,
@@ -69,14 +76,28 @@ def generate_followup(
     try:
         raw = llm.complete_json(prompt)
     except MalformedOutputError:
-        return node.phase_label, []
+        return remaining[0], node.phase_label, []
 
     text = str(raw.get("question", "")).strip()
     if not text:
-        return node.phase_label, []
+        return remaining[0], node.phase_label, []
 
     options = _parse_options(raw.get("options", []))
     if not (MIN_OPTIONS <= len(options) <= MAX_OPTIONS):
         options = []
 
-    return text, options
+    return resolve_target_field(raw.get("target_field"), remaining), text, options
+
+
+def resolve_target_field(claimed, remaining: list[str]) -> str:
+    """Pin the model's claimed target field to one this node is actually missing.
+
+    A tapped option is written straight into whatever field comes back here,
+    so a hallucinated or out-of-scope name would silently write clinical data
+    under the wrong key. Fall back to the first unanswered field, which is
+    what the question is most likely about anyway.
+    """
+    name = str(claimed or "").strip()
+    if name in remaining:
+        return name
+    return remaining[0] if remaining else ""

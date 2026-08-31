@@ -23,6 +23,7 @@ from pathlib import Path
 from app.schemas import ExtractedField, FieldSource, QuestionOption
 
 from ai.adapters.base import LLMAdapter, MalformedOutputError
+from ai.interview.followup import resolve_target_field
 from ai.interview.nodes import InterviewNode
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "turn.txt"
@@ -39,7 +40,7 @@ class TurnResult:
     caller must check it against the state machine before trusting `question`.
     """
 
-    __slots__ = ("fields", "asking_about", "question", "options")
+    __slots__ = ("fields", "asking_about", "target_field", "question", "options")
 
     def __init__(
         self,
@@ -47,9 +48,11 @@ class TurnResult:
         asking_about: str,
         question: str,
         options: list[QuestionOption],
+        target_field: str = "",
     ):
         self.fields = fields
         self.asking_about = asking_about
+        self.target_field = target_field
         self.question = question
         self.options = options
 
@@ -148,9 +151,26 @@ def run_turn(
         # than inventing clinical data.
         return TurnResult([], node.id, "", [])
 
+    asking_about = str(raw.get("asking_about", node.id)).strip() or node.id
+    fields = _parse_fields(raw.get("fields"), allowed)
+
+    # The target field must belong to whichever node the question is for,
+    # and must not already be answered — a tapped option is written straight
+    # into it, so a wrong name silently files clinical data under the wrong
+    # key.
+    scope = advance_node if (advance_node and asking_about == advance_node.id) else node
+    answered = dict(filled_fields)
+    answered.update({f.name: f.value for f in fields})
+    remaining = [
+        f
+        for f in list(scope.required_fields) + list(scope.optional_fields)
+        if f not in answered
+    ]
+
     return TurnResult(
-        fields=_parse_fields(raw.get("fields"), allowed),
-        asking_about=str(raw.get("asking_about", node.id)).strip() or node.id,
+        fields=fields,
+        asking_about=asking_about,
+        target_field=resolve_target_field(raw.get("target_field"), remaining),
         question=str(raw.get("question", "")).strip(),
         options=_parse_options(raw.get("options")),
     )

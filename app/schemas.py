@@ -88,9 +88,15 @@ class FlagSeverity(str, Enum):
 
 
 class FieldSource(str, Enum):
-    """Where an extracted value came from. Drives provenance in the console."""
+    """Where an extracted value came from. Drives provenance in the console.
+
+    `touch` is not a lesser form of `speech`: the patient tapped a tile whose
+    value is already a canonical English token, so nothing was transcribed,
+    translated or inferred. It is the most reliable provenance of the three.
+    """
 
     speech = "speech"
+    touch = "touch"
     document = "document"
 
 

@@ -30,7 +30,14 @@ import re
 from typing import Any, Dict, List, Optional
 
 from app.config import settings
-from app.schemas import ClinicalSummary, DocumentRecord, ExtractedField, FlagSeverity, RedFlag
+from app.schemas import (
+    ClinicalSummary,
+    DocumentRecord,
+    ExtractedField,
+    FieldSource,
+    FlagSeverity,
+    RedFlag,
+)
 
 log = logging.getLogger(__name__)
 
@@ -99,8 +106,10 @@ def next_node(
 
     record_follow_up(session_state, node.id)
 
-    question_text, options = followup.generate_followup(node, fields, language, _llm())
-    return _render(node.id, question_text, options)
+    target_field, question_text, options = followup.generate_followup(
+        node, fields, language, _llm()
+    )
+    return _render(node.id, question_text, options, target_field)
 
 
 _AGE_RE = re.compile(r"\d{1,3}")
@@ -148,14 +157,21 @@ def _coerce_fields(fields: List[ExtractedField]) -> List[ExtractedField]:
     return out
 
 
-def _render(node_id: str, question: str, options) -> Dict[str, Any]:
-    """Shape a question the way the frontend expects it."""
+def _render(node_id: str, question: str, options, target_field: str = "") -> Dict[str, Any]:
+    """Shape a question the way the frontend expects it.
+
+    `target_field` is internal: the session store keeps it so that when the
+    patient taps one of these options, the tapped value can be filed under
+    the right field without another model call. It is not part of the
+    AnswerResponse the kiosk renders.
+    """
     return {
         "node_id": node_id,
         "question": question,
         "options": [{"value": o.value, "label": o.label} for o in options],
         "allow_free_text": True,
         "node_type": "single_choice" if options else "free_text",
+        "target_field": target_field,
     }
 
 
@@ -177,6 +193,8 @@ def _node_if_current_completes(fields: Dict[str, Any], node, follow_up_counts: D
 def answer_turn(
     node_id: str,
     transcript: str,
+    selected_option: Optional[str],
+    target_field: Optional[str],
     fields: Dict[str, Any],
     follow_up_counts: Dict[str, int],
     language: str,
@@ -208,10 +226,41 @@ def answer_turn(
             id=node_id, phase_label=node_id, required_fields=(), optional_fields=(node_id,)
         )
 
-    # No speech to read (a tapped option, or an empty transcript): there is
-    # nothing to extract, so fall straight through to question generation.
+    # The patient tapped a tile instead of speaking. The tapped value is
+    # already a canonical English token chosen from options we generated, so
+    # there is nothing to transcribe, translate or infer: build the field
+    # directly, at full confidence, with no model call and no quota spent.
+    #
+    # This path used to produce nothing at all, which meant a touch-only
+    # patient finished the interview with an empty history AND — because red
+    # flags are evaluated on extracted fields — no safety coverage whatsoever.
     if not transcript:
-        return [], next_node(fields, follow_up_counts, language)
+        tapped: List[ExtractedField] = []
+        if selected_option and target_field:
+            tapped = _coerce_fields(
+                [
+                    ExtractedField(
+                        name=target_field,
+                        value=selected_option,
+                        confidence=1.0,
+                        source=FieldSource.touch,
+                    )
+                ]
+            )
+        elif selected_option:
+            # An option came back but we no longer know which field it fills
+            # (e.g. the session state was lost to a restart). Say so loudly —
+            # silently dropping a clinical answer is what this block exists to
+            # stop.
+            log.warning(
+                "tapped option %r on node %r discarded: no target field recorded",
+                selected_option,
+                node_id,
+            )
+
+        merged_taps = dict(fields)
+        merged_taps.update({f.name: f.value for f in tapped})
+        return tapped, next_node(merged_taps, follow_up_counts, language)
 
     advance_node = _node_if_current_completes(fields, node, follow_up_counts)
     result = run_turn(transcript, node, advance_node, fields, language, _llm())
@@ -230,15 +279,19 @@ def answer_turn(
     # Trust the model's question only if it wrote it for the node we actually
     # landed on, and it actually produced one.
     if result.asking_about == actual.id and result.question:
-        return coerced, _render(actual.id, result.question, result.options)
+        return coerced, _render(
+            actual.id, result.question, result.options, result.target_field
+        )
 
     log.info(
         "turn: regenerating question (model asked about %r, state machine says %r)",
         result.asking_about,
         actual.id,
     )
-    question_text, options = followup.generate_followup(actual, merged, language, _llm())
-    return coerced, _render(actual.id, question_text, options)
+    target_field, question_text, options = followup.generate_followup(
+        actual, merged, language, _llm()
+    )
+    return coerced, _render(actual.id, question_text, options, target_field)
 
 
 def extract_fields(node_id: str, transcript: str) -> List[ExtractedField]:

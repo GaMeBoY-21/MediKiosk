@@ -46,13 +46,20 @@ NODES: dict[str, InterviewNode] = {
             "symptom_onset",
             "symptom_character",
             "symptom_severity",
+            # Required, not optional. Optional fields are never asked once the
+            # required ones are filled, so as an optional field this was never
+            # put to the patient at all — and it is the single field the
+            # red-flag rules lean on hardest (breathlessness with chest pain,
+            # bleeding in pregnancy). A patient who volunteered it in free
+            # speech got a safety check; a patient answering by touch never
+            # could. Asking it always is also just a correct history.
+            "associated_symptoms",
         ),
         optional_fields=(
             "symptom_radiation",
             "symptom_timing",
             "symptom_exacerbating_factors",
             "symptom_relieving_factors",
-            "associated_symptoms",
         ),
         max_follow_ups=8,
     ),

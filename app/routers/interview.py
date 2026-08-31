@@ -88,12 +88,19 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
     )
     state.language = payload.language.value
 
+    # Which field the question we asked was trying to fill. Recorded when the
+    # question was generated; a tapped option is filed straight into it
+    # without a model call.
+    target_field = (state.rendered_nodes.get(payload.node_id) or {}).get("target_field")
+
     # Extraction and the next question come back from ONE model call. They
     # used to be two serial calls, so every tap paid both latencies and spent
     # two requests from a small daily quota.
     extracted_fields, node = ai_bridge.answer_turn(
         payload.node_id,
         payload.transcript or "",
+        payload.selected_option,
+        target_field,
         state.extracted,
         state.follow_up_counts,
         payload.language.value,

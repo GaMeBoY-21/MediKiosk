@@ -27,10 +27,27 @@ Each option has two parts:
 - "label": the same option written out for the patient to read, in
   {language}. This is display-only.
 
+Also name the single field your question is trying to fill, exactly as it is
+spelled in the list above. If the patient taps one of your options instead of
+speaking, that option's value is stored directly into this field, so it must
+be the right one.
+
+SAFETY: when the field you are filling is "associated_symptoms", the options
+you offer are the only danger signs a patient answering by touch can ever
+report. You MUST include the warning symptoms that go with this patient's
+complaint, using exactly these English values:
+    chest or heart complaint -> "breathlessness"
+    headache, weakness, fainting, speech or face trouble -> "slurred_speech"
+    fever -> "neck_stiffness"
+    pregnancy, or any bleeding -> "bleeding"
+Include "none" as the last option. Give the labels in {language} as usual, but
+keep those values in English, spelled exactly as above.
+
 Respond with ONLY a JSON object of this exact shape, no markdown fences, no
 commentary:
 
 {{
+  "target_field": "<the one field this question fills>",
   "question": "<question text in {language}>",
   "options": [{{"value": "<canonical_english_token>", "label": "<option text in {language}>"}}]
 }}
