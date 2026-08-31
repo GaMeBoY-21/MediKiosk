@@ -18,8 +18,10 @@ from ai.adapters.base import (
 
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE | re.MULTILINE)
 
-_MAX_ATTEMPTS = 4
-_BASE_DELAY_SECONDS = 1.0
+_MAX_ATTEMPTS = 2
+# Longest server-requested wait we will actually sit through inside a request.
+# Beyond this, failing fast beats making a patient watch a frozen kiosk.
+_MAX_RETRY_WAIT_SECONDS = 20.0
 
 # There is deliberately NO default model. Google retires model names without
 # warning — gemini-1.5-flash, the previous default here, started returning 404
@@ -51,8 +53,31 @@ def _is_rate_limit_error(exc: Exception) -> bool:
     return "429" in message or "rate limit" in message or "quota" in message or "resource exhausted" in message
 
 
+def _retry_after_seconds(exc: Exception) -> float | None:
+    """The server's own requested wait, if it sent one.
+
+    google-api-core puts a retry_delay on the exception; it also appears in the
+    message text as `retry_delay { seconds: N }`. Prefer this over guessing:
+    our old fixed 1+2+4 backoff gave up after 7s while the server was asking
+    for 16.8s, so every retry was wasted and the call failed anyway.
+    """
+    delay = getattr(exc, "retry_delay", None)
+    seconds = getattr(delay, "seconds", None)
+    if isinstance(seconds, (int, float)) and seconds > 0:
+        return float(seconds)
+    match = re.search(r"retry_delay\s*{\s*seconds:\s*(\d+)", str(exc))
+    return float(match.group(1)) if match else None
+
+
 def _call_with_retry(fn):
-    """Call fn(), retrying with exponential backoff only on rate-limit errors."""
+    """Call fn(), retrying only on rate-limit errors.
+
+    Two attempts, not four. The binding limit is a per-DAY quota, so sitting
+    in a backoff loop is pure dead time on a request a patient is waiting on:
+    if the daily allowance is gone, no amount of retrying inside one request
+    will get it back. The single retry exists for a genuine per-minute burst,
+    and it waits exactly as long as the server asked.
+    """
     last_exc: Exception | None = None
     for attempt in range(_MAX_ATTEMPTS):
         try:
@@ -62,8 +87,15 @@ def _call_with_retry(fn):
                 raise
             last_exc = exc
             if attempt < _MAX_ATTEMPTS - 1:
-                time.sleep(_BASE_DELAY_SECONDS * (2**attempt))
-    raise RateLimitError(f"Gemini rate limit exceeded after {_MAX_ATTEMPTS} attempts") from last_exc
+                wait = _retry_after_seconds(exc)
+                if wait is None or wait > _MAX_RETRY_WAIT_SECONDS:
+                    # No hint, or a wait far longer than a patient will stand
+                    # at a kiosk: fail now and surface it.
+                    break
+                time.sleep(wait)
+    raise RateLimitError(
+        f"Gemini rate limit exceeded after {_MAX_ATTEMPTS} attempts: {last_exc}"
+    ) from last_exc
 
 
 def _resolve(value: str | None, env_var: str, hint: str) -> str:

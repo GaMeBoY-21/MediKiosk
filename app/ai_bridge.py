@@ -99,14 +99,99 @@ def next_node(
     record_follow_up(session_state, node.id)
 
     question_text, options = followup.generate_followup(node, fields, language, _llm())
+    return _render(node.id, question_text, options)
 
+
+def _render(node_id: str, question: str, options) -> Dict[str, Any]:
+    """Shape a question the way the frontend expects it."""
     return {
-        "node_id": node.id,
-        "question": question_text,
+        "node_id": node_id,
+        "question": question,
         "options": [{"value": o.value, "label": o.label} for o in options],
         "allow_free_text": True,
         "node_type": "single_choice" if options else "free_text",
     }
+
+
+def _node_if_current_completes(fields: Dict[str, Any], node, follow_up_counts: Dict[str, int]):
+    """Which node the state machine WOULD pick if `node` were fully answered.
+
+    Computed here, by the state machine, before the LLM is called — so the
+    branch the model is handed is one we already sanctioned. Uses copies so
+    the real session state is untouched.
+    """
+    from ai.interview.state_machine import next_node as sm_next_node
+
+    hypothetical = dict(fields)
+    for field_name in node.required_fields:
+        hypothetical.setdefault(field_name, "__assumed__")
+    return sm_next_node({"fields": hypothetical, "follow_up_counts": dict(follow_up_counts)})
+
+
+def answer_turn(
+    node_id: str,
+    transcript: str,
+    fields: Dict[str, Any],
+    follow_up_counts: Dict[str, int],
+    language: str,
+) -> tuple[List[ExtractedField], Optional[Dict[str, Any]]]:
+    """Extract this answer AND get the next question, normally in ONE call.
+
+    Replaces the old extract_fields() + next_node() pair on the answer path,
+    which cost two serial round trips per tap — the patient waited for both,
+    and both counted against a small daily quota.
+
+    The state machine stays authoritative. It decides the current node and
+    precomputes the one legal onward branch; the model is told that branch
+    rather than choosing it. Afterwards we re-run the state machine on the
+    merged fields, and if the model answered for a different node than the one
+    we actually landed on, its question is discarded and a correct one is
+    generated (costing the second call we normally save).
+
+    Returns (extracted fields, rendered next question or None when finished).
+    """
+    from ai.interview import followup
+    from ai.interview.nodes import InterviewNode, get_node
+    from ai.interview.state_machine import next_node as sm_next_node, record_follow_up
+    from ai.interview.turn import run_turn
+
+    try:
+        node = get_node(node_id)
+    except KeyError:
+        node = InterviewNode(
+            id=node_id, phase_label=node_id, required_fields=(), optional_fields=(node_id,)
+        )
+
+    # No speech to read (a tapped option, or an empty transcript): there is
+    # nothing to extract, so fall straight through to question generation.
+    if not transcript:
+        return [], next_node(fields, follow_up_counts, language)
+
+    advance_node = _node_if_current_completes(fields, node, follow_up_counts)
+    result = run_turn(transcript, node, advance_node, fields, language, _llm())
+
+    merged = dict(fields)
+    merged.update({f.name: f.value for f in result.fields})
+
+    session_state = {"fields": merged, "follow_up_counts": follow_up_counts}
+    actual = sm_next_node(session_state)
+    if actual is None:
+        return result.fields, None
+
+    record_follow_up(session_state, actual.id)
+
+    # Trust the model's question only if it wrote it for the node we actually
+    # landed on, and it actually produced one.
+    if result.asking_about == actual.id and result.question:
+        return result.fields, _render(actual.id, result.question, result.options)
+
+    log.info(
+        "turn: regenerating question (model asked about %r, state machine says %r)",
+        result.asking_about,
+        actual.id,
+    )
+    question_text, options = followup.generate_followup(actual, merged, language, _llm())
+    return result.fields, _render(actual.id, question_text, options)
 
 
 def extract_fields(node_id: str, transcript: str) -> List[ExtractedField]:

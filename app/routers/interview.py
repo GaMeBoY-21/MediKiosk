@@ -73,8 +73,16 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
     )
     state.language = payload.language.value
 
-    # Structured fields out of the transcript. Genuinely live — no fallback.
-    extracted_fields = ai_bridge.extract_fields(payload.node_id, payload.transcript or "")
+    # Extraction and the next question come back from ONE model call. They
+    # used to be two serial calls, so every tap paid both latencies and spent
+    # two requests from a small daily quota.
+    extracted_fields, node = ai_bridge.answer_turn(
+        payload.node_id,
+        payload.transcript or "",
+        state.extracted,
+        state.follow_up_counts,
+        payload.language.value,
+    )
     extracted = {f.name: f.value for f in extracted_fields}
     if extracted:
         state.extracted.update(extracted)
@@ -103,7 +111,6 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
         log.warning("red flag %s on session %s", red_flag.rule_id, session_id)
         return _to_response(None, state.answered_count(), red_flag=red_flag)
 
-    node = ai_bridge.next_node(state.extracted, state.follow_up_counts, payload.language.value)
     state.current_node = node["node_id"] if node else None
     if node:
         state.rendered_nodes[node["node_id"]] = node
