@@ -30,3 +30,11 @@ class ExtractedField:
     value: Any
     confidence: float
     node_id: str
+
+
+@dataclass
+class FollowUpQuestion:
+    """TODO: replace with app.schemas.FollowUpQuestion"""
+
+    text: str
+    options: list[str] = field(default_factory=list)
