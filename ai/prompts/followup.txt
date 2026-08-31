@@ -15,13 +15,22 @@ Fields already answered in this stage — do not ask about these again:
 Ask ONE short, simple question that will help fill one of the remaining
 fields. If the answer is naturally a choice from a short list (for example:
 pain character, duration, severity), provide 2 to 5 short tappable answer
-options in {language}. If the question is genuinely open-ended, return an
-empty options list.
+options. If the question is genuinely open-ended, return an empty options
+list.
+
+Each option has two parts:
+- "value": a short, stable, canonical English token for this answer, the
+  kind of word a clinician would use — e.g. "burning", "2_days", "severe".
+  This is what gets stored and compared, so it must always be in English,
+  regardless of {language}, and it must stay consistent for the same
+  meaning every time.
+- "label": the same option written out for the patient to read, in
+  {language}. This is display-only.
 
 Respond with ONLY a JSON object of this exact shape, no markdown fences, no
 commentary:
 
 {{
   "question": "<question text in {language}>",
-  "options": ["<option1>", "<option2>"]
+  "options": [{{"value": "<canonical_english_token>", "label": "<option text in {language}>"}}]
 }}

@@ -12,14 +12,6 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class FollowUpQuestion:
-    """TODO: replace with app.schemas.FollowUpQuestion"""
-
-    text: str
-    options: list[str] = field(default_factory=list)
-
-
-@dataclass
 class ClinicalSummary:
     """TODO: replace with app.schemas.ClinicalSummary"""
 

@@ -2,13 +2,19 @@
 """Adaptive follow-up question generation, constrained to the current node's
 scope. The LLM only phrases the question here — the state machine already
 decided we're still in this node, and only this node's unfilled fields are
-ever offered up as something to ask about."""
+ever offered up as something to ask about.
+
+This module deliberately does not return a node_id or node_type: assembling
+those into a full InterviewNode / AnswerResponse is the state machine's job,
+not this one's.
+"""
 
 from pathlib import Path
 
+from app.schemas import QuestionOption
+
 from ai.adapters.base import LLMAdapter, MalformedOutputError
 from ai.interview.nodes import InterviewNode
-from ai.types import FollowUpQuestion
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "followup.txt"
 
@@ -25,18 +31,32 @@ def _unanswered_fields(node: InterviewNode, filled_fields: dict) -> list[str]:
     return [f for f in all_fields if f not in filled_fields]
 
 
+def _parse_options(raw_options) -> list[QuestionOption]:
+    if not isinstance(raw_options, list):
+        return []
+    options: list[QuestionOption] = []
+    for item in raw_options:
+        if not isinstance(item, dict):
+            continue
+        value = str(item.get("value", "")).strip()
+        label = str(item.get("label", "")).strip()
+        if not value or not label:
+            continue
+        options.append(QuestionOption(value=value, label=label))
+    return options
+
+
 def generate_followup(
     node: InterviewNode, filled_fields: dict, language: str, llm: LLMAdapter
-) -> FollowUpQuestion | None:
+) -> tuple[str, list[QuestionOption]]:
     """Generate the next follow-up question for the current node.
 
-    Returns None once every field the node cares about is already filled —
-    the state machine should already have moved on by then, so this is a
-    fallback rather than the normal path.
+    Returns (question text, tappable options). `options` is [] for a
+    genuinely open-ended question — never omitted, never None.
     """
     remaining = _unanswered_fields(node, filled_fields)
     if not remaining:
-        return None
+        return node.phase_label, []
 
     prompt = _load_prompt_template().format(
         phase_label=node.phase_label,
@@ -49,17 +69,14 @@ def generate_followup(
     try:
         raw = llm.complete_json(prompt)
     except MalformedOutputError:
-        return FollowUpQuestion(text=node.phase_label, options=[])
+        return node.phase_label, []
 
     text = str(raw.get("question", "")).strip()
     if not text:
-        return FollowUpQuestion(text=node.phase_label, options=[])
+        return node.phase_label, []
 
-    options = raw.get("options", [])
-    if not isinstance(options, list):
-        options = []
-    options = [str(option).strip() for option in options if str(option).strip()]
+    options = _parse_options(raw.get("options", []))
     if not (MIN_OPTIONS <= len(options) <= MAX_OPTIONS):
         options = []
 
-    return FollowUpQuestion(text=text, options=options)
+    return text, options
