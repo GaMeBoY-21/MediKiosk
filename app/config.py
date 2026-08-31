@@ -8,6 +8,7 @@ SQLite file so the kiosk demo runs on a laptop with no Postgres installed.
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import List, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,12 +16,20 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Where the SQLite fallback lives, relative to the repo root.
 SQLITE_FALLBACK = "sqlite:///./medikiosk.db"
 
+# Anchored to THIS FILE, not the working directory. A bare env_file=".env" is
+# resolved against wherever uvicorn happened to be started, so running from the
+# repo root silently missed app/.env and every Gemini call died on a missing
+# key. Both locations are read, app/.env last so it wins.
+_APP_DIR = Path(__file__).resolve().parent
+_REPO_ROOT = _APP_DIR.parent
+ENV_FILES = (_REPO_ROOT / ".env", _APP_DIR / ".env")
+
 
 class Settings(BaseSettings):
     """Runtime configuration. Values come from the environment or a .env file."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -30,7 +39,15 @@ class Settings(BaseSettings):
     """Postgres DSN. Unset falls back to SQLite so the demo runs anywhere."""
 
     GEMINI_API_KEY: Optional[str] = None
-    """Key for the AI layer. Unset is fine — ai/ calls degrade to fallbacks."""
+    """Key for the AI layer. Unset now fails loudly on first use by name."""
+
+    GEMINI_MODEL: Optional[str] = None
+    """Gemini model id, e.g. gemini-3.5-flash-lite.
+
+    Deliberately no default: Google retires model names without notice, and a
+    stale default here took the whole app down with 404s. Unset raises
+    MissingConfigError naming this variable.
+    """
 
     APP_ENV: str = "development"
     """development | production. Production refuses to start on SQLite."""

@@ -11,6 +11,7 @@ import google.generativeai as genai
 from ai.adapters.base import (
     LLMAdapter,
     MalformedOutputError,
+    MissingConfigError,
     RateLimitError,
     VisionAdapter,
 )
@@ -19,7 +20,17 @@ _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE | re.MULTILINE
 
 _MAX_ATTEMPTS = 4
 _BASE_DELAY_SECONDS = 1.0
-_DEFAULT_MODEL = "gemini-1.5-flash"
+
+# There is deliberately NO default model. Google retires model names without
+# warning — gemini-1.5-flash, the previous default here, started returning 404
+# and every call in the app died with it. A default would have quietly rotted
+# again; an unset GEMINI_MODEL now fails immediately and says so.
+_MODEL_HINT = (
+    "Set GEMINI_MODEL in app/.env. Model names retire without notice, so this "
+    "is deliberately not defaulted — run ListModels to see what your key can "
+    "currently reach."
+)
+_API_KEY_HINT = "Set GEMINI_API_KEY in app/.env."
 
 
 def _strip_markdown_fences(text: str) -> str:
@@ -55,16 +66,29 @@ def _call_with_retry(fn):
     raise RateLimitError(f"Gemini rate limit exceeded after {_MAX_ATTEMPTS} attempts") from last_exc
 
 
-def _configure(api_key: str | None) -> None:
-    genai.configure(api_key=api_key or os.environ["GEMINI_API_KEY"])
+def _resolve(value: str | None, env_var: str, hint: str) -> str:
+    """Take an explicit value, else the environment, else fail by name.
+
+    Never `os.environ[...]` directly: a bare KeyError names the variable only
+    in a traceback, and the caller cannot tell configuration from a bug.
+    """
+    resolved = value or os.environ.get(env_var)
+    if not resolved:
+        raise MissingConfigError(env_var, hint)
+    return resolved
+
+
+def _build_model(model_name: str | None, api_key: str | None):
+    """Configure the SDK and construct a model, or fail naming what is missing."""
+    genai.configure(api_key=_resolve(api_key, "GEMINI_API_KEY", _API_KEY_HINT))
+    return genai.GenerativeModel(_resolve(model_name, "GEMINI_MODEL", _MODEL_HINT))
 
 
 class GeminiLLMAdapter(LLMAdapter):
     """Gemini-backed text generation adapter."""
 
-    def __init__(self, model_name: str = _DEFAULT_MODEL, api_key: str | None = None):
-        _configure(api_key)
-        self._model = genai.GenerativeModel(model_name)
+    def __init__(self, model_name: str | None = None, api_key: str | None = None):
+        self._model = _build_model(model_name, api_key)
 
     def complete(self, prompt: str) -> str:
         response = _call_with_retry(lambda: self._model.generate_content(prompt))
@@ -78,9 +102,8 @@ class GeminiLLMAdapter(LLMAdapter):
 class GeminiVisionAdapter(VisionAdapter):
     """Gemini-backed vision extraction adapter."""
 
-    def __init__(self, model_name: str = _DEFAULT_MODEL, api_key: str | None = None):
-        _configure(api_key)
-        self._model = genai.GenerativeModel(model_name)
+    def __init__(self, model_name: str | None = None, api_key: str | None = None):
+        self._model = _build_model(model_name, api_key)
 
     def extract_from_image(self, image_bytes: bytes, prompt: str) -> dict:
         image_part = {"mime_type": "image/jpeg", "data": image_bytes}

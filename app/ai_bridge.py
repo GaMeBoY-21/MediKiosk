@@ -54,7 +54,9 @@ def _llm():
     if _llm_singleton is None:
         from ai.adapters.gemini import GeminiLLMAdapter
 
-        _llm_singleton = GeminiLLMAdapter(api_key=settings.GEMINI_API_KEY)
+        _llm_singleton = GeminiLLMAdapter(
+            model_name=settings.GEMINI_MODEL, api_key=settings.GEMINI_API_KEY
+        )
     return _llm_singleton
 
 

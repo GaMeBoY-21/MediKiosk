@@ -20,6 +20,21 @@ class RateLimitError(LLMAdapterError):
     """Raised when a provider is still rate-limiting us after retries are exhausted."""
 
 
+class MissingConfigError(LLMAdapterError):
+    """Raised when a required setting is absent.
+
+    Always names the missing variable. A bare KeyError from os.environ tells
+    whoever is standing at the kiosk nothing about which value to set.
+    """
+
+    def __init__(self, variable: str, hint: str = ""):
+        self.variable = variable
+        message = f"{variable} is not set"
+        if hint:
+            message = f"{message}. {hint}"
+        super().__init__(message)
+
+
 class LLMAdapter(ABC):
     """Interface for a text-generation LLM provider."""
 
