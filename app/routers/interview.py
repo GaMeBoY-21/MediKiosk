@@ -22,6 +22,8 @@ from app.routers.session import load_session
 from app.schemas import (
     AnswerRequest,
     AnswerResponse,
+    ExtractedField,
+    FieldSource,
     Language,
     NodeType,
     Progress,
@@ -34,13 +36,39 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/interview", tags=["interview"])
 
 
-def _to_response(node: dict | None, answered: int, red_flag=None) -> AnswerResponse:
+def _understanding(state) -> list[ExtractedField]:
+    """Every field understood so far, for the kiosk's understanding panel.
+
+    Cumulative, because the panel accumulates across the interview rather than
+    resetting each turn. Rebuilt from session state on every response so a
+    field corrected later shows its corrected value.
+
+    Structured fields only. `state.transcripts` holds the patient's verbatim
+    words and must never leave the server in this payload — the whole point of
+    keeping them in memory is that they are not distributed.
+    """
+    return [
+        ExtractedField(
+            name=name,
+            value=value,
+            # A real float. The panel hedges anything below 0.7, which it
+            # cannot do from a boolean. Defaults to 1.0 only for values that
+            # predate confidence tracking.
+            confidence=float(state.field_confidence.get(name, 1.0)),
+            source=FieldSource(state.field_source.get(name, FieldSource.speech.value)),
+        )
+        for name, value in state.extracted.items()
+    ]
+
+
+def _to_response(node: dict | None, answered: int, red_flag=None, state=None) -> AnswerResponse:
     """Build the one response shape that covers question / done / red-flag.
 
     `options` is always populated, [] when the node takes free text only. The
     frontend's rendering breaks if the key is ever missing.
     """
     progress = Progress(answered=answered, total=ai_bridge.estimated_total_nodes())
+    extracted = _understanding(state) if state is not None else []
 
     if red_flag is not None:
         # done=True, not False: the interview really has stopped, and the kiosk
@@ -52,6 +80,7 @@ def _to_response(node: dict | None, answered: int, red_flag=None) -> AnswerRespo
             progress=progress,
             done=True,
             terminal_reason=TerminalReason.red_flag,
+            extracted=extracted,
         )
 
     if node is None:
@@ -60,6 +89,7 @@ def _to_response(node: dict | None, answered: int, red_flag=None) -> AnswerRespo
             options=[],
             progress=progress,
             terminal_reason=TerminalReason.completed,
+            extracted=extracted,
         )
 
     return AnswerResponse(
@@ -70,6 +100,8 @@ def _to_response(node: dict | None, answered: int, red_flag=None) -> AnswerRespo
         node_type=NodeType(node.get("node_type", NodeType.free_text.value)),
         progress=progress,
         done=False,
+        phase=node.get("phase") or None,
+        extracted=extracted,
     )
 
 
@@ -111,6 +143,7 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
         state.extracted.update(extracted)
         for f in extracted_fields:
             state.field_confidence[f.name] = f.confidence
+            state.field_source[f.name] = f.source.value
         _persist_extracted_fields(db, session_id, extracted)
     store.save(state)
 
@@ -132,7 +165,7 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
         )
         db.commit()
         log.warning("red flag %s on session %s", red_flag.rule_id, session_id)
-        return _to_response(None, state.answered_count(), red_flag=red_flag)
+        return _to_response(None, state.answered_count(), red_flag=red_flag, state=state)
 
     state.current_node = node["node_id"] if node else None
     if node:
@@ -153,7 +186,7 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
     )
     db.commit()
 
-    return _to_response(node, state.answered_count())
+    return _to_response(node, state.answered_count(), state=state)
 
 
 def _persist_extracted_fields(db: DbSession, session_id: str, extracted: dict) -> None:
@@ -221,4 +254,4 @@ def get_node(
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"unknown node {node_id}")
 
     answered = state.answered_count() if state else 0
-    return _to_response(node, answered)
+    return _to_response(node, answered, state=state)

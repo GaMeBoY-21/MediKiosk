@@ -122,7 +122,12 @@ def next_node(
         node, fields, language, _llm()
     )
     return _render(
-        node.id, question_text, options, target_field, _is_multi(node, target_field)
+        node.id,
+        question_text,
+        options,
+        target_field,
+        _is_multi(node, target_field),
+        node.phase_label,
     )
 
 
@@ -198,6 +203,7 @@ def _render(
     options,
     target_field: str = "",
     multi: bool = False,
+    phase: str = "",
 ) -> Dict[str, Any]:
     """Shape a question the way the frontend expects it.
 
@@ -214,6 +220,7 @@ def _render(
         "node_type": ("multi_choice" if multi else "single_choice") if options else "free_text",
         "target_field": target_field,
         "multi_select": bool(multi and options),
+        "phase": phase,
     }
 
 
@@ -338,6 +345,7 @@ def answer_turn(
             result.options,
             result.target_field,
             _is_multi(actual, result.target_field),
+            actual.phase_label,
         )
 
     log.info(
@@ -349,7 +357,12 @@ def answer_turn(
         actual, merged, language, _llm()
     )
     return coerced, _render(
-        actual.id, question_text, options, target_field, _is_multi(actual, target_field)
+        actual.id,
+        question_text,
+        options,
+        target_field,
+        _is_multi(actual, target_field),
+        actual.phase_label,
     )
 
 

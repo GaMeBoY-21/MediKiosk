@@ -442,6 +442,14 @@ class InterviewNode(BaseModel):
     )
     allow_free_text: bool = Field(True, description="Whether the mic is offered on this node.")
     node_type: NodeType = Field(NodeType.free_text, description="How to render this node.")
+    phase: Optional[str] = Field(
+        None,
+        description=(
+            "Patient-facing stage name, same field as AnswerResponse.phase. "
+            "Present here too so the opening question carries a phase label "
+            "without a second round trip."
+        ),
+    )
 
 
 class SessionStartRequest(BaseModel):
@@ -571,6 +579,27 @@ class AnswerResponse(BaseModel):
     allow_free_text: bool = Field(True, description="Whether to offer the mic.")
     node_type: NodeType = Field(NodeType.free_text, description="How to render the node.")
     progress: Progress = Field(default_factory=Progress, description="Interview progress.")
+    phase: Optional[str] = Field(
+        None,
+        description=(
+            "Patient-facing name of the stage the interview is in, passed "
+            "through from the current node's phase_label. The kiosk shows this "
+            "instead of a progress count: the interview has no fixed length, "
+            "so any count desyncs. None when the interview has ended — the "
+            "kiosk then renders nothing rather than falling back to a count."
+        ),
+    )
+    extracted: List[ExtractedField] = Field(
+        default_factory=list,
+        description=(
+            "Every field understood so far this session, cumulative — not just "
+            "this turn — because the kiosk's understanding panel accumulates. "
+            "Each carries its own confidence as a float so the panel can hedge "
+            "anything below 0.7, and its source so a tapped answer is not shown "
+            "as though it were transcribed. Contains structured fields ONLY; "
+            "raw transcripts never appear in this payload."
+        ),
+    )
     red_flag: Optional[RedFlag] = Field(
         None, description="Set when a safety rule fired. Interrupts the interview immediately."
     )

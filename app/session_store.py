@@ -44,6 +44,10 @@ class SessionState:
     # exactly what the LLM returned — the summary hedges low-confidence
     # fields using this, instead of asserting every value equally.
     field_confidence: Dict[str, float] = field(default_factory=dict)
+    # Provenance per extracted field: "speech", "touch" or "document". Sent to
+    # the kiosk's understanding panel so a tapped answer is not presented as
+    # though it were transcribed.
+    field_source: Dict[str, str] = field(default_factory=dict)
     red_flags: List[Dict[str, Any]] = field(default_factory=list)
     # How many follow-ups ai.interview.state_machine has asked in each node
     # so far, so it can cap a node off even when a field never gets filled.
