@@ -7,11 +7,10 @@ INTERVIEW_NODES / NODE_ORDER / render_node / first_node_id / next_node_id
 are dead code — nothing calls them any more. Left in place rather than
 deleted piecemeal; safe to remove together in one pass.
 
+The red-flag rules that used to live here have been deleted outright — see the
+note further down where they were.
+
 Everything else here is still a live dependency, not a leftover:
-  - RED_FLAG_RULES / TRANSCRIPT_RULES / evaluate_red_flags: the deterministic
-    safety net app/ai_bridge.check_red_flags runs FIRST, before ai.safety is
-    even consulted. This never gets replaced by ai/ — it's meant to stay
-    dependency-free.
   - DEMO_TOKEN / DEMO_ROOM: app/routers/session.py and app/routers/summary.py
     fall back to these — there is no real token/room allocation system.
   - DEMO_DOCUMENTS: app/routers/summary.py and app/routers/physician.py fall
@@ -34,8 +33,6 @@ The real question set is ai/dashavidha/questions.py and is Nikki's to write.
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
-
-from app.schemas import FlagSeverity, RedFlag
 
 
 def _t(**kwargs: str) -> Dict[str, str]:
@@ -218,56 +215,17 @@ def next_node_id(current: Optional[str]) -> Optional[str]:
     return NODE_ORDER[index] if index < len(NODE_ORDER) else None
 
 
-# ----------------------------------------------------------- red flag rules
-
-# Deterministic. No model call, no network, no waiting on the summary. Keyed by
-# (node_id, selected_option) with a transcript keyword fallback.
-RED_FLAG_RULES: Dict[tuple, Dict[str, Any]] = {
-    ("associated", "breathlessness"): {
-        "rule_id": "RESP_DISTRESS",
-        "label": "breathlessness reported with the presenting complaint",
-        "severity": FlagSeverity.critical,
-    },
-}
-
-# Words that fire a flag wherever they appear in a transcript.
-TRANSCRIPT_RULES: Dict[str, Dict[str, Any]] = {
-    "chest pain": {
-        "rule_id": "CHEST_PAIN",
-        "label": "chest pain mentioned in free speech",
-        "severity": FlagSeverity.critical,
-    },
-    "bleeding": {
-        "rule_id": "ACTIVE_BLEEDING",
-        "label": "bleeding mentioned in free speech",
-        "severity": FlagSeverity.critical,
-    },
-    "unconscious": {
-        "rule_id": "ALTERED_CONSCIOUSNESS",
-        "label": "loss of consciousness mentioned in free speech",
-        "severity": FlagSeverity.critical,
-    },
-}
-
-
-def evaluate_red_flags(
-    node_id: str, selected_option: Optional[str], transcript: Optional[str]
-) -> Optional[RedFlag]:
-    """Deterministic red-flag check. Returns the first match, or None.
-
-    Runs inline on the answer request so the emergency screen can appear
-    immediately. Never calls a model and never touches the network.
-    """
-    rule = RED_FLAG_RULES.get((node_id, selected_option or ""))
-    if rule:
-        return RedFlag(triggered_by=[f"{node_id}={selected_option}"], **rule)
-
-    if transcript:
-        lowered = transcript.lower()
-        for phrase, spec in TRANSCRIPT_RULES.items():
-            if phrase in lowered:
-                return RedFlag(triggered_by=[phrase], **spec)
-    return None
+# Red-flag rules used to live here. They are gone on purpose.
+#
+# They matched English literals ("chest pain", "bleeding") as substrings of the
+# raw transcript, which silently did nothing for six of the seven languages the
+# kiosk speaks: a Hindi speaker saying "मुझे सीने में दर्द है" matched no rule
+# and saw no emergency screen, while the identical English sentence did.
+#
+# ai/safety/red_flags.py is the only red-flag authority now. It evaluates
+# already-extracted fields, which extraction has translated into English
+# clinical terms, so all seven languages behave identically. It is still pure
+# Python with no model call, so it still runs inline on every answer.
 
 
 # ------------------------------------------------------------- demo records

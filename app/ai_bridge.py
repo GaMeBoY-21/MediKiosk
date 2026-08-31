@@ -1,13 +1,26 @@
 # Owner: Tharun
 """The single boundary between app/ and ai/.
 
-Nikki owns ai/. Every function there is currently a stub that raises
-NotImplementedError, and will be for a while yet. Each call is wrapped here so
-that a missing, half-built or crashing AI function degrades to the deterministic
-fallback in app/fixtures.py instead of taking the API down mid-demo.
+The rule: nothing in app/routers imports ai/ directly. If a new AI capability
+is needed, add a wrapper here.
 
-The rule: nothing in app/routers imports ai/ directly. If a new AI capability is
-needed, add a wrapper here.
+ai/ is built, so most of this no longer degrades to a fallback. Two different
+policies live side by side, deliberately:
+
+  - check_red_flags has NO fallback and no try/except. It is a safety layer;
+    if it breaks the request must 500 so we find out immediately rather than
+    from a canned answer in front of a judge.
+  - next_node / extract_fields / generate_summary have no fallback either,
+    because their output depends on what the patient actually said — there is
+    nothing meaningful to fall back TO.
+  - extract_document still degrades, and is still wired to a signature that
+    does not exist (see below).
+
+KNOWN BUG, still live: extract_document() calls
+ai.documents.extract.extract_document(image_bytes) but the real function takes
+(image_bytes, doc_id, vision) and returns a DocumentRecord, not a dict. The
+try/except swallows the TypeError, so every upload silently yields {}. Left as
+found — fixing it is its own piece of work, not a red-flag change.
 """
 
 from __future__ import annotations
@@ -15,7 +28,6 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from app import fixtures
 from app.config import settings
 from app.schemas import ClinicalSummary, DocumentRecord, ExtractedField, FlagSeverity, RedFlag
 
@@ -125,48 +137,40 @@ def extract_fields(node_id: str, transcript: str) -> List[ExtractedField]:
     return extraction.extract_fields(transcript, node, _llm())
 
 
-def check_red_flags(
-    node_id: str,
-    selected_option: Optional[str],
-    transcript: Optional[str],
-    extracted: Optional[Dict[str, Any]] = None,
-) -> Optional[RedFlag]:
-    """Evaluate safety rules synchronously.
+# Worst-first, so a critical always wins over a high when several rules fire
+# at once and the response can only carry one flag.
+_SEVERITY_RANK: Dict[FlagSeverity, int] = {
+    FlagSeverity.critical: 0,
+    FlagSeverity.high: 1,
+    FlagSeverity.moderate: 2,
+    FlagSeverity.low: 3,
+}
 
-    This path never calls a model and never waits on the summary. The local
-    deterministic rules run FIRST and win, so the emergency screen appears on
-    the patient's next tap whatever state ai/ is in. ai.safety is consulted only
-    to add flags the local rules did not already catch — it is itself a rules
-    dict, not an LLM.
+
+def check_red_flags(extracted: Dict[str, Any]) -> Optional[RedFlag]:
+    """Evaluate safety rules synchronously against the session's extracted fields.
+
+    Deliberately NO try/except and no fallback. A safety layer that fails
+    silently is worse than one that fails loudly: if this raises, the request
+    must 500 so the failure is seen immediately, not discovered from a canned
+    answer during a demo.
+
+    Evaluated on extracted fields, never on the raw transcript. Extraction
+    already translates every value into English clinical terms, so a Hindi
+    speaker and an English speaker describing the same symptom produce the
+    same fields and therefore the same flags. Matching English literals
+    against raw speech was the old bug — it silently no-op'd for six of the
+    seven languages.
+
+    Never calls a model and never touches the network: ai.safety.red_flags is
+    pure Python, so this stays fast enough to run inline on every answer.
     """
-    local = fixtures.evaluate_red_flags(node_id, selected_option, transcript)
-    if local is not None:
-        return local
+    from ai.safety.red_flags import evaluate
 
-    try:
-        from ai.safety import red_flags as ai_red_flags
-
-        fields = dict(extracted or {})
-        fields.setdefault("node_id", node_id)
-        if selected_option:
-            fields.setdefault(node_id, selected_option)
-
-        found: List[Any] = ai_red_flags.check_red_flags(fields) or []
-        if found:
-            first = found[0]
-            if isinstance(first, RedFlag):
-                return first
-            if isinstance(first, dict):
-                return RedFlag(
-                    rule_id=first.get("rule_id", "AI_RULE"),
-                    label=first.get("label", "safety rule triggered"),
-                    severity=FlagSeverity(first.get("severity", FlagSeverity.high.value)),
-                    triggered_by=first.get("triggered_by", [node_id]),
-                )
-    except Exception as exc:  # noqa: BLE001
-        _degrade("safety.red_flags", exc)
-
-    return None
+    found = evaluate(extracted)
+    if not found:
+        return None
+    return min(found, key=lambda f: _SEVERITY_RANK.get(f.severity, 99))
 
 
 def generate_summary(

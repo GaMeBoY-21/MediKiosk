@@ -84,9 +84,9 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
     store.save(state)
 
     # Deterministic, synchronous, no model call, no waiting on the summary.
-    red_flag = ai_bridge.check_red_flags(
-        payload.node_id, payload.selected_option, payload.transcript, state.extracted
-    )
+    # Evaluated on the extracted fields (already English), not the raw
+    # transcript, so this fires identically in all seven languages.
+    red_flag = ai_bridge.check_red_flags(state.extracted)
 
     if red_flag is not None:
         state.red_flags.append(red_flag.model_dump(mode="json"))
