@@ -73,10 +73,11 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
     )
     state.language = payload.language.value
 
-    # Structured fields out of the transcript. Degrades to {} without ai/.
-    extracted = ai_bridge.extract_fields(payload.transcript or "")
+    # Structured fields out of the transcript. Genuinely live — no fallback.
+    extracted = ai_bridge.extract_fields(payload.node_id, payload.transcript or "")
     if extracted:
         state.extracted.update(extracted)
+        _persist_extracted_fields(db, session_id, extracted)
     store.save(state)
 
     # Deterministic, synchronous, no model call, no waiting on the summary.
@@ -118,6 +119,25 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
     db.commit()
 
     return _to_response(node, state.answered_count())
+
+
+def _persist_extracted_fields(db: DbSession, session_id: str, extracted: dict) -> None:
+    """Merge newly extracted fields into the clinical record's structured
+    history. This is the only place a spoken answer's structured value
+    actually reaches the database — state.extracted is in-memory only."""
+    record = (
+        db.query(models.ClinicalRecord)
+        .filter(models.ClinicalRecord.session_id == session_id)
+        .one_or_none()
+    )
+    if record is None:
+        record = models.ClinicalRecord(session_id=session_id, history={}, red_flags=[])
+        db.add(record)
+        db.flush()
+    # Reassign rather than mutate: SQLAlchemy does not track in-place JSON edits.
+    history = dict(record.history or {})
+    history.update(extracted)
+    record.history = history
 
 
 def _persist_red_flag(db: DbSession, session_id: str, red_flag) -> None:

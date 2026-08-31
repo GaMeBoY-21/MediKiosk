@@ -16,6 +16,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from app import fixtures
+from app.config import settings
 from app.schemas import FlagSeverity, RedFlag
 
 log = logging.getLogger(__name__)
@@ -29,6 +30,34 @@ def _degrade(capability: str, exc: Exception) -> None:
         _warned.add(capability)
         kind = "not implemented" if isinstance(exc, NotImplementedError) else type(exc).__name__
         log.warning("ai.%s unavailable (%s) - using deterministic fallback", capability, kind)
+
+
+# Fixtures still drive the live question set (Block 4 swaps that over to
+# ai.interview.nodes), so extraction is scoped to the single clinical field
+# each fixtures node is actually asking about. Names match
+# ai.interview.nodes' own field names, so this stays compatible once the
+# node graph swap happens.
+_FIXTURE_NODE_FIELDS: Dict[str, str] = {
+    "duration": "symptom_duration",
+    "severity": "symptom_severity",
+    "pattern": "symptom_timing",
+    "associated": "associated_symptoms",
+    "medicines": "current_medications",
+    "conditions": "past_medical_conditions",
+}
+
+_llm_singleton = None  # type: ignore[var-annotated]
+
+
+def _llm():
+    """Lazy singleton so a missing GEMINI_API_KEY fails on first real use,
+    not at import time, and so we don't re-configure the SDK per request."""
+    global _llm_singleton
+    if _llm_singleton is None:
+        from ai.adapters.gemini import GeminiLLMAdapter
+
+        _llm_singleton = GeminiLLMAdapter(api_key=settings.GEMINI_API_KEY)
+    return _llm_singleton
 
 
 def next_node(current_node: Optional[str], language: str) -> Optional[Dict[str, Any]]:
@@ -49,17 +78,25 @@ def next_node(current_node: Optional[str], language: str) -> Optional[Dict[str, 
     return fixtures.render_node(next_id, language) if next_id else None
 
 
-def extract_fields(transcript: str) -> Dict[str, Any]:
-    """Turn free speech into structured fields. Empty dict when unavailable."""
+def extract_fields(node_id: str, transcript: str) -> Dict[str, Any]:
+    """Turn free speech into structured fields via ai.interview.extraction.
+
+    No fallback: this is the one capability that is genuinely live. A
+    failure here (missing GEMINI_API_KEY, a malformed model response that
+    survives ai/'s own handling, ai/ being broken) is a real failure and
+    must be visible, not silently swallowed into canned output.
+    """
     if not transcript:
         return {}
-    try:
-        from ai.interview import extraction
 
-        return extraction.extract_fields(transcript) or {}
-    except Exception as exc:  # noqa: BLE001
-        _degrade("interview.extraction", exc)
-        return {}
+    from ai.interview import extraction
+    from ai.interview.nodes import InterviewNode
+
+    field_name = _FIXTURE_NODE_FIELDS.get(node_id, node_id)
+    node = InterviewNode(id=node_id, phase_label=node_id, required_fields=(), optional_fields=(field_name,))
+
+    extracted = extraction.extract_fields(transcript, node, _llm())
+    return extraction.fields_to_dict(extracted)
 
 
 def check_red_flags(
