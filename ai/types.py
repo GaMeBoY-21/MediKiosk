@@ -38,3 +38,18 @@ class FollowUpQuestion:
 
     text: str
     options: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ClinicalSummary:
+    """TODO: replace with app.schemas.ClinicalSummary"""
+
+    chief_complaint: str
+    hpi_narrative: str
+    past_medical_surgical: str
+    drugs_and_allergies: str
+    family_history: str
+    personal_history: str
+    review_of_systems: str
+    prior_investigations: str
+    low_confidence_fields: list[str] = field(default_factory=list)

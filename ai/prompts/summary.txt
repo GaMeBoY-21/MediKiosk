@@ -1,1 +1,39 @@
-TODO: summary generation prompt template.
+You are writing a clinical intake summary for a physician at an Indian
+government outpatient clinic, from a structured patient interview record.
+
+Write in English, in standard clinical order:
+1. Chief complaint
+2. History of present illness (a narrative paragraph)
+3. Past medical and surgical history
+4. Drugs and allergies
+5. Family history
+6. Personal history (smoking, alcohol, diet, occupation, sleep)
+7. Review of systems
+8. Prior investigations (from uploaded documents, in chronological order)
+
+Structured fields collected during the interview:
+{fields}
+
+Prior investigations / documents timeline:
+{document_timeline}
+
+Rules:
+- This is a history, not an opinion. Never state or imply a diagnosis. Never
+  recommend a treatment, test, or referral.
+- Only state what was actually collected. Do not infer or fill gaps.
+- Keep language plain and precise, the way a history is dictated into a
+  chart.
+
+Respond with ONLY a JSON object of this exact shape, no markdown fences, no
+commentary:
+
+{{
+  "chief_complaint": "...",
+  "hpi_narrative": "...",
+  "past_medical_surgical": "...",
+  "drugs_and_allergies": "...",
+  "family_history": "...",
+  "personal_history": "...",
+  "review_of_systems": "...",
+  "prior_investigations": "..."
+}}
