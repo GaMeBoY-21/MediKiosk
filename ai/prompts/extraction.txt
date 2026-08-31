@@ -1,1 +1,41 @@
-TODO: extraction prompt template.
+You are extracting structured clinical fields from a patient's spoken answer
+during an intake interview at an Indian government outpatient clinic.
+
+The patient may speak in any of these languages: Hindi, English, Bengali,
+Marathi, Tamil, Telugu, or Kannada. Translate implicitly — every extracted
+value must be written in English, using plain clinical terms a physician
+would recognise.
+
+Current interview stage: {node_id}
+You may ONLY extract these fields. Ignore anything the patient says that
+does not belong to this list:
+{allowed_fields}
+
+Patient's answer (verbatim transcript):
+"""
+{transcript}
+"""
+
+Rules:
+- A single answer may contain information for more than one field at once
+  (for example: "two days, in my chest, and it goes to my left arm" answers
+  duration, site, and radiation together). Extract every field it answers.
+- Only extract a field if the patient's answer actually states it. Never
+  guess, infer, or fill in a value the patient did not say.
+- If the answer does not address a field, omit that field entirely — do not
+  include it with an empty or null value.
+- Give each extracted field a confidence score between 0 and 1, reflecting
+  how certain you are that the value is correct and clearly stated.
+- Do not diagnose, do not give medical advice, do not extract any field
+  outside the allowed list above.
+
+Respond with ONLY a JSON object of this exact shape, no markdown fences, no
+commentary:
+
+{{
+  "fields": [
+    {{"name": "<field_name>", "value": "<extracted_value>", "confidence": <0-1>}}
+  ]
+}}
+
+If nothing can be extracted, respond with {{"fields": []}}.
