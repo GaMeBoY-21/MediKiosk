@@ -12,6 +12,7 @@ import ScreenShell from '../components/ScreenShell.jsx';
 import BigButton from '../components/BigButton.jsx';
 import MicButton from '../components/MicButton.jsx';
 import TranscriptBox from '../components/TranscriptBox.jsx';
+import UnderstandingPanel from '../components/UnderstandingPanel.jsx';
 import { useT } from '../i18n/useT.js';
 import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSpeechRecognition } from '../speech/useSpeechRecognition.js';
@@ -34,6 +35,9 @@ export default function Interview({ onError }) {
   } = useSession();
 
   const [node, setNode] = useState(currentNode);
+  // Cumulative from the API. Held separately from `node` so it survives the
+  // holding screen between questions instead of flickering empty.
+  const [understood, setUnderstood] = useState([]);
   const [thinking, setThinking] = useState(!currentNode);
   const [selected, setSelected] = useState(null);
 
@@ -46,6 +50,9 @@ export default function Interview({ onError }) {
 
   const applyResponse = useCallback(
     (res) => {
+      if (Array.isArray(res?.extracted) && res.extracted.length) {
+        setUnderstood(res.extracted);
+      }
       if (res?.red_flag) {
         raiseRedFlag(res.red_flag);
         return;
@@ -189,11 +196,14 @@ export default function Interview({ onError }) {
         labelUnsupported={tx('common.micUnavailable').label}
       />
 
-      <TranscriptBox
-        final={selected ? answerText : transcript}
-        interim={selected ? '' : interim}
-        placeholder={tx('common.tapToSpeak').label}
-      />
+      <div className="interview__row">
+        <TranscriptBox
+          final={selected ? answerText : transcript}
+          interim={selected ? '' : interim}
+          placeholder={tx('common.tapToSpeak').label}
+        />
+        <UnderstandingPanel extracted={understood} />
+      </div>
 
       <BigButton variant="primary" center onClick={next} disabled={!canAdvance}>
         {tx('common.next').label}

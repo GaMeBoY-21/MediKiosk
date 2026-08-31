@@ -90,10 +90,11 @@
 
 .shell__phase {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--fs-caption);
   font-weight: 600;
-  color: var(--muted, #5b6b63);
-  letter-spacing: 0.01em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 /* --------------------------------------------------------------- BigButton */
@@ -546,4 +547,93 @@
   font-size: 72px;
   font-weight: 600;
   color: var(--primary);
+}
+
+/* ------------------------------------------------- UnderstandingPanel */
+/* Sits beside the transcript so the patient sees speech turning into
+   structured fields, not just being recorded. */
+
+.interview__row {
+  display: flex;
+  gap: var(--gap);
+  align-items: flex-start;
+  width: 100%;
+}
+
+.interview__row > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.understanding {
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  background: var(--bg);
+}
+
+.understanding__title {
+  margin: 0 0 12px;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.understanding__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.understanding__item {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  font-size: var(--fs-body);
+  line-height: var(--lh);
+}
+
+.understanding__key {
+  color: var(--ink-soft);
+  flex: 0 0 auto;
+}
+
+.understanding__value {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* An uncertain value must never read as a confident one. Two independent
+   signals — weight/colour AND a mark — so it still reads on a projector and
+   without colour vision. */
+.understanding__item--unsure .understanding__value {
+  font-weight: 400;
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.understanding__unsure-mark {
+  display: inline-block;
+  margin-left: 8px;
+  min-width: 24px;
+  padding: 0 6px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-size: var(--fs-caption);
+  font-style: normal;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* One column on a narrow kiosk: the transcript must never be squeezed. */
+@media (max-width: 900px) {
+  .interview__row {
+    flex-direction: column;
+  }
 }

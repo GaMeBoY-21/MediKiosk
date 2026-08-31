@@ -36,6 +36,8 @@ export const strings = {
       tapToSpeak: { label: 'Tap to speak', audio: 'Tap the green circle and speak.' },
       listening: { label: 'Listening', audio: 'I am listening.' },
       oneMoment: { label: 'One moment', audio: 'One moment please.' },
+      understood: { label: 'What we understood', audio: '' },
+      notSure: { label: 'Not sure — please check', audio: '' },
       edit: { label: 'Edit', audio: 'Change this answer.' },
       micUnavailable: {
         label: 'You can tap your answer instead',
@@ -151,6 +153,8 @@ export const strings = {
       tapToSpeak: { label: 'बोलने के लिए दबाएँ', audio: 'हरे गोले को दबाइए और बोलिए।' },
       listening: { label: 'सुन रहे हैं', audio: 'मैं सुन रहा हूँ।' },
       oneMoment: { label: 'एक क्षण', audio: 'कृपया एक क्षण रुकिए।' },
+      understood: { label: 'हमने क्या समझा', audio: '' },
+      notSure: { label: 'पक्का नहीं — कृपया जाँचें', audio: '' },
       edit: { label: 'बदलें', audio: 'यह जवाब बदलिए।' },
       micUnavailable: {
         label: 'आप अपना जवाब दबाकर भी चुन सकते हैं',
@@ -266,6 +270,8 @@ export const strings = {
       tapToSpeak: { label: 'ಮಾತನಾಡಲು ಒತ್ತಿ', audio: 'ಹಸಿರು ವೃತ್ತವನ್ನು ಒತ್ತಿ ಮಾತನಾಡಿ.' },
       listening: { label: 'ಕೇಳುತ್ತಿದೆ', audio: 'ನಾನು ಕೇಳುತ್ತಿದ್ದೇನೆ.' },
       oneMoment: { label: 'ಒಂದು ಕ್ಷಣ', audio: 'ದಯವಿಟ್ಟು ಒಂದು ಕ್ಷಣ ಕಾಯಿರಿ.' },
+      understood: { label: 'ನಾವು ಏನು ಅರ್ಥಮಾಡಿಕೊಂಡೆವು', audio: '' },
+      notSure: { label: 'ಖಚಿತವಿಲ್ಲ — ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ', audio: '' },
       edit: { label: 'ಬದಲಾಯಿಸಿ', audio: 'ಈ ಉತ್ತರವನ್ನು ಬದಲಾಯಿಸಿ.' },
       micUnavailable: {
         label: 'ನೀವು ಉತ್ತರವನ್ನು ಒತ್ತಿ ಆಯ್ಕೆ ಮಾಡಬಹುದು',
@@ -381,6 +387,8 @@ export const strings = {
       tapToSpeak: { label: 'பேச தொடவும்', audio: 'பச்சை வட்டத்தைத் தொட்டு பேசுங்கள்.' },
       listening: { label: 'கேட்கிறது', audio: 'நான் கேட்கிறேன்.' },
       oneMoment: { label: 'ஒரு நிமிடம்', audio: 'தயவுசெய்து ஒரு நிமிடம் காத்திருங்கள்.' },
+      understood: { label: 'நாங்கள் புரிந்துகொண்டது', audio: '' },
+      notSure: { label: 'உறுதியாக இல்லை — சரிபார்க்கவும்', audio: '' },
       edit: { label: 'மாற்று', audio: 'இந்த பதிலை மாற்றுங்கள்.' },
       micUnavailable: {
         label: 'உங்கள் பதிலைத் தொட்டும் தேர்வு செய்யலாம்',
@@ -496,6 +504,8 @@ export const strings = {
       tapToSpeak: { label: 'మాట్లాడటానికి నొక్కండి', audio: 'ఆకుపచ్చ వృత్తాన్ని నొక్కి మాట్లాడండి.' },
       listening: { label: 'వింటున్నాము', audio: 'నేను వింటున్నాను.' },
       oneMoment: { label: 'ఒక్క క్షణం', audio: 'దయచేసి ఒక్క క్షణం ఆగండి.' },
+      understood: { label: 'మేము అర్థం చేసుకున్నది', audio: '' },
+      notSure: { label: 'ఖచ్చితంగా తెలియదు — తనిఖీ చేయండి', audio: '' },
       edit: { label: 'మార్చు', audio: 'ఈ సమాధానాన్ని మార్చండి.' },
       micUnavailable: {
         label: 'మీరు సమాధానాన్ని నొక్కి కూడా ఎంచుకోవచ్చు',
@@ -611,6 +621,8 @@ export const strings = {
       tapToSpeak: { label: 'बोलण्यासाठी दाबा', audio: 'हिरव्या वर्तुळावर दाबा आणि बोला.' },
       listening: { label: 'ऐकत आहे', audio: 'मी ऐकत आहे.' },
       oneMoment: { label: 'एक क्षण', audio: 'कृपया एक क्षण थांबा.' },
+      understood: { label: 'आम्हाला काय समजले', audio: '' },
+      notSure: { label: 'खात्री नाही — कृपया तपासा', audio: '' },
       edit: { label: 'बदला', audio: 'हे उत्तर बदला.' },
       micUnavailable: {
         label: 'तुम्ही उत्तर दाबूनही निवडू शकता',
@@ -726,6 +738,8 @@ export const strings = {
       tapToSpeak: { label: 'বলতে চাপুন', audio: 'সবুজ বৃত্তে চাপ দিয়ে বলুন।' },
       listening: { label: 'শুনছি', audio: 'আমি শুনছি।' },
       oneMoment: { label: 'এক মুহূর্ত', audio: 'অনুগ্রহ করে এক মুহূর্ত অপেক্ষা করুন।' },
+      understood: { label: 'আমরা যা বুঝেছি', audio: '' },
+      notSure: { label: 'নিশ্চিত নই — দয়া করে দেখুন', audio: '' },
       edit: { label: 'পরিবর্তন', audio: 'এই উত্তরটি পরিবর্তন করুন।' },
       micUnavailable: {
         label: 'আপনি উত্তর চেপেও বেছে নিতে পারেন',
