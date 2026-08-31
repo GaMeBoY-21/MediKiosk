@@ -8,9 +8,10 @@ ai.interview.state_machine's job. Prompts live in files, not strings.
 
 from pathlib import Path
 
+from app.schemas import ExtractedField, FieldSource
+
 from ai.adapters.base import LLMAdapter, MalformedOutputError
 from ai.interview.nodes import InterviewNode
-from ai.types import ExtractedField
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "extraction.txt"
 
@@ -69,7 +70,9 @@ def extract_fields(transcript: str, node: InterviewNode, llm: LLMAdapter) -> lis
         if confidence < MIN_CONFIDENCE:
             continue
         extracted.append(
-            ExtractedField(name=name, value=value, confidence=float(confidence), node_id=node.id)
+            ExtractedField(
+                name=name, value=value, confidence=float(confidence), source=FieldSource.speech
+            )
         )
     return extracted
 

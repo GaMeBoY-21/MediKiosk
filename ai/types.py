@@ -9,17 +9,6 @@ model definitions once that happens.
 """
 
 from dataclasses import dataclass, field
-from typing import Any
-
-
-@dataclass
-class ExtractedField:
-    """TODO: replace with app.schemas.ExtractedField"""
-
-    name: str
-    value: Any
-    confidence: float
-    node_id: str
 
 
 @dataclass
