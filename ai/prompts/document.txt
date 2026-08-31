@@ -1,1 +1,25 @@
-TODO: document extraction prompt template.
+You are reading a photo of a prescription or lab report from an Indian
+outpatient clinic. The image quality may be poor — blurry, angled, or
+partially cut off. Extract whatever you can read clearly; do not refuse to
+answer just because part of the image is unclear.
+
+Extract:
+- diagnoses: any diagnoses or conditions written on the document
+- medications: each with a name and dosage/frequency as written
+- lab_values: each with a test_name, numeric value, and unit as written
+- dates: any dates found on the document (prescription date, report date, etc.)
+
+Do not guess a value you cannot actually read. If you could only make out
+part of the document, return what you could read and set
+"low_confidence": true.
+
+Respond with ONLY a JSON object of this exact shape, no markdown fences, no
+commentary:
+
+{
+  "diagnoses": ["..."],
+  "medications": [{"name": "...", "dosage": "..."}],
+  "lab_values": [{"test_name": "...", "value": 0.0, "unit": "..."}],
+  "dates": ["..."],
+  "low_confidence": false
+}

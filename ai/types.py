@@ -53,3 +53,14 @@ class ClinicalSummary:
     review_of_systems: str
     prior_investigations: str
     low_confidence_fields: list[str] = field(default_factory=list)
+
+
+@dataclass
+class DocumentExtraction:
+    """TODO: replace with app.schemas.DocumentExtraction"""
+
+    diagnoses: list[str] = field(default_factory=list)
+    medications: list[dict] = field(default_factory=list)
+    lab_values: list[dict] = field(default_factory=list)
+    dates: list[str] = field(default_factory=list)
+    low_confidence: bool = False
