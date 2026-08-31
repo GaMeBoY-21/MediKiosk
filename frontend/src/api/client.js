@@ -9,6 +9,18 @@
 // backend work was visible here. Opt IN now: real API is the default.
 const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
+// VITE_REPLAY=true serves a real recorded session from /replay/session.json:
+// no network, no API quota, and the kiosk behaves exactly as it did live.
+//
+// This exists because the free Gemini tier has a hard daily cap and venue wifi
+// fails. A dead kiosk in front of judges ends the round. The recording is a
+// genuine session — real model output, real red flag — not hand-written mock
+// text, so what is demonstrated is what the system actually did.
+//
+// The REPLAY badge (see Kiosk.jsx) is deliberately impossible to miss: replay
+// must never be mistaken for a live run.
+export const REPLAY = import.meta.env.VITE_REPLAY === 'true';
+
 // The /api suffix is required: app/main.py mounts every router under
 // API_PREFIX="/api" while the helpers below request bare paths such as
 // "/session/start". Without it every single call 404s.
@@ -39,6 +51,20 @@ async function request(path, { method = 'GET', body, isForm = false } = {}) {
   return res.json();
 }
 
+let replayPromise = null;
+function loadReplay() {
+  if (!replayPromise) {
+    replayPromise = fetch('/replay/session.json').then((r) => {
+      if (!r.ok) throw new Error(`replay fixture missing (${r.status})`);
+      return r.json();
+    });
+  }
+  return replayPromise;
+}
+
+// How far through the recorded interview we are. Reset when a session starts.
+let replayCursor = 0;
+
 /* ---------------------------------------------------------------- mock state */
 // Where the mocked interview has got to. Reset whenever a session starts.
 let mockCursor = 0;
@@ -65,6 +91,11 @@ function shapeNode(node, lang) {
 /* -------------------------------------------------------------------- session */
 
 export async function startSession() {
+  if (REPLAY) {
+    const d = await loadReplay();
+    replayCursor = 0;
+    return d.kiosk.session;
+  }
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     const data = await loadMocks();
@@ -83,6 +114,10 @@ export async function startSession() {
  * Costs no model call: these values are already structured.
  */
 export async function recordKnownFields(sessionId, fields) {
+  if (REPLAY) {
+    const d = await loadReplay();
+    return d.kiosk.fields;
+  }
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true, extracted: [] };
@@ -91,6 +126,7 @@ export async function recordKnownFields(sessionId, fields) {
 }
 
 export async function recordConsent(sessionId, consent) {
+  if (REPLAY) return { ok: true, consent };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true, consent };
@@ -99,6 +135,7 @@ export async function recordConsent(sessionId, consent) {
 }
 
 export async function endSession(sessionId) {
+  if (REPLAY) return { ok: true };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true };
@@ -114,6 +151,17 @@ export async function endSession(sessionId) {
  * The Interview screen renders whatever comes back — it holds no clinical content.
  */
 export async function submitAnswer(sessionId, payload) {
+  if (REPLAY) {
+    const d = await loadReplay();
+    const recorded = d.kiosk.answers;
+    // Walk the recording in order. Whatever the patient says or taps, the
+    // questions play back exactly as they were answered live — including the
+    // red flag the real session raised on the last turn.
+    const step = recorded[replayCursor];
+    replayCursor += 1;
+    if (!step) return { done: true, terminal_reason: 'completed', extracted: [] };
+    return step.response;
+  }
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     const data = await loadMocks();
@@ -135,6 +183,7 @@ export async function submitAnswer(sessionId, payload) {
 /* ------------------------------------------------------------------ documents */
 
 export async function uploadDocument(sessionId, blob, filename = 'page.jpg') {
+  if (REPLAY) return { doc_id: 'replay-doc', document_id: 'replay-doc', status: 'queued' };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { document_id: `mock-doc-${Math.random().toString(36).slice(2, 8)}`, status: 'received' };
@@ -147,6 +196,10 @@ export async function uploadDocument(sessionId, blob, filename = 'page.jpg') {
 /* -------------------------------------------------------------------- summary */
 
 export async function generateSummary(sessionId) {
+  if (REPLAY) {
+    const d = await loadReplay();
+    return d.kiosk.summary;
+  }
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     const data = await loadMocks();
@@ -156,6 +209,10 @@ export async function generateSummary(sessionId) {
 }
 
 export async function fetchSummary(sessionId) {
+  if (REPLAY) {
+    const d = await loadReplay();
+    return d.physician.summary;
+  }
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     const data = await loadMocks();
@@ -167,6 +224,10 @@ export async function fetchSummary(sessionId) {
 /* ------------------------------------------------------------------ physician */
 
 export async function fetchPatientList() {
+  if (REPLAY) {
+    const d = await loadReplay();
+    return d.physician.queue;
+  }
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     const data = await loadMocks();
@@ -176,6 +237,10 @@ export async function fetchPatientList() {
 }
 
 export async function fetchCase(sessionId) {
+  if (REPLAY) {
+    const d = await loadReplay();
+    return d.physician.case;
+  }
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     const data = await loadMocks();
@@ -186,6 +251,7 @@ export async function fetchCase(sessionId) {
 }
 
 export async function updateCase(sessionId, patch) {
+  if (REPLAY) return { ok: true, patch };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true, patch };
@@ -194,6 +260,7 @@ export async function updateCase(sessionId, patch) {
 }
 
 export async function confirmCase(sessionId) {
+  if (REPLAY) return { ok: true, status: 'verified' };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true, status: 'confirmed' };
@@ -202,6 +269,7 @@ export async function confirmCase(sessionId) {
 }
 
 export async function rejectCase(sessionId, reason) {
+  if (REPLAY) return { ok: true, status: 'rejected', reason };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true, status: 'rejected', reason };

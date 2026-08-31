@@ -1,0 +1,1807 @@
+{
+  "recorded_at": "2026-08-31T17:07:42.918880+00:00",
+  "note": "Recorded from a live session against the real Gemini API. Replayed verbatim when VITE_REPLAY=true so the kiosk demos with no network and no API quota. Regenerate with scripts/record_replay.py.",
+  "language": "en",
+  "kiosk": {
+    "session": {
+      "session_id": "mk-9fd43e078b16",
+      "language": "en",
+      "status": "in_progress",
+      "started_at": "2026-08-31T17:06:46.279089",
+      "first_question": {
+        "node_id": "identity",
+        "question": "What is your name?",
+        "options": [],
+        "allow_free_text": true,
+        "node_type": "free_text",
+        "phase": "Let's start with a few basic details."
+      }
+    },
+    "fields": {
+      "ok": true,
+      "extracted": [
+        {
+          "name": "patient_name",
+          "value": "Lakshmi Devi",
+          "confidence": 1.0,
+          "source": "touch"
+        },
+        {
+          "name": "age",
+          "value": 65,
+          "confidence": 1.0,
+          "source": "touch"
+        },
+        {
+          "name": "sex",
+          "value": "female",
+          "confidence": 1.0,
+          "source": "touch"
+        },
+        {
+          "name": "consent_given",
+          "value": "yes",
+          "confidence": 1.0,
+          "source": "touch"
+        }
+      ],
+      "red_flag": null
+    },
+    "answers": [
+      {
+        "said": "I have had chest pain for two days",
+        "response": {
+          "node_id": "chief_complaint",
+          "question": "What is your main trouble today?",
+          "options": [],
+          "allow_free_text": true,
+          "node_type": "free_text",
+          "progress": {
+            "answered": 1,
+            "total": 11
+          },
+          "phase": "What brings you in today?",
+          "extracted": [
+            {
+              "name": "patient_name",
+              "value": "Lakshmi Devi",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "age",
+              "value": 65,
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "sex",
+              "value": "female",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "consent_given",
+              "value": "yes",
+              "confidence": 1.0,
+              "source": "touch"
+            }
+          ],
+          "red_flag": null,
+          "done": false,
+          "terminal_reason": null
+        }
+      },
+      {
+        "said": "for the last two days",
+        "response": {
+          "node_id": "chief_complaint",
+          "question": "What is your main health problem today?",
+          "options": [],
+          "allow_free_text": true,
+          "node_type": "free_text",
+          "progress": {
+            "answered": 2,
+            "total": 11
+          },
+          "phase": "What brings you in today?",
+          "extracted": [
+            {
+              "name": "patient_name",
+              "value": "Lakshmi Devi",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "age",
+              "value": 65,
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "sex",
+              "value": "female",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "consent_given",
+              "value": "yes",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "symptom_duration",
+              "value": "2 days",
+              "confidence": 1.0,
+              "source": "speech"
+            }
+          ],
+          "red_flag": null,
+          "done": false,
+          "terminal_reason": null
+        }
+      },
+      {
+        "said": "in the middle of my chest",
+        "response": {
+          "node_id": "hpi",
+          "question": "Can you point to exactly where the pain is, or does it spread anywhere else?",
+          "options": [],
+          "allow_free_text": true,
+          "node_type": "free_text",
+          "progress": {
+            "answered": 3,
+            "total": 11
+          },
+          "phase": "Tell me more about this problem.",
+          "extracted": [
+            {
+              "name": "patient_name",
+              "value": "Lakshmi Devi",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "age",
+              "value": 65,
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "sex",
+              "value": "female",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "consent_given",
+              "value": "yes",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "symptom_duration",
+              "value": "2 days",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "chief_complaint",
+              "value": "middle of chest pain",
+              "confidence": 0.95,
+              "source": "speech"
+            }
+          ],
+          "red_flag": null,
+          "done": false,
+          "terminal_reason": null
+        }
+      },
+      {
+        "said": "behind my breastbone, in the centre of my chest",
+        "response": {
+          "node_id": "hpi",
+          "question": "When did this chest pain start?",
+          "options": [
+            {
+              "value": "today",
+              "label": "Today"
+            },
+            {
+              "value": "few_days_ago",
+              "label": "A few days ago"
+            },
+            {
+              "value": "weeks_ago",
+              "label": "Weeks ago"
+            }
+          ],
+          "allow_free_text": true,
+          "node_type": "single_choice",
+          "progress": {
+            "answered": 4,
+            "total": 11
+          },
+          "phase": "Tell me more about this problem.",
+          "extracted": [
+            {
+              "name": "patient_name",
+              "value": "Lakshmi Devi",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "age",
+              "value": 65,
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "sex",
+              "value": "female",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "consent_given",
+              "value": "yes",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "symptom_duration",
+              "value": "2 days",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "chief_complaint",
+              "value": "middle of chest pain",
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_site",
+              "value": "centre of chest behind breastbone",
+              "confidence": 1.0,
+              "source": "speech"
+            }
+          ],
+          "red_flag": null,
+          "done": false,
+          "terminal_reason": null
+        }
+      },
+      {
+        "said": "it started suddenly while I was resting",
+        "response": {
+          "node_id": "hpi",
+          "question": "What kind of pain or feeling is it?",
+          "options": [
+            {
+              "value": "sharp",
+              "label": "Sharp"
+            },
+            {
+              "value": "dull",
+              "label": "Dull ache"
+            },
+            {
+              "value": "pressure",
+              "label": "Pressure or heaviness"
+            },
+            {
+              "value": "burning",
+              "label": "Burning"
+            }
+          ],
+          "allow_free_text": true,
+          "node_type": "single_choice",
+          "progress": {
+            "answered": 5,
+            "total": 11
+          },
+          "phase": "Tell me more about this problem.",
+          "extracted": [
+            {
+              "name": "patient_name",
+              "value": "Lakshmi Devi",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "age",
+              "value": 65,
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "sex",
+              "value": "female",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "consent_given",
+              "value": "yes",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "symptom_duration",
+              "value": "2 days",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "chief_complaint",
+              "value": "middle of chest pain",
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_site",
+              "value": "centre of chest behind breastbone",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_onset",
+              "value": "sudden",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_relieving_factors",
+              "value": "rest",
+              "confidence": 1.0,
+              "source": "speech"
+            }
+          ],
+          "red_flag": null,
+          "done": false,
+          "terminal_reason": null
+        }
+      },
+      {
+        "said": "it feels like a burning pressure",
+        "response": {
+          "node_id": "hpi",
+          "question": "How severe is the discomfort?",
+          "options": [
+            {
+              "value": "mild",
+              "label": "Mild"
+            },
+            {
+              "value": "moderate",
+              "label": "Moderate"
+            },
+            {
+              "value": "severe",
+              "label": "Severe"
+            }
+          ],
+          "allow_free_text": true,
+          "node_type": "single_choice",
+          "progress": {
+            "answered": 6,
+            "total": 11
+          },
+          "phase": "Tell me more about this problem.",
+          "extracted": [
+            {
+              "name": "patient_name",
+              "value": "Lakshmi Devi",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "age",
+              "value": 65,
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "sex",
+              "value": "female",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "consent_given",
+              "value": "yes",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "symptom_duration",
+              "value": "2 days",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "chief_complaint",
+              "value": "middle of chest pain",
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_site",
+              "value": "centre of chest behind breastbone",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_onset",
+              "value": "sudden",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_relieving_factors",
+              "value": "rest",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_character",
+              "value": "burning pressure",
+              "confidence": 0.95,
+              "source": "speech"
+            }
+          ],
+          "red_flag": null,
+          "done": false,
+          "terminal_reason": null
+        }
+      },
+      {
+        "said": "it is severe, the worst I have had",
+        "response": {
+          "node_id": "hpi",
+          "question": "Are you experiencing any other symptoms along with this?",
+          "options": [
+            {
+              "value": "breathlessness",
+              "label": "Shortness of breath"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            }
+          ],
+          "allow_free_text": true,
+          "node_type": "single_choice",
+          "progress": {
+            "answered": 7,
+            "total": 11
+          },
+          "phase": "Tell me more about this problem.",
+          "extracted": [
+            {
+              "name": "patient_name",
+              "value": "Lakshmi Devi",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "age",
+              "value": 65,
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "sex",
+              "value": "female",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "consent_given",
+              "value": "yes",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "symptom_duration",
+              "value": "2 days",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "chief_complaint",
+              "value": "middle of chest pain",
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_site",
+              "value": "centre of chest behind breastbone",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_onset",
+              "value": "sudden",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_relieving_factors",
+              "value": "rest",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_character",
+              "value": "burning pressure",
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_severity",
+              "value": "severe",
+              "confidence": 1.0,
+              "source": "speech"
+            }
+          ],
+          "red_flag": null,
+          "done": false,
+          "terminal_reason": null
+        }
+      },
+      {
+        "said": "yes, I am short of breath as well",
+        "response": {
+          "node_id": null,
+          "question": null,
+          "options": [],
+          "allow_free_text": true,
+          "node_type": "free_text",
+          "progress": {
+            "answered": 8,
+            "total": 11
+          },
+          "phase": null,
+          "extracted": [
+            {
+              "name": "patient_name",
+              "value": "Lakshmi Devi",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "age",
+              "value": 65,
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "sex",
+              "value": "female",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "consent_given",
+              "value": "yes",
+              "confidence": 1.0,
+              "source": "touch"
+            },
+            {
+              "name": "symptom_duration",
+              "value": "2 days",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "chief_complaint",
+              "value": "middle of chest pain",
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_site",
+              "value": "centre of chest behind breastbone",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_onset",
+              "value": "sudden",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_relieving_factors",
+              "value": "rest",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_character",
+              "value": "burning pressure",
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_severity",
+              "value": "severe",
+              "confidence": 1.0,
+              "source": "speech"
+            },
+            {
+              "name": "associated_symptoms",
+              "value": "shortness of breath",
+              "confidence": 1.0,
+              "source": "speech"
+            }
+          ],
+          "red_flag": {
+            "rule_id": "chest_pain_breathlessness",
+            "label": "Chest pain with breathlessness",
+            "severity": "critical",
+            "triggered_by": [],
+            "detected_at": "2026-08-31T17:07:37.211506Z"
+          },
+          "done": true,
+          "terminal_reason": "red_flag"
+        }
+      }
+    ],
+    "summary": {
+      "chief_complaint": "Middle of chest pain for 2 days",
+      "hpi_narrative": "Lakshmi Devi is a 65-year-old female presenting with sudden onset of severe burning pressure in the centre of the chest behind the breastbone of 2 days duration. The pain is relieved by rest and is associated with shortness of breath.",
+      "sections": {
+        "past_history": "Not collected",
+        "drugs_allergies": "Not collected",
+        "family": "Not collected",
+        "personal": "Not collected",
+        "ros": "Not collected"
+      },
+      "document_timeline": [
+        {
+          "doc_id": "doc-1",
+          "type": "lab_report",
+          "captured_at": "2026-08-31T17:07:41.739545Z",
+          "status": "done",
+          "extracted": {},
+          "title": "Lipid profile - District Lab",
+          "date": "2026-06-12",
+          "findings": [
+            {
+              "kind": "lab",
+              "label": "Total cholesterol",
+              "value": 244,
+              "unit": "mg/dL",
+              "ref": "<200",
+              "out_of_range": true
+            },
+            {
+              "kind": "lab",
+              "label": "LDL",
+              "value": 168,
+              "unit": "mg/dL",
+              "ref": "<100",
+              "out_of_range": true
+            },
+            {
+              "kind": "lab",
+              "label": "HDL",
+              "value": 38,
+              "unit": "mg/dL",
+              "ref": ">40",
+              "out_of_range": true
+            }
+          ]
+        },
+        {
+          "doc_id": "doc-2",
+          "type": "lab_report",
+          "captured_at": "2026-08-31T17:07:41.739578Z",
+          "status": "done",
+          "extracted": {},
+          "title": "HbA1c - District Lab",
+          "date": "2026-07-03",
+          "findings": [
+            {
+              "kind": "lab",
+              "label": "HbA1c",
+              "value": 8.9,
+              "unit": "%",
+              "ref": "<7.0",
+              "out_of_range": true
+            }
+          ]
+        }
+      ],
+      "red_flags": [
+        {
+          "rule_id": "chest_pain_breathlessness",
+          "label": "Chest pain with breathlessness",
+          "severity": "critical",
+          "triggered_by": [],
+          "detected_at": "2026-08-31T17:07:37.211506Z"
+        }
+      ],
+      "low_confidence_fields": [],
+      "generated_at": "2026-08-31T17:07:42.886852Z",
+      "verified_by": null,
+      "verified_at": null,
+      "token": "A-42",
+      "room": "12"
+    },
+    "session_id": "mk-9fd43e078b16"
+  },
+  "physician": {
+    "queue": [
+      {
+        "session_id": "mk-9fd43e078b16",
+        "token": "A-42",
+        "name": null,
+        "age": null,
+        "sex": null,
+        "complaint": "Chest discomfort for 2 days",
+        "red_flag": "Chest pain with breathlessness",
+        "waiting_since": "17:06"
+      }
+    ],
+    "case": {
+      "session_id": "mk-9fd43e078b16",
+      "patient": {
+        "name": "Lakshmi Devi",
+        "age": 65,
+        "sex": "F",
+        "abha": "14-2233-4455-6677"
+      },
+      "summary": {
+        "chief_complaint": "Middle of chest pain for 2 days",
+        "hpi": "Lakshmi Devi is a 65-year-old female presenting with sudden onset of severe burning pressure in the centre of the chest behind the breastbone of 2 days duration. The pain is relieved by rest and is associated with shortness of breath.",
+        "past_history": "Not collected",
+        "drugs_allergies": "Not collected",
+        "family": "Not collected",
+        "personal": "Not collected",
+        "ros": "Not collected"
+      },
+      "documents": [
+        {
+          "doc_id": "doc-1",
+          "type": "lab_report",
+          "captured_at": "2026-08-31T17:07:41.739545Z",
+          "status": "done",
+          "extracted": {},
+          "title": "Lipid profile - District Lab",
+          "date": "2026-06-12",
+          "findings": [
+            {
+              "kind": "lab",
+              "label": "Total cholesterol",
+              "value": 244,
+              "unit": "mg/dL",
+              "ref": "<200",
+              "out_of_range": true
+            },
+            {
+              "kind": "lab",
+              "label": "LDL",
+              "value": 168,
+              "unit": "mg/dL",
+              "ref": "<100",
+              "out_of_range": true
+            },
+            {
+              "kind": "lab",
+              "label": "HDL",
+              "value": 38,
+              "unit": "mg/dL",
+              "ref": ">40",
+              "out_of_range": true
+            }
+          ]
+        },
+        {
+          "doc_id": "doc-2",
+          "type": "lab_report",
+          "captured_at": "2026-08-31T17:07:41.739578Z",
+          "status": "done",
+          "extracted": {},
+          "title": "HbA1c - District Lab",
+          "date": "2026-07-03",
+          "findings": [
+            {
+              "kind": "lab",
+              "label": "HbA1c",
+              "value": 8.9,
+              "unit": "%",
+              "ref": "<7.0",
+              "out_of_range": true
+            }
+          ]
+        }
+      ],
+      "red_flags": [
+        {
+          "rule_id": "chest_pain_breathlessness",
+          "label": "Chest pain with breathlessness",
+          "severity": "critical",
+          "triggered_by": [],
+          "detected_at": "2026-08-31T17:07:37.211506Z"
+        }
+      ],
+      "fhir": {
+        "resourceType": "Bundle",
+        "id": "605cc423-79ca-5b03-835c-dbd8c4db24f6",
+        "identifier": {
+          "system": "urn:ietf:rfc:3986",
+          "value": "urn:uuid:605cc423-79ca-5b03-835c-dbd8c4db24f6"
+        },
+        "type": "document",
+        "timestamp": "2026-08-31T17:07:42.886852+00:00",
+        "entry": [
+          {
+            "fullUrl": "urn:uuid:15b56fe5-4b48-562c-8e0f-caf7951d9cce",
+            "resource": {
+              "resourceType": "Composition",
+              "id": "15b56fe5-4b48-562c-8e0f-caf7951d9cce",
+              "status": "preliminary",
+              "type": {
+                "coding": [
+                  {
+                    "system": "http://loinc.org",
+                    "code": "34117-2",
+                    "display": "History and physical note"
+                  }
+                ]
+              },
+              "subject": {
+                "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+              },
+              "date": "2026-08-31T17:07:42.886852+00:00",
+              "author": [
+                {
+                  "display": "MediKiosk, Ministry of Ayush OPD"
+                }
+              ],
+              "title": "OPD intake summary",
+              "confidentiality": "R",
+              "section": [
+                {
+                  "title": "Chief complaint Narrative - Reported",
+                  "code": {
+                    "coding": [
+                      {
+                        "system": "http://loinc.org",
+                        "code": "10154-3",
+                        "display": "Chief complaint Narrative - Reported"
+                      }
+                    ]
+                  },
+                  "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Middle of chest pain for 2 days</p></div>"
+                  },
+                  "entry": [
+                    {
+                      "reference": "urn:uuid:41153fa5-8697-5ad7-ac5e-9fb76c995177"
+                    }
+                  ]
+                },
+                {
+                  "title": "History of present illness Narrative",
+                  "code": {
+                    "coding": [
+                      {
+                        "system": "http://loinc.org",
+                        "code": "10164-2",
+                        "display": "History of present illness Narrative"
+                      }
+                    ]
+                  },
+                  "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Lakshmi Devi is a 65-year-old female presenting with sudden onset of severe burning pressure in the centre of the chest behind the breastbone of 2 days duration. The pain is relieved by rest and is associated with shortness of breath.</p></div>"
+                  }
+                },
+                {
+                  "title": "History of past illness Narrative",
+                  "code": {
+                    "coding": [
+                      {
+                        "system": "http://loinc.org",
+                        "code": "11348-0",
+                        "display": "History of past illness Narrative"
+                      }
+                    ]
+                  },
+                  "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Not collected</p></div>"
+                  }
+                },
+                {
+                  "title": "History of medication use Narrative",
+                  "code": {
+                    "coding": [
+                      {
+                        "system": "http://loinc.org",
+                        "code": "10160-0",
+                        "display": "History of medication use Narrative"
+                      }
+                    ]
+                  },
+                  "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Not collected</p></div>"
+                  }
+                },
+                {
+                  "title": "History of family member diseases Narrative",
+                  "code": {
+                    "coding": [
+                      {
+                        "system": "http://loinc.org",
+                        "code": "10157-6",
+                        "display": "History of family member diseases Narrative"
+                      }
+                    ]
+                  },
+                  "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Not collected</p></div>"
+                  }
+                },
+                {
+                  "title": "Social history Narrative",
+                  "code": {
+                    "coding": [
+                      {
+                        "system": "http://loinc.org",
+                        "code": "29762-2",
+                        "display": "Social history Narrative"
+                      }
+                    ]
+                  },
+                  "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Not collected</p></div>"
+                  }
+                },
+                {
+                  "title": "Review of systems Narrative",
+                  "code": {
+                    "coding": [
+                      {
+                        "system": "http://loinc.org",
+                        "code": "10187-3",
+                        "display": "Review of systems Narrative"
+                      }
+                    ]
+                  },
+                  "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Not collected</p></div>"
+                  }
+                },
+                {
+                  "title": "Relevant diagnostic tests",
+                  "code": {
+                    "coding": [
+                      {
+                        "system": "http://loinc.org",
+                        "code": "30954-2",
+                        "display": "Relevant diagnostic tests"
+                      }
+                    ]
+                  },
+                  "entry": [
+                    {
+                      "reference": "urn:uuid:2a5e5fca-dfc0-55df-a854-a7a51da8ff4f"
+                    },
+                    {
+                      "reference": "urn:uuid:c9b54c3c-54e3-51d8-84e4-e4e3be8ad219"
+                    },
+                    {
+                      "reference": "urn:uuid:9c325fdd-1aa0-50f1-b2c5-09a0b22f763b"
+                    },
+                    {
+                      "reference": "urn:uuid:4a8d9280-7c6e-5aeb-b9c5-a6f1fa58202a"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "fullUrl": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303",
+            "resource": {
+              "resourceType": "Patient",
+              "id": "4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303",
+              "active": true,
+              "gender": "female",
+              "name": [
+                {
+                  "use": "official",
+                  "text": "Lakshmi Devi"
+                }
+              ],
+              "identifier": [
+                {
+                  "system": "https://healthid.ndhm.gov.in",
+                  "value": "14-2233-4455-6677",
+                  "type": {
+                    "text": "ABHA number"
+                  }
+                }
+              ],
+              "extension": [
+                {
+                  "url": "http://hl7.org/fhir/StructureDefinition/patient-age",
+                  "valueAge": {
+                    "value": 65,
+                    "unit": "years",
+                    "system": "http://unitsofmeasure.org",
+                    "code": "a"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "fullUrl": "urn:uuid:41153fa5-8697-5ad7-ac5e-9fb76c995177",
+            "resource": {
+              "resourceType": "Condition",
+              "id": "41153fa5-8697-5ad7-ac5e-9fb76c995177",
+              "clinicalStatus": {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                    "code": "active"
+                  }
+                ]
+              },
+              "verificationStatus": {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+                    "code": "unconfirmed"
+                  }
+                ]
+              },
+              "category": [
+                {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                      "code": "encounter-diagnosis"
+                    }
+                  ]
+                }
+              ],
+              "code": {
+                "text": "Middle of chest pain for 2 days"
+              },
+              "subject": {
+                "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+              },
+              "recordedDate": "2026-08-31T17:07:42.886852+00:00"
+            }
+          },
+          {
+            "fullUrl": "urn:uuid:2a5e5fca-dfc0-55df-a854-a7a51da8ff4f",
+            "resource": {
+              "resourceType": "Observation",
+              "id": "2a5e5fca-dfc0-55df-a854-a7a51da8ff4f",
+              "status": "preliminary",
+              "category": [
+                {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                      "code": "laboratory"
+                    }
+                  ]
+                }
+              ],
+              "code": {
+                "text": "Total cholesterol"
+              },
+              "subject": {
+                "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+              },
+              "effectiveDateTime": "2026-06-12",
+              "valueQuantity": {
+                "value": 244,
+                "unit": "mg/dL",
+                "system": "http://unitsofmeasure.org"
+              },
+              "referenceRange": [
+                {
+                  "text": "<200"
+                }
+              ],
+              "interpretation": [
+                {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                      "code": "A",
+                      "display": "Abnormal"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "fullUrl": "urn:uuid:c9b54c3c-54e3-51d8-84e4-e4e3be8ad219",
+            "resource": {
+              "resourceType": "Observation",
+              "id": "c9b54c3c-54e3-51d8-84e4-e4e3be8ad219",
+              "status": "preliminary",
+              "category": [
+                {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                      "code": "laboratory"
+                    }
+                  ]
+                }
+              ],
+              "code": {
+                "text": "LDL"
+              },
+              "subject": {
+                "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+              },
+              "effectiveDateTime": "2026-06-12",
+              "valueQuantity": {
+                "value": 168,
+                "unit": "mg/dL",
+                "system": "http://unitsofmeasure.org"
+              },
+              "referenceRange": [
+                {
+                  "text": "<100"
+                }
+              ],
+              "interpretation": [
+                {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                      "code": "A",
+                      "display": "Abnormal"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "fullUrl": "urn:uuid:9c325fdd-1aa0-50f1-b2c5-09a0b22f763b",
+            "resource": {
+              "resourceType": "Observation",
+              "id": "9c325fdd-1aa0-50f1-b2c5-09a0b22f763b",
+              "status": "preliminary",
+              "category": [
+                {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                      "code": "laboratory"
+                    }
+                  ]
+                }
+              ],
+              "code": {
+                "text": "HDL"
+              },
+              "subject": {
+                "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+              },
+              "effectiveDateTime": "2026-06-12",
+              "valueQuantity": {
+                "value": 38,
+                "unit": "mg/dL",
+                "system": "http://unitsofmeasure.org"
+              },
+              "referenceRange": [
+                {
+                  "text": ">40"
+                }
+              ],
+              "interpretation": [
+                {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                      "code": "A",
+                      "display": "Abnormal"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "fullUrl": "urn:uuid:4a8d9280-7c6e-5aeb-b9c5-a6f1fa58202a",
+            "resource": {
+              "resourceType": "Observation",
+              "id": "4a8d9280-7c6e-5aeb-b9c5-a6f1fa58202a",
+              "status": "preliminary",
+              "category": [
+                {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                      "code": "laboratory"
+                    }
+                  ]
+                }
+              ],
+              "code": {
+                "text": "HbA1c"
+              },
+              "subject": {
+                "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+              },
+              "effectiveDateTime": "2026-07-03",
+              "valueQuantity": {
+                "value": 8.9,
+                "unit": "%",
+                "system": "http://unitsofmeasure.org"
+              },
+              "referenceRange": [
+                {
+                  "text": "<7.0"
+                }
+              ],
+              "interpretation": [
+                {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                      "code": "A",
+                      "display": "Abnormal"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "verified_by": null,
+      "verified_at": null
+    },
+    "fhir": {
+      "resourceType": "Bundle",
+      "id": "605cc423-79ca-5b03-835c-dbd8c4db24f6",
+      "identifier": {
+        "system": "urn:ietf:rfc:3986",
+        "value": "urn:uuid:605cc423-79ca-5b03-835c-dbd8c4db24f6"
+      },
+      "type": "document",
+      "timestamp": "2026-08-31T17:07:42.886852+00:00",
+      "entry": [
+        {
+          "fullUrl": "urn:uuid:15b56fe5-4b48-562c-8e0f-caf7951d9cce",
+          "resource": {
+            "resourceType": "Composition",
+            "id": "15b56fe5-4b48-562c-8e0f-caf7951d9cce",
+            "status": "preliminary",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "34117-2",
+                  "display": "History and physical note"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+            },
+            "date": "2026-08-31T17:07:42.886852+00:00",
+            "author": [
+              {
+                "display": "MediKiosk, Ministry of Ayush OPD"
+              }
+            ],
+            "title": "OPD intake summary",
+            "confidentiality": "R",
+            "section": [
+              {
+                "title": "Chief complaint Narrative - Reported",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "10154-3",
+                      "display": "Chief complaint Narrative - Reported"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Middle of chest pain for 2 days</p></div>"
+                },
+                "entry": [
+                  {
+                    "reference": "urn:uuid:41153fa5-8697-5ad7-ac5e-9fb76c995177"
+                  }
+                ]
+              },
+              {
+                "title": "History of present illness Narrative",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "10164-2",
+                      "display": "History of present illness Narrative"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Lakshmi Devi is a 65-year-old female presenting with sudden onset of severe burning pressure in the centre of the chest behind the breastbone of 2 days duration. The pain is relieved by rest and is associated with shortness of breath.</p></div>"
+                }
+              },
+              {
+                "title": "History of past illness Narrative",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "11348-0",
+                      "display": "History of past illness Narrative"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Not collected</p></div>"
+                }
+              },
+              {
+                "title": "History of medication use Narrative",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "10160-0",
+                      "display": "History of medication use Narrative"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Not collected</p></div>"
+                }
+              },
+              {
+                "title": "History of family member diseases Narrative",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "10157-6",
+                      "display": "History of family member diseases Narrative"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Not collected</p></div>"
+                }
+              },
+              {
+                "title": "Social history Narrative",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "29762-2",
+                      "display": "Social history Narrative"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Not collected</p></div>"
+                }
+              },
+              {
+                "title": "Review of systems Narrative",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "10187-3",
+                      "display": "Review of systems Narrative"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Not collected</p></div>"
+                }
+              },
+              {
+                "title": "Relevant diagnostic tests",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "30954-2",
+                      "display": "Relevant diagnostic tests"
+                    }
+                  ]
+                },
+                "entry": [
+                  {
+                    "reference": "urn:uuid:2a5e5fca-dfc0-55df-a854-a7a51da8ff4f"
+                  },
+                  {
+                    "reference": "urn:uuid:c9b54c3c-54e3-51d8-84e4-e4e3be8ad219"
+                  },
+                  {
+                    "reference": "urn:uuid:9c325fdd-1aa0-50f1-b2c5-09a0b22f763b"
+                  },
+                  {
+                    "reference": "urn:uuid:4a8d9280-7c6e-5aeb-b9c5-a6f1fa58202a"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "fullUrl": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303",
+          "resource": {
+            "resourceType": "Patient",
+            "id": "4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303",
+            "active": true,
+            "gender": "female",
+            "name": [
+              {
+                "use": "official",
+                "text": "Lakshmi Devi"
+              }
+            ],
+            "identifier": [
+              {
+                "system": "https://healthid.ndhm.gov.in",
+                "value": "14-2233-4455-6677",
+                "type": {
+                  "text": "ABHA number"
+                }
+              }
+            ],
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/patient-age",
+                "valueAge": {
+                  "value": 65,
+                  "unit": "years",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "a"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "fullUrl": "urn:uuid:41153fa5-8697-5ad7-ac5e-9fb76c995177",
+          "resource": {
+            "resourceType": "Condition",
+            "id": "41153fa5-8697-5ad7-ac5e-9fb76c995177",
+            "clinicalStatus": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                  "code": "active"
+                }
+              ]
+            },
+            "verificationStatus": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+                  "code": "unconfirmed"
+                }
+              ]
+            },
+            "category": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                    "code": "encounter-diagnosis"
+                  }
+                ]
+              }
+            ],
+            "code": {
+              "text": "Middle of chest pain for 2 days"
+            },
+            "subject": {
+              "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+            },
+            "recordedDate": "2026-08-31T17:07:42.886852+00:00"
+          }
+        },
+        {
+          "fullUrl": "urn:uuid:2a5e5fca-dfc0-55df-a854-a7a51da8ff4f",
+          "resource": {
+            "resourceType": "Observation",
+            "id": "2a5e5fca-dfc0-55df-a854-a7a51da8ff4f",
+            "status": "preliminary",
+            "category": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                    "code": "laboratory"
+                  }
+                ]
+              }
+            ],
+            "code": {
+              "text": "Total cholesterol"
+            },
+            "subject": {
+              "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+            },
+            "effectiveDateTime": "2026-06-12",
+            "valueQuantity": {
+              "value": 244,
+              "unit": "mg/dL",
+              "system": "http://unitsofmeasure.org"
+            },
+            "referenceRange": [
+              {
+                "text": "<200"
+              }
+            ],
+            "interpretation": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                    "code": "A",
+                    "display": "Abnormal"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "fullUrl": "urn:uuid:c9b54c3c-54e3-51d8-84e4-e4e3be8ad219",
+          "resource": {
+            "resourceType": "Observation",
+            "id": "c9b54c3c-54e3-51d8-84e4-e4e3be8ad219",
+            "status": "preliminary",
+            "category": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                    "code": "laboratory"
+                  }
+                ]
+              }
+            ],
+            "code": {
+              "text": "LDL"
+            },
+            "subject": {
+              "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+            },
+            "effectiveDateTime": "2026-06-12",
+            "valueQuantity": {
+              "value": 168,
+              "unit": "mg/dL",
+              "system": "http://unitsofmeasure.org"
+            },
+            "referenceRange": [
+              {
+                "text": "<100"
+              }
+            ],
+            "interpretation": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                    "code": "A",
+                    "display": "Abnormal"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "fullUrl": "urn:uuid:9c325fdd-1aa0-50f1-b2c5-09a0b22f763b",
+          "resource": {
+            "resourceType": "Observation",
+            "id": "9c325fdd-1aa0-50f1-b2c5-09a0b22f763b",
+            "status": "preliminary",
+            "category": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                    "code": "laboratory"
+                  }
+                ]
+              }
+            ],
+            "code": {
+              "text": "HDL"
+            },
+            "subject": {
+              "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+            },
+            "effectiveDateTime": "2026-06-12",
+            "valueQuantity": {
+              "value": 38,
+              "unit": "mg/dL",
+              "system": "http://unitsofmeasure.org"
+            },
+            "referenceRange": [
+              {
+                "text": ">40"
+              }
+            ],
+            "interpretation": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                    "code": "A",
+                    "display": "Abnormal"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "fullUrl": "urn:uuid:4a8d9280-7c6e-5aeb-b9c5-a6f1fa58202a",
+          "resource": {
+            "resourceType": "Observation",
+            "id": "4a8d9280-7c6e-5aeb-b9c5-a6f1fa58202a",
+            "status": "preliminary",
+            "category": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                    "code": "laboratory"
+                  }
+                ]
+              }
+            ],
+            "code": {
+              "text": "HbA1c"
+            },
+            "subject": {
+              "reference": "urn:uuid:4ee5a9ae-f4c1-5ddf-a54a-2317abbbe303"
+            },
+            "effectiveDateTime": "2026-07-03",
+            "valueQuantity": {
+              "value": 8.9,
+              "unit": "%",
+              "system": "http://unitsofmeasure.org"
+            },
+            "referenceRange": [
+              {
+                "text": "<7.0"
+              }
+            ],
+            "interpretation": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                    "code": "A",
+                    "display": "Abnormal"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "summary": {
+      "chief_complaint": "Middle of chest pain for 2 days",
+      "hpi_narrative": "Lakshmi Devi is a 65-year-old female presenting with sudden onset of severe burning pressure in the centre of the chest behind the breastbone of 2 days duration. The pain is relieved by rest and is associated with shortness of breath.",
+      "sections": {
+        "past_history": "Not collected",
+        "drugs_allergies": "Not collected",
+        "family": "Not collected",
+        "personal": "Not collected",
+        "ros": "Not collected"
+      },
+      "document_timeline": [
+        {
+          "doc_id": "doc-1",
+          "type": "lab_report",
+          "captured_at": "2026-08-31T17:07:41.739545Z",
+          "status": "done",
+          "extracted": {},
+          "title": "Lipid profile - District Lab",
+          "date": "2026-06-12",
+          "findings": [
+            {
+              "kind": "lab",
+              "label": "Total cholesterol",
+              "value": 244,
+              "unit": "mg/dL",
+              "ref": "<200",
+              "out_of_range": true
+            },
+            {
+              "kind": "lab",
+              "label": "LDL",
+              "value": 168,
+              "unit": "mg/dL",
+              "ref": "<100",
+              "out_of_range": true
+            },
+            {
+              "kind": "lab",
+              "label": "HDL",
+              "value": 38,
+              "unit": "mg/dL",
+              "ref": ">40",
+              "out_of_range": true
+            }
+          ]
+        },
+        {
+          "doc_id": "doc-2",
+          "type": "lab_report",
+          "captured_at": "2026-08-31T17:07:41.739578Z",
+          "status": "done",
+          "extracted": {},
+          "title": "HbA1c - District Lab",
+          "date": "2026-07-03",
+          "findings": [
+            {
+              "kind": "lab",
+              "label": "HbA1c",
+              "value": 8.9,
+              "unit": "%",
+              "ref": "<7.0",
+              "out_of_range": true
+            }
+          ]
+        }
+      ],
+      "red_flags": [
+        {
+          "rule_id": "chest_pain_breathlessness",
+          "label": "Chest pain with breathlessness",
+          "severity": "critical",
+          "triggered_by": [],
+          "detected_at": "2026-08-31T17:07:37.211506Z"
+        }
+      ],
+      "low_confidence_fields": [],
+      "generated_at": "2026-08-31T17:07:42.886852Z",
+      "verified_by": null,
+      "verified_at": null,
+      "token": "A-42",
+      "room": "12"
+    }
+  }
+}

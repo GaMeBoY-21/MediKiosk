@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Kiosk from './Kiosk.jsx';
 import Physician from './physician/Physician.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import ReplayBadge from './components/ReplayBadge.jsx';
 import ErrorScreen from './screens/ErrorScreen.jsx';
 import { SessionProvider } from './state/SessionContext.jsx';
 import { SpeechProvider } from './speech/SpeechProvider.jsx';
@@ -25,10 +26,20 @@ function usePathname() {
 export default function App() {
   const path = usePathname();
 
-  if (path.startsWith('/physician')) return <Physician />;
+  // The badge wraps BOTH destinations: the physician console is replayed too,
+  // and a recorded queue must not be mistaken for live patients either.
+  if (path.startsWith('/physician')) {
+    return (
+      <>
+        <ReplayBadge />
+        <Physician />
+      </>
+    );
+  }
 
   return (
     <SessionProvider>
+      <ReplayBadge />
       <SpeechProvider>
         <ErrorBoundary
           fallback={(reset) => <ErrorScreen onRestart={reset} />}
