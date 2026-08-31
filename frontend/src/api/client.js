@@ -2,11 +2,17 @@
 // Every backend call lives in this file. Nothing else in the app calls fetch().
 //
 // VITE_USE_MOCKS=true serves everything from /mocks/sample_session.json with a
-// 300ms delay, so the whole flow is demonstrable before app/ exists.
-// Mocks are the default: opt OUT with VITE_USE_MOCKS=false.
+// 300ms delay, for walking the UI with the backend stopped.
+//
+// Mocks used to default ON, which quietly meant the kiosk never called app/ at
+// all — a fully mocked session looked exactly like a real one, so none of the
+// backend work was visible here. Opt IN now: real API is the default.
+const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false';
-const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000';
+// The /api suffix is required: app/main.py mounts every router under
+// API_PREFIX="/api" while the helpers below request bare paths such as
+// "/session/start". Without it every single call 404s.
+const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000/api';
 const MOCK_DELAY = 300;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -66,6 +72,22 @@ export async function startSession() {
     return { ...data.session };
   }
   return request('/session/start', { method: 'POST' });
+}
+
+/**
+ * Hand the backend the fields the kiosk already collected on its own screens
+ * (name, age, sex, consent). Without this the state machine treats them as
+ * unanswered and asks for them again — the patient types their name on the
+ * name screen and is then asked "What is your name?".
+ *
+ * Costs no model call: these values are already structured.
+ */
+export async function recordKnownFields(sessionId, fields) {
+  if (USE_MOCKS) {
+    await wait(MOCK_DELAY);
+    return { ok: true, extracted: [] };
+  }
+  return request(`/session/${sessionId}/fields`, { method: 'POST', body: { fields } });
 }
 
 export async function recordConsent(sessionId, consent) {

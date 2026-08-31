@@ -181,6 +181,17 @@ def _coerce_age(value: Any) -> Any:
 _COERCERS = {"age": _coerce_age}
 
 
+def coerce_known_value(name: str, value: Any) -> Any:
+    """Coerce one already-structured value to its schema type.
+
+    Same rules as extracted speech: a value the kiosk collected on its own
+    screen still has to satisfy Identity.age being an int. Returns None when
+    the value cannot be coerced, and the caller drops it.
+    """
+    coercer = _COERCERS.get(name)
+    return coercer(value) if coercer else value
+
+
 def _coerce_fields(fields: List[ExtractedField]) -> List[ExtractedField]:
     """Apply per-field type coercion, dropping values that cannot be coerced."""
     out: List[ExtractedField] = []

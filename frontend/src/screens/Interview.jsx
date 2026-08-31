@@ -16,7 +16,7 @@ import { useT } from '../i18n/useT.js';
 import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSpeechRecognition } from '../speech/useSpeechRecognition.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
-import { submitAnswer } from '../api/client.js';
+import { recordKnownFields, submitAnswer } from '../api/client.js';
 
 export default function Interview({ onError }) {
   const { tx, voice, lang } = useT();
@@ -29,6 +29,8 @@ export default function Interview({ onError }) {
     addAnswer,
     raiseRedFlag,
     go,
+    patient,
+    consentGiven,
   } = useSession();
 
   const [node, setNode] = useState(currentNode);
@@ -79,17 +81,43 @@ export default function Interview({ onError }) {
     [sessionId, lang, stop, speak, tx, voice, applyResponse, onError],
   );
 
-  // Send the chief complaint to get the first question.
+  // Hand over what the earlier screens already collected, then send the chief
+  // complaint to get the first question.
+  //
+  // The seeding step is not optional. The name, age, sex and consent screens
+  // store their answers in SessionContext only; the backend's state machine
+  // never saw them, so it treated the identity and consent stages as
+  // unanswered and re-asked "What is your name?" to a patient who had just
+  // typed it. Seeding costs no model call — the values are already structured.
   useEffect(() => {
     if (bootstrapped.current || currentNode) return;
     bootstrapped.current = true;
+
+    const known = {};
+    if (patient?.name) known.patient_name = patient.name;
+    if (patient?.age) known.age = patient.age;
+    if (patient?.sex) known.sex = patient.sex;
+    if (consentGiven != null) known.consent_given = consentGiven ? 'yes' : 'no';
+
     const previous = answers[answers.length - 1];
-    ask({
-      node_id: previous?.node_id ?? 'chief_complaint',
-      value: previous?.value ?? null,
-      text: previous?.text ?? '',
-    });
-  }, [answers, currentNode, ask]);
+    const firstAsk = () =>
+      ask({
+        node_id: previous?.node_id ?? 'chief_complaint',
+        value: previous?.value ?? null,
+        text: previous?.text ?? '',
+      });
+
+    if (!Object.keys(known).length) {
+      firstAsk();
+      return;
+    }
+    // Seed first, ask second. A failed seed must not strand the patient on a
+    // blank screen, so the interview proceeds either way — it just costs the
+    // identity questions being asked again.
+    recordKnownFields(sessionId, known)
+      .catch((e) => console.warn('[interview] could not seed known fields:', e))
+      .finally(firstAsk);
+  }, [answers, currentNode, ask, sessionId, patient, consentGiven]);
 
   useEffect(() => stop, [stop]);
 

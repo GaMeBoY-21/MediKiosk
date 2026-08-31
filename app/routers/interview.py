@@ -16,14 +16,12 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DbSession
 
-from app import ai_bridge, fixtures, models
+from app import ai_bridge, clinical_state, fixtures, models
 from app.database import get_db
 from app.routers.session import load_session
 from app.schemas import (
     AnswerRequest,
     AnswerResponse,
-    ExtractedField,
-    FieldSource,
     Language,
     NodeType,
     Progress,
@@ -36,31 +34,6 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/interview", tags=["interview"])
 
 
-def _understanding(state) -> list[ExtractedField]:
-    """Every field understood so far, for the kiosk's understanding panel.
-
-    Cumulative, because the panel accumulates across the interview rather than
-    resetting each turn. Rebuilt from session state on every response so a
-    field corrected later shows its corrected value.
-
-    Structured fields only. `state.transcripts` holds the patient's verbatim
-    words and must never leave the server in this payload — the whole point of
-    keeping them in memory is that they are not distributed.
-    """
-    return [
-        ExtractedField(
-            name=name,
-            value=value,
-            # A real float. The panel hedges anything below 0.7, which it
-            # cannot do from a boolean. Defaults to 1.0 only for values that
-            # predate confidence tracking.
-            confidence=float(state.field_confidence.get(name, 1.0)),
-            source=FieldSource(state.field_source.get(name, FieldSource.speech.value)),
-        )
-        for name, value in state.extracted.items()
-    ]
-
-
 def _to_response(node: dict | None, answered: int, red_flag=None, state=None) -> AnswerResponse:
     """Build the one response shape that covers question / done / red-flag.
 
@@ -68,7 +41,7 @@ def _to_response(node: dict | None, answered: int, red_flag=None, state=None) ->
     frontend's rendering breaks if the key is ever missing.
     """
     progress = Progress(answered=answered, total=ai_bridge.estimated_total_nodes())
-    extracted = _understanding(state) if state is not None else []
+    extracted = clinical_state.understanding(state) if state is not None else []
 
     if red_flag is not None:
         # done=True, not False: the interview really has stopped, and the kiosk
@@ -144,7 +117,7 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
         for f in extracted_fields:
             state.field_confidence[f.name] = f.confidence
             state.field_source[f.name] = f.source.value
-        _persist_extracted_fields(db, session_id, extracted)
+        clinical_state.persist_extracted_fields(db, session_id, extracted)
     store.save(state)
 
     # Deterministic, synchronous, no model call, no waiting on the summary.
@@ -155,7 +128,7 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
     if red_flag is not None:
         state.red_flags.append(red_flag.model_dump(mode="json"))
         store.save(state)
-        _persist_red_flag(db, session_id, red_flag)
+        clinical_state.persist_red_flag(db, session_id, red_flag)
         models.write_audit(
             db,
             action="interview.red_flag",
@@ -189,41 +162,8 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
     return _to_response(node, state.answered_count(), state=state)
 
 
-def _persist_extracted_fields(db: DbSession, session_id: str, extracted: dict) -> None:
-    """Merge newly extracted fields into the clinical record's structured
-    history. This is the only place a spoken answer's structured value
-    actually reaches the database — state.extracted is in-memory only."""
-    record = (
-        db.query(models.ClinicalRecord)
-        .filter(models.ClinicalRecord.session_id == session_id)
-        .one_or_none()
-    )
-    if record is None:
-        record = models.ClinicalRecord(session_id=session_id, history={}, red_flags=[])
-        db.add(record)
-        db.flush()
-    # Reassign rather than mutate: SQLAlchemy does not track in-place JSON edits.
-    history = dict(record.history or {})
-    history.update(extracted)
-    record.history = history
 
 
-def _persist_red_flag(db: DbSession, session_id: str, red_flag) -> None:
-    """Store the flag on the clinical record so the queue can sort by it."""
-    record = (
-        db.query(models.ClinicalRecord)
-        .filter(models.ClinicalRecord.session_id == session_id)
-        .one_or_none()
-    )
-    if record is None:
-        record = models.ClinicalRecord(session_id=session_id, history={}, red_flags=[])
-        db.add(record)
-        db.flush()
-    existing = list(record.red_flags or [])
-    if not any(f.get("rule_id") == red_flag.rule_id for f in existing):
-        existing.append(red_flag.model_dump(mode="json"))
-    # Reassign rather than mutate: SQLAlchemy does not track in-place JSON edits.
-    record.red_flags = existing
 
 
 @router.get("/{session_id}/node/{node_id}", response_model=AnswerResponse)

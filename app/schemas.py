@@ -505,6 +505,42 @@ class ConsentRequest(BaseModel):
     )
 
 
+class KnownFieldsRequest(BaseModel):
+    """POST /api/session/{id}/fields
+
+    The kiosk collects identity and consent on its own dedicated screens
+    (name, age, sex, the three consent toggles) before the generic interview
+    loop starts. Without handing those over, the state machine sees them as
+    unfilled and asks for them all over again — a patient who has just typed
+    their name is immediately asked "What is your name?".
+
+    Values here are already structured, so they are stored at confidence 1.0
+    with `touch` provenance and cost no model call.
+    """
+
+    fields: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Field name to value, using the names in ai/interview/nodes.py.",
+    )
+
+
+class KnownFieldsResponse(BaseModel):
+    """POST /api/session/{id}/fields"""
+
+    ok: bool = Field(True, description="Whether the fields were stored.")
+    extracted: List[ExtractedField] = Field(
+        default_factory=list, description="Everything understood so far, cumulative."
+    )
+    red_flag: Optional[RedFlag] = Field(
+        None,
+        description=(
+            "Safety rules run on seeded fields too. A patient whose ABHA "
+            "profile or intake screen carries a danger sign must not have to "
+            "wait for the interview loop to reach it."
+        ),
+    )
+
+
 class ConsentResponse(BaseModel):
     """POST /api/session/{id}/consent"""
 

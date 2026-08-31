@@ -10,10 +10,13 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DbSession
 
-from app import ai_bridge, fixtures, models
+from app import ai_bridge, clinical_state, fixtures, models
 from app.database import get_db
 from app.schemas import (
     ConsentRecord,
+    FieldSource,
+    KnownFieldsRequest,
+    KnownFieldsResponse,
     ConsentRequest,
     ConsentResponse,
     InterviewNode,
@@ -80,6 +83,65 @@ def start_session(payload: SessionStartRequest | None = None, db: DbSession = De
         status=SessionStatus.in_progress,
         started_at=row.created_at or datetime.now(timezone.utc),
         first_question=InterviewNode(**node) if node else None,
+    )
+
+
+@router.post("/{session_id}/fields", response_model=KnownFieldsResponse)
+def record_known_fields(
+    session_id: str, payload: KnownFieldsRequest, db: DbSession = Depends(get_db)
+):
+    """Seed fields the kiosk already collected on its own screens.
+
+    Costs no model call: these values arrive structured, not spoken, so there
+    is nothing to extract. Stored exactly like a tapped answer — confidence
+    1.0, `touch` provenance — so the state machine counts the identity and
+    consent stages as answered and moves straight to the clinical questions
+    instead of asking for a name the patient has already typed.
+
+    Red-flag rules run here too. Seeding is a real clinical input, and a
+    safety check that only runs on the interview loop would miss anything
+    arriving this way.
+    """
+    load_session(db, session_id)
+    state = store.get_or_create(session_id)
+
+    accepted: dict = {}
+    for name, value in (payload.fields or {}).items():
+        if value is None or value == "":
+            continue
+        coerced = ai_bridge.coerce_known_value(name, value)
+        if coerced is None:
+            log.info("ignoring seeded field %s=%r: failed coercion", name, value)
+            continue
+        accepted[name] = coerced
+        state.extracted[name] = coerced
+        state.field_confidence[name] = 1.0
+        state.field_source[name] = FieldSource.touch.value
+    store.save(state)
+
+    if accepted:
+        clinical_state.persist_extracted_fields(db, session_id, accepted)
+
+    red_flag = ai_bridge.check_red_flags(state.extracted)
+    if red_flag is not None:
+        state.red_flags.append(red_flag.model_dump(mode="json"))
+        store.save(state)
+        clinical_state.persist_red_flag(db, session_id, red_flag)
+        log.warning("red flag %s on session %s (seeded fields)", red_flag.rule_id, session_id)
+
+    models.write_audit(
+        db,
+        action="session.known_fields",
+        actor="kiosk",
+        session_id=session_id,
+        detail={"fields": sorted(accepted)},
+    )
+    db.commit()
+
+    return KnownFieldsResponse(
+        ok=True,
+        extracted=clinical_state.understanding(state),
+        red_flag=red_flag,
     )
 
 
