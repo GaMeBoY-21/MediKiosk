@@ -83,25 +83,17 @@
   flex: none;
 }
 
-/* ------------------------------------------------------------ ProgressDots */
+/* ------------------------------------------------------------- phase label */
+/* Replaced the seven progress dots. The interview branches on what the patient
+   says, so it has no fixed length and a fixed count desynced visibly. This
+   names the stage instead of counting it. */
 
-.dots {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-
-.dots__dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid var(--border);
-  background: var(--bg);
-}
-
-.dots__dot--done {
-  background: var(--primary);
-  border-color: var(--primary);
+.shell__phase {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--muted, #5b6b63);
+  letter-spacing: 0.01em;
 }
 
 /* --------------------------------------------------------------- BigButton */

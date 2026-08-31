@@ -2,7 +2,7 @@
 // Screen 6. The workhorse — seen 15-20 times in one session. The layout never
 // changes, so it stops needing to be read after the second question:
 //
-//   dots · question · optional tiles · mic · transcript · [Next] · bottom bar
+//   phase · question · optional tiles · mic · transcript · [Next] · bottom bar
 //
 // Fully data-driven. Question text and options come from the API response.
 // There is no clinical content in this file, and there must never be any.
@@ -149,6 +149,7 @@ export default function Interview({ onError }) {
       <ScreenShell
         prompt={{ label: tx('common.oneMoment').label, audio: '' }}
         repeatAudio={tx('common.oneMoment').audio}
+        phase={node?.phase}
       >
         {/* Static text only. No spinner — nothing else in this app moves. */}
         <p className="shell__caption">{tx('common.oneMoment').label}</p>
@@ -157,7 +158,11 @@ export default function Interview({ onError }) {
   }
 
   return (
-    <ScreenShell prompt={{ label: node.question, audio: node.question }}>
+    <ScreenShell
+      prompt={{ label: node.question, audio: node.question }}
+      phase={node.phase}
+      speechKey={node.node_id}
+    >
       {node.options?.length ? (
         <div className={node.options.length > 4 ? 'grid-3' : 'grid-2'}>
           {node.options.map((opt) => (

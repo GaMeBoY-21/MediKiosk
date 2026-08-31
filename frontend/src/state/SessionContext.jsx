@@ -4,7 +4,7 @@
 // Screen navigation is in this context too, because the idle timeout has to be
 // able to wipe state and jump to Idle from outside any screen.
 
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { DEFAULT_LANG } from '../i18n/strings.js';
 
 export const SCREENS = {
@@ -26,22 +26,6 @@ export const SCREENS = {
   EMERGENCY: 'emergency',
 };
 
-// Seven progress dots — one per stage of the patient journey.
-export const PROGRESS_STEPS = {
-  [SCREENS.LANGUAGE]: 1,
-  [SCREENS.IDENTIFY]: 2,
-  [SCREENS.ABHA]: 2,
-  [SCREENS.AADHAAR]: 2,
-  [SCREENS.NAME]: 2,
-  [SCREENS.AGE]: 2,
-  [SCREENS.SEX]: 2,
-  [SCREENS.CONSENT]: 3,
-  [SCREENS.COMPLAINT]: 4,
-  [SCREENS.INTERVIEW]: 5,
-  [SCREENS.DOCUMENTS]: 6,
-  [SCREENS.CONFIRM]: 7,
-};
-
 const INITIAL = {
   language: DEFAULT_LANG,
   sessionId: null,
@@ -54,6 +38,11 @@ const INITIAL = {
   summary: null,
   redFlag: null,
 };
+
+// Node ids whose question has already been read aloud this session.
+// A plain Set in a ref, not state: marking one spoken must not trigger a
+// re-render, and speaking is a side effect on the device rather than
+// something the UI renders.
 
 const SessionContext = createContext(null);
 
@@ -142,6 +131,15 @@ export function SessionProvider({ children }) {
 
   const clearRedFlag = useCallback(() => patch({ redFlag: null }), [patch]);
 
+  // Auto-speak bookkeeping. Keyed on node id, not on the sentence: keying
+  // on text re-spoke the question on back-navigation and after any
+  // remount, and stayed silent when two nodes happened to share wording.
+  const spokenNodes = useRef(new Set());
+  const hasSpoken = useCallback((nodeId) => spokenNodes.current.has(nodeId), []);
+  const markSpoken = useCallback((nodeId) => {
+    if (nodeId) spokenNodes.current.add(nodeId);
+  }, []);
+
   const value = useMemo(
     () => ({
       ...state,
@@ -161,6 +159,8 @@ export function SessionProvider({ children }) {
       setSummary,
       raiseRedFlag,
       clearRedFlag,
+      hasSpoken,
+      markSpoken,
     }),
     [
       state,
@@ -180,6 +180,8 @@ export function SessionProvider({ children }) {
       setSummary,
       raiseRedFlag,
       clearRedFlag,
+      hasSpoken,
+      markSpoken,
     ],
   );
 
