@@ -7,33 +7,55 @@ never recommends treatment — this assembles a history, not an opinion.
 
 from pathlib import Path
 
+from app.schemas import ClinicalSummary, DocumentRecord, ExtractedField
+
 from ai.adapters.base import LLMAdapter, MalformedOutputError
-from ai.types import ClinicalSummary
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "summary.txt"
 
 LOW_CONFIDENCE_THRESHOLD = 0.65
+
+# The section keys the summary prompt must produce, in clinical order.
+# chief_complaint and hpi_narrative land on ClinicalSummary's own top-level
+# fields; the rest land in ClinicalSummary.sections under these same keys.
+# Matches app.fhir.SECTION_CODES and app.schemas.FlatSummary exactly — keep
+# all three in sync if the section list ever changes.
+SUMMARY_SECTIONS: tuple[str, ...] = (
+    "chief_complaint",
+    "hpi_narrative",
+    "past_history",
+    "drugs_allergies",
+    "family",
+    "personal",
+    "ros",
+)
+
+_TOP_LEVEL_SECTIONS = ("chief_complaint", "hpi_narrative")
 
 
 def _load_prompt_template() -> str:
     return _PROMPT_PATH.read_text()
 
 
-def _low_confidence_fields(fields: dict, confidences: dict) -> list[str]:
-    return [name for name in fields if confidences.get(name, 1.0) < LOW_CONFIDENCE_THRESHOLD]
+def _low_confidence_field_names(extracted_fields: list[ExtractedField]) -> list[str]:
+    return [f.name for f in extracted_fields if f.confidence < LOW_CONFIDENCE_THRESHOLD]
 
 
 def generate_summary(
-    fields: dict, confidences: dict, document_timeline: list[dict], llm: LLMAdapter
+    extracted_fields: list[ExtractedField],
+    document_timeline: list[DocumentRecord],
+    llm: LLMAdapter,
 ) -> ClinicalSummary:
-    """Generate a physician-readable clinical summary from a session's
-    cumulative extracted fields and document timeline.
+    """Generate a physician-readable clinical summary.
 
-    `confidences` maps field name -> confidence score; fields below
-    LOW_CONFIDENCE_THRESHOLD are flagged rather than asserted as fact.
-    `document_timeline` is prior investigations/prescriptions pulled from
-    ai.documents.extract, already ordered chronologically.
+    `extracted_fields` is the session's cumulative extracted fields, each
+    carrying its own confidence; fields below LOW_CONFIDENCE_THRESHOLD are
+    named in low_confidence_fields rather than hedged inside the prose.
+    `document_timeline` is structured data already assembled by
+    ai.documents.extract — passed straight through, never rewritten by the
+    LLM as prose.
     """
+    fields = {f.name: f.value for f in extracted_fields}
     prompt = _load_prompt_template().format(fields=fields, document_timeline=document_timeline)
 
     try:
@@ -41,14 +63,12 @@ def generate_summary(
     except MalformedOutputError:
         raw = {}
 
+    sections = {key: str(raw.get(key, "")) for key in SUMMARY_SECTIONS if key not in _TOP_LEVEL_SECTIONS}
+
     return ClinicalSummary(
-        chief_complaint=raw.get("chief_complaint", ""),
-        hpi_narrative=raw.get("hpi_narrative", ""),
-        past_medical_surgical=raw.get("past_medical_surgical", ""),
-        drugs_and_allergies=raw.get("drugs_and_allergies", ""),
-        family_history=raw.get("family_history", ""),
-        personal_history=raw.get("personal_history", ""),
-        review_of_systems=raw.get("review_of_systems", ""),
-        prior_investigations=raw.get("prior_investigations", ""),
-        low_confidence_fields=_low_confidence_fields(fields, confidences),
+        chief_complaint=str(raw.get("chief_complaint", "")).strip() or None,
+        hpi_narrative=str(raw.get("hpi_narrative", "")).strip() or None,
+        sections=sections,
+        document_timeline=document_timeline,
+        low_confidence_fields=_low_confidence_field_names(extracted_fields),
     )

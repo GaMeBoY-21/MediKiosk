@@ -7,6 +7,8 @@ Extract:
 - diagnoses: any diagnoses or conditions written on the document
 - medications: each with a name and dosage/frequency as written
 - lab_values: each with a test_name, numeric value, and unit as written
+- procedures: any procedures or surgeries mentioned, each with a name and an
+  optional detail (date performed, findings, etc., if written)
 - dates: any dates found on the document (prescription date, report date, etc.)
 
 Do not guess a value you cannot actually read. If you could only make out
@@ -20,6 +22,7 @@ commentary:
   "diagnoses": ["..."],
   "medications": [{"name": "...", "dosage": "..."}],
   "lab_values": [{"test_name": "...", "value": 0.0, "unit": "..."}],
+  "procedures": [{"name": "...", "detail": "..."}],
   "dates": ["..."],
   "low_confidence": false
 }

@@ -9,18 +9,21 @@ Write in English, in standard clinical order:
 5. Family history
 6. Personal history (smoking, alcohol, diet, occupation, sleep)
 7. Review of systems
-8. Prior investigations (from uploaded documents, in chronological order)
 
 Structured fields collected during the interview:
 {fields}
 
-Prior investigations / documents timeline:
+Documents already on file for this patient, for context only — they are
+shown to the physician separately, so do not re-describe them here:
 {document_timeline}
 
 Rules:
 - This is a history, not an opinion. Never state or imply a diagnosis. Never
   recommend a treatment, test, or referral.
 - Only state what was actually collected. Do not infer or fill gaps.
+- Do not hedge or mention confidence in the prose — uncertain fields are
+  flagged to the physician separately, so write every section in a plain,
+  direct voice.
 - Keep language plain and precise, the way a history is dictated into a
   chart.
 
@@ -30,10 +33,9 @@ commentary:
 {{
   "chief_complaint": "...",
   "hpi_narrative": "...",
-  "past_medical_surgical": "...",
-  "drugs_and_allergies": "...",
-  "family_history": "...",
-  "personal_history": "...",
-  "review_of_systems": "...",
-  "prior_investigations": "..."
+  "past_history": "...",
+  "drugs_allergies": "...",
+  "family": "...",
+  "personal": "...",
+  "ros": "..."
 }}
