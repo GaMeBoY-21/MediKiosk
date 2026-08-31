@@ -26,6 +26,7 @@ from app.schemas import (
     NodeType,
     Progress,
     QuestionOption,
+    TerminalReason,
 )
 from app.session_store import store
 
@@ -42,10 +43,24 @@ def _to_response(node: dict | None, answered: int, red_flag=None) -> AnswerRespo
     progress = Progress(answered=answered, total=ai_bridge.estimated_total_nodes())
 
     if red_flag is not None:
-        return AnswerResponse(red_flag=red_flag, options=[], progress=progress)
+        # done=True, not False: the interview really has stopped, and the kiosk
+        # had no state for "no question, but not finished either". The frontend
+        # branches on red_flag first regardless, so the emergency screen wins.
+        return AnswerResponse(
+            red_flag=red_flag,
+            options=[],
+            progress=progress,
+            done=True,
+            terminal_reason=TerminalReason.red_flag,
+        )
 
     if node is None:
-        return AnswerResponse(done=True, options=[], progress=progress)
+        return AnswerResponse(
+            done=True,
+            options=[],
+            progress=progress,
+            terminal_reason=TerminalReason.completed,
+        )
 
     return AnswerResponse(
         node_id=node["node_id"],

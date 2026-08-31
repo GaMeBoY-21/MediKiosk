@@ -56,10 +56,13 @@ export default function Emergency() {
 
         <h1 className="emergency__headline">{patient.label}</h1>
 
-        {/* Staff-facing, always English — the person reading this is clinical. */}
+        {/* Staff-facing, always English — the person reading this is clinical.
+            The API field is `label` (see app/schemas.py RedFlag); this used to
+            read `reason`, which does not exist, so staff never saw why the
+            alarm fired. */}
         <p className="emergency__staff">
           {tx('emergency.staff').label}
-          {redFlag?.reason ? ` (${redFlag.reason})` : ''}
+          {redFlag?.label ? ` (${redFlag.label})` : ''}
         </p>
 
         <button

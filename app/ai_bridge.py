@@ -26,6 +26,7 @@ found — fixing it is its own piece of work, not a red-flag change.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from app.config import settings
@@ -102,6 +103,51 @@ def next_node(
     return _render(node.id, question_text, options)
 
 
+_AGE_RE = re.compile(r"\d{1,3}")
+
+# Fields whose schema type is stricter than the prose a patient speaks.
+# Identity.age is Optional[int], but a patient says "54 years" / "पैंतालीस साल"
+# and extraction faithfully returns "54 years". Coerce here, at the boundary,
+# rather than loosening the schema to accept prose — the schema is the contract
+# the physician console and the FHIR bundle both read.
+def _coerce_age(value: Any) -> Any:
+    """"54 years" -> 54. Anything with no parseable number is dropped.
+
+    Returning None (rather than the prose) means the field is omitted, which
+    is the honest outcome: better an absent age than a string the console
+    cannot render and FHIR cannot encode. The patient's exact words are still
+    in the transcript.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if 0 <= value <= 130 else None
+    match = _AGE_RE.search(str(value))
+    if not match:
+        return None
+    age = int(match.group())
+    return age if 0 <= age <= 130 else None
+
+
+_COERCERS = {"age": _coerce_age}
+
+
+def _coerce_fields(fields: List[ExtractedField]) -> List[ExtractedField]:
+    """Apply per-field type coercion, dropping values that cannot be coerced."""
+    out: List[ExtractedField] = []
+    for f in fields:
+        coercer = _COERCERS.get(f.name)
+        if coercer is None:
+            out.append(f)
+            continue
+        coerced = coercer(f.value)
+        if coerced is None:
+            log.info("dropping %s=%r: could not coerce to the schema type", f.name, f.value)
+            continue
+        out.append(f.model_copy(update={"value": coerced}))
+    return out
+
+
 def _render(node_id: str, question: str, options) -> Dict[str, Any]:
     """Shape a question the way the frontend expects it."""
     return {
@@ -170,20 +216,21 @@ def answer_turn(
     advance_node = _node_if_current_completes(fields, node, follow_up_counts)
     result = run_turn(transcript, node, advance_node, fields, language, _llm())
 
+    coerced = _coerce_fields(result.fields)
     merged = dict(fields)
-    merged.update({f.name: f.value for f in result.fields})
+    merged.update({f.name: f.value for f in coerced})
 
     session_state = {"fields": merged, "follow_up_counts": follow_up_counts}
     actual = sm_next_node(session_state)
     if actual is None:
-        return result.fields, None
+        return coerced, None
 
     record_follow_up(session_state, actual.id)
 
     # Trust the model's question only if it wrote it for the node we actually
     # landed on, and it actually produced one.
     if result.asking_about == actual.id and result.question:
-        return result.fields, _render(actual.id, result.question, result.options)
+        return coerced, _render(actual.id, result.question, result.options)
 
     log.info(
         "turn: regenerating question (model asked about %r, state machine says %r)",
@@ -191,7 +238,7 @@ def answer_turn(
         actual.id,
     )
     question_text, options = followup.generate_followup(actual, merged, language, _llm())
-    return result.fields, _render(actual.id, question_text, options)
+    return coerced, _render(actual.id, question_text, options)
 
 
 def extract_fields(node_id: str, transcript: str) -> List[ExtractedField]:

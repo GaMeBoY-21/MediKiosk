@@ -113,6 +113,18 @@ class FindingKind(str, Enum):
     procedure = "procedure"
 
 
+class TerminalReason(str, Enum):
+    """Why an interview stopped.
+
+    A red flag used to return node_id=None, question=None, done=False — neither
+    a question nor an ending, which the kiosk had no state for. A stopped
+    interview now always sets done=True and says which of these it was.
+    """
+
+    completed = "completed"
+    red_flag = "red_flag"
+
+
 class VerifyAction(str, Enum):
     """What the physician did with a draft record."""
 
@@ -548,6 +560,14 @@ class AnswerResponse(BaseModel):
         None, description="Set when a safety rule fired. Interrupts the interview immediately."
     )
     done: bool = Field(False, description="True when no questions remain.")
+    terminal_reason: Optional[TerminalReason] = Field(
+        None,
+        description=(
+            "Why the interview ended, when done is True. `completed` means every "
+            "stage was answered; `red_flag` means a safety rule stopped it early. "
+            "None while the interview is still running."
+        ),
+    )
 
 
 class DocumentUploadResponse(BaseModel):
