@@ -61,22 +61,26 @@ def _extract_in_background(doc_id: str) -> None:
         row.status = DocumentStatus.processing.value
         db.commit()
 
-        extracted = {}
+        record = None
         if row.storage_path:
             try:
-                extracted = ai_bridge.extract_document(Path(row.storage_path).read_bytes())
+                record = ai_bridge.extract_document(Path(row.storage_path).read_bytes(), doc_id)
             except OSError:
                 log.exception("could not read %s", row.storage_path)
 
-        if extracted:
-            row.extracted = extracted
-            row.findings = extracted.get("findings", [])
-            row.title = extracted.get("title") or row.title
-            row.doc_date = extracted.get("date") or row.doc_date
-            row.status = DocumentStatus.done.value
+        if record is not None:
+            # Reassign rather than mutate: SQLAlchemy does not track in-place
+            # edits to JSON columns.
+            row.extracted = record.extracted or {}
+            row.findings = [f.model_dump(mode="json") for f in record.findings]
+            row.title = record.title or row.title
+            row.doc_date = record.date or row.doc_date
+            row.status = record.status.value
+            log.info("extracted %d findings from %s", len(record.findings), doc_id)
         else:
-            # No extractor yet. Stay queued rather than claim a false 'done' —
-            # the console must never show findings we did not actually read.
+            # The provider could not be reached. Stay queued rather than claim
+            # a false 'done' — the console must never show findings we did not
+            # actually read, and this way the document can be retried.
             row.status = DocumentStatus.queued.value
 
         models.write_audit(

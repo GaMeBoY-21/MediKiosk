@@ -13,14 +13,10 @@ policies live side by side, deliberately:
   - next_node / extract_fields / generate_summary have no fallback either,
     because their output depends on what the patient actually said — there is
     nothing meaningful to fall back TO.
-  - extract_document still degrades, and is still wired to a signature that
-    does not exist (see below).
-
-KNOWN BUG, still live: extract_document() calls
-ai.documents.extract.extract_document(image_bytes) but the real function takes
-(image_bytes, doc_id, vision) and returns a DocumentRecord, not a dict. The
-try/except swallows the TypeError, so every upload silently yields {}. Left as
-found — fixing it is its own piece of work, not a red-flag change.
+  - extract_document degrades ONLY on a provider failure (LLMAdapterError),
+    because a document can be re-read later. A TypeError or AttributeError is
+    a bug in our code and propagates. It used to catch bare Exception, which
+    swallowed a wrong-arity call and made every upload silently yield {}.
 """
 
 from __future__ import annotations
@@ -66,6 +62,22 @@ def _llm():
             model_name=settings.GEMINI_MODEL, api_key=settings.GEMINI_API_KEY
         )
     return _llm_singleton
+
+
+_vision_singleton = None  # type: ignore[var-annotated]
+
+
+def _vision():
+    """Vision adapter singleton. Same model id as text — the Gemini flash
+    models are multimodal, so one GEMINI_MODEL setting covers both."""
+    global _vision_singleton
+    if _vision_singleton is None:
+        from ai.adapters.gemini import GeminiVisionAdapter
+
+        _vision_singleton = GeminiVisionAdapter(
+            model_name=settings.GEMINI_MODEL, api_key=settings.GEMINI_API_KEY
+        )
+    return _vision_singleton
 
 
 def estimated_total_nodes() -> int:
@@ -372,12 +384,25 @@ def generate_summary(
     return generator.generate_summary(extracted_fields, document_timeline, _llm())
 
 
-def extract_document(image_bytes: bytes) -> Dict[str, Any]:
-    """Read a photographed document. Empty dict leaves the doc queued."""
-    try:
-        from ai.documents import extract
+def extract_document(image_bytes: bytes, doc_id: str) -> Optional[DocumentRecord]:
+    """Read a photographed prescription or lab report.
 
-        return extract.extract_document(image_bytes) or {}
-    except Exception as exc:  # noqa: BLE001
+    Returns a DocumentRecord, or None when the provider could not be reached
+    and the document should stay queued for a retry.
+
+    The except here is deliberately narrow. It used to be `except Exception`,
+    which swallowed the TypeError from calling this with the wrong number of
+    arguments — so every upload silently produced {} and the console showed a
+    patient no prior results at all, with nothing in the logs to say why. A
+    programming error must now crash; only a genuine provider failure degrades.
+    """
+    from ai.adapters.base import LLMAdapterError
+    from ai.documents import extract
+
+    try:
+        return extract.extract_document(image_bytes, doc_id, _vision())
+    except LLMAdapterError as exc:
+        # Provider-side: rate limited, unreachable, or unparseable output.
+        # Worth retrying later, so leave the document queued.
         _degrade("documents.extract", exc)
-        return {}
+        return None

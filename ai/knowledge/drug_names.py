@@ -6,6 +6,8 @@ prescription to a canonical generic name, so document extraction reports one
 consistent name per drug instead of whatever brand was printed.
 """
 
+import re
+
 DRUG_NAMES: dict[str, str] = {
     "paracetamol": "Paracetamol",
     "acetaminophen": "Paracetamol",
@@ -50,11 +52,44 @@ DRUG_NAMES: dict[str, str] = {
 }
 
 
+# Dosage forms printed in front of the drug name on an Indian prescription.
+_DOSAGE_FORMS = (
+    "tab", "tabs", "tablet", "tablets", "cap", "caps", "capsule", "capsules",
+    "syp", "syr", "syrup", "inj", "injection", "susp", "suspension", "oint",
+    "ointment", "drop", "drops", "sol", "solution", "powder", "sachet",
+)
+
+# "500 mg", "5mg", "75 mcg", "10 ml", "40 iu" — a strength, not part of the name.
+_STRENGTH_RE = re.compile(r"\b\d+(?:\.\d+)?\s*(?:mg|mcg|g|gm|ml|iu|units?|%)\b", re.IGNORECASE)
+_NON_WORD_RE = re.compile(r"[^a-z0-9\s]+")
+
+
 def normalize_drug_name(raw_name: str) -> str:
     """Return the canonical generic name for a drug name read off a document.
 
-    Falls back to a title-cased version of the input rather than dropping
-    the medication entirely when it isn't in the table.
+    A prescription almost never prints a bare drug name — it prints
+    "Tab. Glycomet 500 mg". Matching the whole string against the table missed
+    every single time and silently fell through to a title-cased copy of the
+    label, so this table looked wired up while doing nothing at all.
+
+    Strips the dosage form and strength, then matches the remaining words. Any
+    word that names a known drug wins. Falls back to a tidied version of the
+    input rather than dropping a medication we could not identify — an
+    unrecognised drug still belongs in the record.
     """
-    key = raw_name.strip().lower()
-    return DRUG_NAMES.get(key, raw_name.strip().title())
+    cleaned = _STRENGTH_RE.sub(" ", raw_name.lower())
+    cleaned = _NON_WORD_RE.sub(" ", cleaned)
+    words = [w for w in cleaned.split() if w and w not in _DOSAGE_FORMS]
+
+    if not words:
+        return raw_name.strip().title()
+
+    # Whole remaining phrase first ("amoxicillin clavulanate"), then each word,
+    # so a combination name is not split apart by a single-word match.
+    phrase = " ".join(words)
+    if phrase in DRUG_NAMES:
+        return DRUG_NAMES[phrase]
+    for word in words:
+        if word in DRUG_NAMES:
+            return DRUG_NAMES[word]
+    return " ".join(words).title()

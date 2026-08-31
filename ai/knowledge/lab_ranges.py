@@ -28,10 +28,64 @@ LAB_RANGES: dict[str, dict] = {
 }
 
 
+# A report prints whatever the lab's software prints. Spelling differences are
+# not a reason to skip a range check: "Haemoglobin 11.2" went unflagged purely
+# because this table spelled it the American way, so an anaemic patient's
+# result was shown to the physician as if it were normal.
+_ALIASES: dict[str, str] = {
+    "haemoglobin": "hemoglobin",
+    "hb": "hemoglobin",
+    "hgb": "hemoglobin",
+    "hba1c": "hba1c",
+    "glycated_haemoglobin": "hba1c",
+    "glycosylated_hemoglobin": "hba1c",
+    "fbs": "fasting_blood_sugar",
+    "fasting_glucose": "fasting_blood_sugar",
+    "fasting_plasma_glucose": "fasting_blood_sugar",
+    "rbs": "random_blood_sugar",
+    "random_glucose": "random_blood_sugar",
+    "tlc": "wbc_count",
+    "total_leucocyte_count": "wbc_count",
+    "total_leukocyte_count": "wbc_count",
+    "wbc": "wbc_count",
+    "platelets": "platelet_count",
+    "serum_creatinine": "creatinine",
+    "urea": "blood_urea",
+    "blood_urea_nitrogen": "blood_urea",
+    "cholesterol": "total_cholesterol",
+    "serum_cholesterol": "total_cholesterol",
+    "ldl_cholesterol": "ldl",
+    "hdl_cholesterol": "hdl",
+    "tg": "triglycerides",
+    "sgpt": "sgpt_alt",
+    "alt": "sgpt_alt",
+    "sgot": "sgot_ast",
+    "ast": "sgot_ast",
+    "total_bilirubin": "bilirubin_total",
+    "s_sodium": "sodium",
+    "na": "sodium",
+    "s_potassium": "potassium",
+    "k": "potassium",
+}
+
+
+def _canonical(test_name: str) -> str:
+    """Normalise a printed test name to a key in LAB_RANGES, if we know it."""
+    key = test_name.strip().lower()
+    # Drop the qualifiers labs prefix onto test names.
+    for prefix in ("serum ", "s. ", "s ", "plasma ", "blood ", "total "):
+        if key.startswith(prefix) and key != "total cholesterol":
+            key = key[len(prefix):]
+            break
+    key = "_".join(key.replace("-", " ").replace(".", " ").split())
+    if key in LAB_RANGES:
+        return key
+    return _ALIASES.get(key, key)
+
+
 def check_lab_range(test_name: str, value: float) -> str | None:
     """Return "low", "high", or None (in range, or an unknown test)."""
-    key = test_name.strip().lower().replace(" ", "_")
-    reference = LAB_RANGES.get(key)
+    reference = LAB_RANGES.get(_canonical(test_name))
     if reference is None:
         return None
     if value < reference["low"]:
