@@ -20,3 +20,13 @@ class RedFlag:
     label: str
     severity: str  # "critical" | "urgent"
     matched_fields: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ExtractedField:
+    """TODO: replace with app.schemas.ExtractedField"""
+
+    name: str
+    value: Any
+    confidence: float
+    node_id: str
