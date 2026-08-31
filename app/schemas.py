@@ -94,6 +94,25 @@ class FieldSource(str, Enum):
     document = "document"
 
 
+class FindingKind(str, Enum):
+    """What a document finding actually is.
+
+    The discriminator on DocumentFinding. app/fhir.py maps each value straight
+    onto a FHIR resource type, so adding a member here means adding a builder
+    there:
+
+        diagnosis  -> Condition
+        medication -> MedicationStatement
+        lab        -> Observation
+        procedure  -> Procedure
+    """
+
+    diagnosis = "diagnosis"
+    medication = "medication"
+    lab = "lab"
+    procedure = "procedure"
+
+
 class VerifyAction(str, Enum):
     """What the physician did with a draft record."""
 
@@ -245,14 +264,31 @@ class RedFlag(BaseModel):
 
 
 class DocumentFinding(BaseModel):
-    """One line item read off a document. Shapes the console's timeline table."""
+    """One line item read off a document. Shapes the console's timeline table.
 
-    label: str = Field(..., description="Test or drug name, e.g. 'HbA1c'.")
-    value: Any = Field(..., description="Measured value or dosage.")
+    One list with a discriminator, not three parallel lists: a prescription and
+    a lab report arrive as the same kind of row and stay in document order.
+    `kind` is what app/fhir.py switches on to pick a FHIR resource type.
+
+    The remaining fields are shared but not all apply to every kind. A
+    medication uses label + value ("Metformin", "500 mg twice daily") and leaves
+    unit/ref/out_of_range empty; a lab uses all five.
+    """
+
+    kind: FindingKind = Field(
+        FindingKind.lab,
+        description=(
+            "What this row is: diagnosis, medication, lab or procedure. "
+            "Defaults to lab because every finding predating this field came "
+            "from a lab report."
+        ),
+    )
+    label: str = Field(..., description="Test, drug, diagnosis or procedure name, e.g. 'HbA1c'.")
+    value: Any = Field(..., description="Measured value, dosage, or descriptive detail.")
     unit: Optional[str] = Field(None, description="Unit of measure. Empty for non-numeric rows.")
     ref: Optional[str] = Field(None, description="Reference range as printed, e.g. '<7.0'.")
     out_of_range: bool = Field(
-        False, description="True renders this value in alert red on the console."
+        False, description="True renders this value in alert red on the console. Labs only."
     )
 
 
@@ -304,6 +340,15 @@ class ClinicalSummary(BaseModel):
     )
     red_flags: List[RedFlag] = Field(
         default_factory=list, description="All flags raised during the session."
+    )
+    low_confidence_fields: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Names of fields the AI extracted with low confidence. The console "
+            "renders these hedged rather than stated, so an uncertain value does "
+            "not read identically to a confident one. Names match the keys used "
+            "in `sections` and the flat physician payload."
+        ),
     )
     generated_at: datetime = Field(default_factory=_utcnow, description="When the summary was built.")
     verified_by: Optional[str] = Field(
