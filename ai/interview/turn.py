@@ -18,6 +18,7 @@ therefore never move the interview somewhere the state machine did not sanction;
 the worst it can do is waste its own question.
 """
 
+import logging
 from pathlib import Path
 
 from app.schemas import ExtractedField, FieldSource, QuestionOption
@@ -26,11 +27,17 @@ from ai.adapters.base import LLMAdapter, MalformedOutputError
 from ai.interview.followup import resolve_target_field
 from ai.interview.nodes import InterviewNode
 
+log = logging.getLogger(__name__)
+
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "turn.txt"
 
 MIN_CONFIDENCE = 0.5
 MIN_OPTIONS = 2
-MAX_OPTIONS = 5
+# Six, not five: the ROS screening question offers five symptoms plus a
+# "none" tile. At five, _parse_options silently returned [] for that one
+# question, so the interview's only multi-select rendered as an
+# unanswerable free-text box.
+MAX_OPTIONS = 6
 
 
 class TurnResult:
@@ -105,7 +112,17 @@ def _parse_options(raw_options) -> list[QuestionOption]:
         label = str(item.get("label", "")).strip()
         if value and label:
             options.append(QuestionOption(value=value, label=label))
-    return options if MIN_OPTIONS <= len(options) <= MAX_OPTIONS else []
+    if options and not (MIN_OPTIONS <= len(options) <= MAX_OPTIONS):
+        # Say so. Silently returning [] here turned a tappable question into a
+        # free-text box that a patient who cannot type has no way to answer.
+        log.warning(
+            "discarding %d options (outside %d-%d); question falls back to free text",
+            len(options),
+            MIN_OPTIONS,
+            MAX_OPTIONS,
+        )
+        return []
+    return options
 
 
 def run_turn(

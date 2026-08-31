@@ -534,6 +534,15 @@ class AnswerRequest(BaseModel):
         validation_alias=AliasChoices("selected_option", "value", "option"),
         description="Option value, if the patient tapped a tile.",
     )
+    selected_options: List[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("selected_options", "values", "options"),
+        description=(
+            "Option values for a multi_choice node, where the patient can tap "
+            "several tiles (the ROS screening question). Empty for every "
+            "single-choice node, which uses selected_option instead."
+        ),
+    )
     language: Language = Field(
         Language.en,
         validation_alias=AliasChoices("language", "lang"),

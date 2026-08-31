@@ -100,6 +100,7 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
         payload.node_id,
         payload.transcript or "",
         payload.selected_option,
+        payload.selected_options,
         target_field,
         state.extracted,
         state.follow_up_counts,

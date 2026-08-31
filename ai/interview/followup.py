@@ -9,6 +9,7 @@ those into a full InterviewNode / AnswerResponse is the state machine's job,
 not this one's.
 """
 
+import logging
 from pathlib import Path
 
 from app.schemas import QuestionOption
@@ -16,10 +17,16 @@ from app.schemas import QuestionOption
 from ai.adapters.base import LLMAdapter, MalformedOutputError
 from ai.interview.nodes import InterviewNode
 
+log = logging.getLogger(__name__)
+
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "followup.txt"
 
 MIN_OPTIONS = 2
-MAX_OPTIONS = 5
+# Six, not five: the ROS screening question offers five symptoms plus a
+# "none" tile. At five, _parse_options silently returned [] for that one
+# question, so the interview's only multi-select rendered as an
+# unanswerable free-text box.
+MAX_OPTIONS = 6
 
 
 def _load_prompt_template() -> str:
@@ -83,7 +90,11 @@ def generate_followup(
         return remaining[0], node.phase_label, []
 
     options = _parse_options(raw.get("options", []))
-    if not (MIN_OPTIONS <= len(options) <= MAX_OPTIONS):
+    if options and not (MIN_OPTIONS <= len(options) <= MAX_OPTIONS):
+        log.warning(
+            "discarding %d options (outside %d-%d); question falls back to free text",
+            len(options), MIN_OPTIONS, MAX_OPTIONS,
+        )
         options = []
 
     return resolve_target_field(raw.get("target_field"), remaining), text, options

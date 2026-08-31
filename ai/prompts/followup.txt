@@ -43,6 +43,14 @@ complaint, using exactly these English values:
 Include "none" as the last option. Give the labels in {language} as usual, but
 keep those values in English, spelled exactly as above.
 
+- If "target_field" is "ros_screen", this is the one general screening
+  question. Ask something like "Have you had any of these recently?" and offer
+  EXACTLY these six options, in this order, with these English values and
+  labels translated into {language}:
+      "fever", "weight_loss", "appetite_change", "sleep_problems",
+      "bowel_or_urine_change", "none"
+  The patient may pick more than one.
+
 Respond with ONLY a JSON object of this exact shape, no markdown fences, no
 commentary:
 

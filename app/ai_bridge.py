@@ -121,7 +121,9 @@ def next_node(
     target_field, question_text, options = followup.generate_followup(
         node, fields, language, _llm()
     )
-    return _render(node.id, question_text, options, target_field)
+    return _render(
+        node.id, question_text, options, target_field, _is_multi(node, target_field)
+    )
 
 
 _AGE_RE = re.compile(r"\d{1,3}")
@@ -131,19 +133,40 @@ _AGE_RE = re.compile(r"\d{1,3}")
 # and extraction faithfully returns "54 years". Coerce here, at the boundary,
 # rather than loosening the schema to accept prose — the schema is the contract
 # the physician console and the FHIR bundle both read.
-def _coerce_age(value: Any) -> Any:
-    """"54 years" -> 54. Anything with no parseable number is dropped.
+# Units that mean this is NOT a number of years. "7 months" must never be
+# stored as 7 — that is an infant recorded as a schoolchild.
+_SUB_YEAR_RE = re.compile(r"\b(month|months|week|weeks|day|days|mah[ie]ne|din)\b", re.IGNORECASE)
 
-    Returning None (rather than the prose) means the field is omitted, which
-    is the honest outcome: better an absent age than a string the console
-    cannot render and FHIR cannot encode. The patient's exact words are still
-    in the transcript.
+
+def _coerce_age(value: Any) -> Any:
+    """"54 years" -> 54. Anything else is dropped rather than guessed at.
+
+    Identity.age is a whole number of years. An age given in months, weeks or
+    days cannot be squeezed into that without lying: "7 months" parsed as 7
+    would put an infant into the record as a seven-year-old, and every
+    downstream reader — console, FHIR bundle, physician — would believe it.
+    There is nowhere in the schema to put a sub-year age, so we refuse it
+    loudly instead of inventing a plausible number.
+
+    Returning None omits the field. Better an absent age the physician asks
+    about than a confident wrong one they do not think to question. The
+    patient's exact words survive in the transcript either way.
     """
     if isinstance(value, bool):
         return None
     if isinstance(value, int):
         return value if 0 <= value <= 130 else None
-    match = _AGE_RE.search(str(value))
+
+    text = str(value)
+    if _SUB_YEAR_RE.search(text):
+        log.warning(
+            "refusing to coerce age %r: expressed in months/weeks/days, and the "
+            "schema only holds whole years. Field dropped rather than guessed.",
+            text,
+        )
+        return None
+
+    match = _AGE_RE.search(text)
     if not match:
         return None
     age = int(match.group())
@@ -169,7 +192,13 @@ def _coerce_fields(fields: List[ExtractedField]) -> List[ExtractedField]:
     return out
 
 
-def _render(node_id: str, question: str, options, target_field: str = "") -> Dict[str, Any]:
+def _render(
+    node_id: str,
+    question: str,
+    options,
+    target_field: str = "",
+    multi: bool = False,
+) -> Dict[str, Any]:
     """Shape a question the way the frontend expects it.
 
     `target_field` is internal: the session store keeps it so that when the
@@ -182,9 +211,14 @@ def _render(node_id: str, question: str, options, target_field: str = "") -> Dic
         "question": question,
         "options": [{"value": o.value, "label": o.label} for o in options],
         "allow_free_text": True,
-        "node_type": "single_choice" if options else "free_text",
+        "node_type": ("multi_choice" if multi else "single_choice") if options else "free_text",
         "target_field": target_field,
+        "multi_select": bool(multi and options),
     }
+
+
+def _is_multi(node, target_field: str) -> bool:
+    return bool(target_field) and target_field in getattr(node, "multi_select_fields", ())
 
 
 def _node_if_current_completes(fields: Dict[str, Any], node, follow_up_counts: Dict[str, int]):
@@ -206,6 +240,7 @@ def answer_turn(
     node_id: str,
     transcript: str,
     selected_option: Optional[str],
+    selected_options: Optional[List[str]],
     target_field: Optional[str],
     fields: Dict[str, Any],
     follow_up_counts: Dict[str, int],
@@ -248,25 +283,31 @@ def answer_turn(
     # flags are evaluated on extracted fields — no safety coverage whatsoever.
     if not transcript:
         tapped: List[ExtractedField] = []
-        if selected_option and target_field:
+        # A multi_choice node sends several values; a single_choice node
+        # sends one. Store a list for multi-select so the red-flag rules
+        # and the summary both see every symptom the patient picked, not
+        # just the first.
+        picked = list(selected_options or ([selected_option] if selected_option else []))
+        value: Any = picked if len(picked) > 1 else (picked[0] if picked else None)
+        if picked and target_field:
             tapped = _coerce_fields(
                 [
                     ExtractedField(
                         name=target_field,
-                        value=selected_option,
+                        value=value,
                         confidence=1.0,
                         source=FieldSource.touch,
                     )
                 ]
             )
-        elif selected_option:
+        elif picked:
             # An option came back but we no longer know which field it fills
             # (e.g. the session state was lost to a restart). Say so loudly —
             # silently dropping a clinical answer is what this block exists to
             # stop.
             log.warning(
-                "tapped option %r on node %r discarded: no target field recorded",
-                selected_option,
+                "tapped option(s) %r on node %r discarded: no target field recorded",
+                picked,
                 node_id,
             )
 
@@ -292,7 +333,11 @@ def answer_turn(
     # landed on, and it actually produced one.
     if result.asking_about == actual.id and result.question:
         return coerced, _render(
-            actual.id, result.question, result.options, result.target_field
+            actual.id,
+            result.question,
+            result.options,
+            result.target_field,
+            _is_multi(actual, result.target_field),
         )
 
     log.info(
@@ -303,7 +348,9 @@ def answer_turn(
     target_field, question_text, options = followup.generate_followup(
         actual, merged, language, _llm()
     )
-    return coerced, _render(actual.id, question_text, options, target_field)
+    return coerced, _render(
+        actual.id, question_text, options, target_field, _is_multi(actual, target_field)
+    )
 
 
 def extract_fields(node_id: str, transcript: str) -> List[ExtractedField]:

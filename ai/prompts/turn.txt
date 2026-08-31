@@ -74,6 +74,14 @@ Rules for the question:
   relevant warning symptom out means a patient who cannot speak has no way to
   report it.
 
+- If "target_field" is "ros_screen", this is the one general screening
+  question. Ask something like "Have you had any of these recently?" and offer
+  EXACTLY these six options, in this order, with these English values and
+  labels translated into {language}:
+      "fever", "weight_loss", "appetite_change", "sleep_problems",
+      "bowel_or_urine_change", "none"
+  The patient may pick more than one.
+
 RESPOND with ONLY this JSON object. No markdown fences, no commentary.
 
 {{

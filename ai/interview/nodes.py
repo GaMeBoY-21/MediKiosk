@@ -17,6 +17,8 @@ class InterviewNode:
     optional_fields: tuple[str, ...] = ()  # may be filled but don't gate progress
     repeats: bool = False  # e.g. ROS loops over several sub-systems
     max_follow_ups: int = 3  # safety valve: end the node here even if unfilled
+    # Fields answered by picking several options at once rather than one.
+    multi_select_fields: tuple[str, ...] = ()
 
 
 NODES: dict[str, InterviewNode] = {
@@ -65,20 +67,19 @@ NODES: dict[str, InterviewNode] = {
     ),
     "ros": InterviewNode(
         id="ros",
-        phase_label="A few quick questions about how you've been feeling overall.",
-        required_fields=(),
-        optional_fields=(
-            "ros_cardiovascular",
-            "ros_respiratory",
-            "ros_gastrointestinal",
-            "ros_neurological",
-            "ros_genitourinary",
-            "ros_musculoskeletal",
-            "ros_dermatological",
-            "ros_general",
-        ),
-        repeats=True,
-        max_follow_ups=8,
+        phase_label="One quick question about how you've been feeling overall.",
+        # ONE screening question, asked once. A full system-by-system review is
+        # twenty questions nobody standing in an OPD queue will sit through,
+        # and the physician re-does it properly in the consultation anyway.
+        # This exists to catch the constitutional symptoms worth flagging
+        # before that conversation starts.
+        #
+        # It previously declared no required fields at all, which made
+        # all(()) True and skipped the entire stage for every patient.
+        required_fields=("ros_screen",),
+        multi_select_fields=("ros_screen",),
+        repeats=False,
+        max_follow_ups=1,
     ),
     "past_medical": InterviewNode(
         id="past_medical",
@@ -108,7 +109,10 @@ NODES: dict[str, InterviewNode] = {
     "documents": InterviewNode(
         id="documents",
         phase_label="Do you have any prior prescriptions or lab reports to show us?",
-        required_fields=(),
+        # Also had no required fields, so this stage was skipped too and the
+        # patient was never asked whether they brought anything. Asking is the
+        # whole point — the upload screen is offered on the back of the answer.
+        required_fields=("documents_offered",),
         optional_fields=("uploaded_documents",),
         max_follow_ups=1,
     ),
@@ -141,3 +145,59 @@ def get_node(node_id: str) -> InterviewNode:
         return NODES[node_id]
     except KeyError:
         raise KeyError(f"unknown interview node: {node_id!r}") from None
+
+
+class InvalidNodeGraph(Exception):
+    """A node definition that cannot behave the way the state machine assumes."""
+
+
+def validate_nodes() -> None:
+    """Fail at import time on a node graph that cannot work.
+
+    A node with no required fields satisfies itself instantly, because
+    all(()) is True — the state machine skips straight past it and the stage
+    silently never happens. Both `ros` and `documents` shipped that way, so no
+    patient was ever asked either set of questions and nothing anywhere said
+    so.
+
+    That is the fifth silent success on this project (after check_red_flags
+    resolving to a name that did not exist, extract_document being called with
+    the wrong arity, drug names never matching the lookup table, and
+    haemoglobin never matching a reference range). Every one of them looked
+    like working code and produced a plausible empty result. This check makes
+    that specific shape impossible to reintroduce: it runs on import, so a bad
+    node graph stops the process at startup instead of quietly shortening
+    every interview.
+    """
+    problems: list[str] = []
+
+    for node_id, node in NODES.items():
+        if not node.required_fields:
+            problems.append(
+                f"{node_id!r} declares no required fields, so all(()) is True and the "
+                f"stage would be skipped for every patient. Give it at least one "
+                f"required field, or remove it from NODE_ORDER."
+            )
+        if node.max_follow_ups < 1:
+            problems.append(f"{node_id!r} has max_follow_ups={node.max_follow_ups}; it can never be asked.")
+        overlap = set(node.required_fields) & set(node.optional_fields)
+        if overlap:
+            problems.append(f"{node_id!r} lists {sorted(overlap)} as both required and optional.")
+        stray = set(node.multi_select_fields) - set(node.required_fields) - set(node.optional_fields)
+        if stray:
+            problems.append(f"{node_id!r} marks {sorted(stray)} multi-select but does not declare them.")
+
+    missing = set(NODE_ORDER) - set(NODES)
+    if missing:
+        problems.append(f"NODE_ORDER names nodes that do not exist: {sorted(missing)}")
+    unreachable = set(NODES) - set(NODE_ORDER)
+    if unreachable:
+        problems.append(f"nodes defined but never reachable from NODE_ORDER: {sorted(unreachable)}")
+
+    if problems:
+        raise InvalidNodeGraph(
+            "invalid interview node graph:\n  - " + "\n  - ".join(problems)
+        )
+
+
+validate_nodes()
