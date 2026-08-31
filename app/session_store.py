@@ -40,6 +40,14 @@ class SessionState:
     transcripts: Dict[str, str] = field(default_factory=dict)
     extracted: Dict[str, Any] = field(default_factory=dict)
     red_flags: List[Dict[str, Any]] = field(default_factory=list)
+    # How many follow-ups ai.interview.state_machine has asked in each node
+    # so far, so it can cap a node off even when a field never gets filled.
+    follow_up_counts: Dict[str, int] = field(default_factory=dict)
+    # The exact question dict last rendered for each node, so a past question
+    # can be re-shown verbatim (Confirm screen's edit pencil) instead of
+    # asking ai.interview.followup to generate a fresh — and possibly
+    # differently worded — question for the same node.
+    rendered_nodes: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
     last_seen: float = field(default_factory=time.time)
 

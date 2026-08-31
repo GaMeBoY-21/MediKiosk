@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DbSession
 
-from app import fixtures, models
+from app import ai_bridge, fixtures, models
 from app.database import get_db
 from app.schemas import (
     ConsentRecord,
@@ -46,11 +46,18 @@ def start_session(payload: SessionStartRequest | None = None, db: DbSession = De
     body = payload or SessionStartRequest()
     session_id = f"mk-{uuid.uuid4().hex[:12]}"
 
+    # A brand new session has no fields filled and no follow-ups asked yet,
+    # so this resolves to the state machine's very first node. Resolved
+    # against state.follow_up_counts directly (not a throwaway dict) so the
+    # follow-up this counts as is actually recorded, not lost.
+    state = store.create(session_id, body.language.value)
+    node = ai_bridge.next_node(state.extracted, state.follow_up_counts, body.language.value)
+
     row = models.Session(
         session_id=session_id,
         language=body.language.value,
         status=SessionStatus.in_progress.value,
-        current_node=fixtures.first_node_id(),
+        current_node=node["node_id"] if node else None,
         token=fixtures.DEMO_TOKEN,
         room=fixtures.DEMO_ROOM,
     )
@@ -58,15 +65,15 @@ def start_session(payload: SessionStartRequest | None = None, db: DbSession = De
     models.write_audit(db, action="session.start", actor="kiosk", session_id=session_id)
     db.commit()
 
-    state = store.create(session_id, body.language.value)
-    state.current_node = fixtures.first_node_id()
+    state.current_node = node["node_id"] if node else None
+    if node:
+        state.rendered_nodes[node["node_id"]] = node
     store.save(state)
 
     # Opportunistic sweep: no scheduler needed for a kiosk that sees a few
     # hundred sessions a day, and it keeps abandoned transcripts from lingering.
     store.purge_expired()
 
-    node = fixtures.render_node(fixtures.first_node_id(), body.language.value)
     return SessionStartResponse(
         session_id=session_id,
         language=body.language,

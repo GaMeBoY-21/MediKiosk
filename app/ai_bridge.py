@@ -32,20 +32,6 @@ def _degrade(capability: str, exc: Exception) -> None:
         log.warning("ai.%s unavailable (%s) - using deterministic fallback", capability, kind)
 
 
-# Fixtures still drive the live question set (Block 4 swaps that over to
-# ai.interview.nodes), so extraction is scoped to the single clinical field
-# each fixtures node is actually asking about. Names match
-# ai.interview.nodes' own field names, so this stays compatible once the
-# node graph swap happens.
-_FIXTURE_NODE_FIELDS: Dict[str, str] = {
-    "duration": "symptom_duration",
-    "severity": "symptom_severity",
-    "pattern": "symptom_timing",
-    "associated": "associated_symptoms",
-    "medicines": "current_medications",
-    "conditions": "past_medical_conditions",
-}
-
 _llm_singleton = None  # type: ignore[var-annotated]
 
 
@@ -60,40 +46,76 @@ def _llm():
     return _llm_singleton
 
 
-def next_node(current_node: Optional[str], language: str) -> Optional[Dict[str, Any]]:
-    """Resolve the next interview node.
+def estimated_total_nodes() -> int:
+    """Rough progress denominator for Progress.total.
 
-    Tries ai.interview.state_machine; falls back to the fixed node order.
+    The real interview has no fixed length — a chest-pain complaint runs the
+    full HPI branch, a rash gets three questions and moves on — so this is
+    only ever a best estimate (the node count, not the question count), never
+    an exact total.
     """
-    try:
-        from ai.interview import state_machine
+    from ai.interview.nodes import NODE_ORDER
 
-        node = state_machine.transition({"current_node": current_node, "language": language}, "")
-        if node:
-            return node
-    except Exception as exc:  # noqa: BLE001 - any failure must degrade, not raise
-        _degrade("interview.state_machine", exc)
+    return len(NODE_ORDER)
 
-    next_id = fixtures.next_node_id(current_node)
-    return fixtures.render_node(next_id, language) if next_id else None
+
+def next_node(
+    fields: Dict[str, Any], follow_up_counts: Dict[str, int], language: str
+) -> Optional[Dict[str, Any]]:
+    """Resolve and render the next interview question, live from ai/.
+
+    No fallback: which node comes next depends on which fields are already
+    filled, so there is no fixed order left to fall back to. `follow_up_counts`
+    is mutated in place — the caller's SessionState.follow_up_counts is the
+    same dict, so the increment for the node just asked persists.
+
+    Returns None when the interview is complete (state_machine.next_node
+    returns no further node), otherwise a dict shaped like the old
+    fixtures.render_node() output: {node_id, question, options, allow_free_text,
+    node_type}.
+    """
+    from ai.interview import followup
+    from ai.interview.state_machine import next_node as sm_next_node, record_follow_up
+
+    session_state = {"fields": fields, "follow_up_counts": follow_up_counts}
+    node = sm_next_node(session_state)
+    if node is None:
+        return None
+
+    record_follow_up(session_state, node.id)
+
+    question_text, options = followup.generate_followup(node, fields, language, _llm())
+
+    return {
+        "node_id": node.id,
+        "question": question_text,
+        "options": [{"value": o.value, "label": o.label} for o in options],
+        "allow_free_text": True,
+        "node_type": "single_choice" if options else "free_text",
+    }
 
 
 def extract_fields(node_id: str, transcript: str) -> Dict[str, Any]:
     """Turn free speech into structured fields via ai.interview.extraction.
 
-    No fallback: this is the one capability that is genuinely live. A
-    failure here (missing GEMINI_API_KEY, a malformed model response that
-    survives ai/'s own handling, ai/ being broken) is a real failure and
-    must be visible, not silently swallowed into canned output.
+    No fallback: this is genuinely live. A failure here (missing
+    GEMINI_API_KEY, a malformed model response that survives ai/'s own
+    handling, ai/ being broken) is a real failure and must be visible, not
+    silently swallowed into canned output.
     """
     if not transcript:
         return {}
 
     from ai.interview import extraction
-    from ai.interview.nodes import InterviewNode
+    from ai.interview.nodes import InterviewNode, get_node
 
-    field_name = _FIXTURE_NODE_FIELDS.get(node_id, node_id)
-    node = InterviewNode(id=node_id, phase_label=node_id, required_fields=(), optional_fields=(field_name,))
+    try:
+        node = get_node(node_id)
+    except KeyError:
+        # Not one of ai.interview.nodes' own ids (e.g. a node from an older
+        # session, or a caller passing something ad hoc). Scope extraction to
+        # a single field named after the node itself rather than refusing.
+        node = InterviewNode(id=node_id, phase_label=node_id, required_fields=(), optional_fields=(node_id,))
 
     extracted = extraction.extract_fields(transcript, node, _llm())
     return extraction.fields_to_dict(extracted)

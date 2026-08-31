@@ -39,7 +39,7 @@ def _to_response(node: dict | None, answered: int, red_flag=None) -> AnswerRespo
     `options` is always populated, [] when the node takes free text only. The
     frontend's rendering breaks if the key is ever missing.
     """
-    progress = Progress(answered=answered, total=len(fixtures.NODE_ORDER))
+    progress = Progress(answered=answered, total=ai_bridge.estimated_total_nodes())
 
     if red_flag is not None:
         return AnswerResponse(red_flag=red_flag, options=[], progress=progress)
@@ -100,8 +100,10 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
         log.warning("red flag %s on session %s", red_flag.rule_id, session_id)
         return _to_response(None, state.answered_count(), red_flag=red_flag)
 
-    node = ai_bridge.next_node(payload.node_id, payload.language.value)
+    node = ai_bridge.next_node(state.extracted, state.follow_up_counts, payload.language.value)
     state.current_node = node["node_id"] if node else None
+    if node:
+        state.rendered_nodes[node["node_id"]] = node
     store.save(state)
 
     row.current_node = state.current_node
@@ -169,14 +171,21 @@ def get_node(
 
     This is what the Confirm screen's edit pencil needs: jumping back to an
     earlier answer has to restore the tiles, not drop the patient into a
-    voice-only prompt.
+    voice-only prompt. ai.interview.followup generates a question fresh each
+    time it's asked, so replaying one verbatim means replaying the exact
+    dict that was rendered for it originally, from state.rendered_nodes —
+    not asking ai/ to generate it again, which could word it differently.
+    fixtures.render_node is only a fallback for a node rendered before this
+    session's state existed (e.g. a process restart).
     """
     load_session(db, session_id)
 
-    node = fixtures.render_node(node_id, lang.value)
+    state = store.get(session_id)
+    node = (state.rendered_nodes.get(node_id) if state else None) or fixtures.render_node(
+        node_id, lang.value
+    )
     if node is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"unknown node {node_id}")
 
-    state = store.get(session_id)
     answered = state.answered_count() if state else 0
     return _to_response(node, answered)
