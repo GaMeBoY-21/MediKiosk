@@ -49,16 +49,21 @@ def _parse_options(raw_options) -> list[QuestionOption]:
         label = str(item.get("label", "")).strip()
         if not value or not label:
             continue
-        options.append(QuestionOption(value=value, label=label))
+        # None, not "", when the model omits it or echoes the same string —
+        # the kiosk then renders one line rather than the tile twice.
+        label_en = str(item.get("label_en") or "").strip() or None
+        options.append(
+            QuestionOption(value=value, label=label, label_en=None if label_en == label else label_en)
+        )
     return options
 
 
 def generate_followup(
     node: InterviewNode, filled_fields: dict, language: str, llm: LLMAdapter
-) -> tuple[str, str, list[QuestionOption]]:
+) -> tuple[str, str, str | None, list[QuestionOption]]:
     """Generate the next follow-up question for the current node.
 
-    Returns (target field, question text, tappable options).
+    Returns (target field, question text, the same question in English, options).
 
     The target field is what makes touch input work: when a patient taps an
     option instead of speaking, there is no transcript to extract from, so the
@@ -70,7 +75,7 @@ def generate_followup(
     """
     remaining = _unanswered_fields(node, filled_fields)
     if not remaining:
-        return "", node.phase_label, []
+        return "", node.phase_label, None, []
 
     prompt = _load_prompt_template().format(
         phase_label=node.phase_label,
@@ -83,11 +88,11 @@ def generate_followup(
     try:
         raw = llm.complete_json(prompt)
     except MalformedOutputError:
-        return remaining[0], node.phase_label, []
+        return remaining[0], node.phase_label, None, []
 
     text = str(raw.get("question", "")).strip()
     if not text:
-        return remaining[0], node.phase_label, []
+        return remaining[0], node.phase_label, None, []
 
     options = _parse_options(raw.get("options", []))
     if options and not (MIN_OPTIONS <= len(options) <= MAX_OPTIONS):
@@ -97,7 +102,23 @@ def generate_followup(
         )
         options = []
 
-    return resolve_target_field(raw.get("target_field"), remaining), text, options
+    return (
+        resolve_target_field(raw.get("target_field"), remaining),
+        text,
+        english_of(raw.get("question_en"), text),
+        options,
+    )
+
+
+def english_of(raw_en, primary: str) -> str | None:
+    """The English rendering of a question, or None.
+
+    None whenever there is nothing worth showing twice: the model omitted it,
+    or the patient's language IS English so it echoed the same sentence. The
+    kiosk then renders a single line.
+    """
+    english = str(raw_en or "").strip()
+    return english or None if english != primary else None
 
 
 def resolve_target_field(claimed, remaining: list[str]) -> str:

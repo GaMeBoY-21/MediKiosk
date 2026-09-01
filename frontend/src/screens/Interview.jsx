@@ -170,6 +170,7 @@ export default function Interview({ onError }) {
       prompt={{ label: node.question, audio: node.question }}
       phase={node.phase}
       speechKey={node.node_id}
+      promptEnglish={node.question_en}
     >
       {node.options?.length ? (
         <div className={node.options.length > 4 ? 'grid-3' : 'grid-2'}>
@@ -181,7 +182,9 @@ export default function Interview({ onError }) {
               onClick={() => chooseOption(opt.value)}
               aria-pressed={selected === opt.value}
             >
-              <span className="tile__label">{opt.label}</span>
+              <BilingualText className="tile__label" english={opt.label_en}>
+                {opt.label}
+              </BilingualText>
             </button>
           ))}
         </div>
