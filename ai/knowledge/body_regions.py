@@ -149,6 +149,12 @@ def _normalise(text) -> str:
     return re.sub(r"\s+", " ", _flatten(text).replace("_", " ").strip().lower())
 
 
+# Public alias: other modules in ai/knowledge/ normalise the same way, and one
+# flattening/lowercasing rule beats three subtly different ones.
+def normalise(text) -> str:
+    return _normalise(text)
+
+
 def _contains_phrase(text: str, phrase: str) -> bool:
     """Whole-word containment.
 

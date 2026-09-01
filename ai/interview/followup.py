@@ -16,6 +16,7 @@ from app.schemas import QuestionOption
 
 from ai.adapters.base import LLMAdapter, MalformedOutputError
 from ai.interview.nodes import InterviewNode
+from ai.knowledge.danger_symptoms import danger_options, describe_danger_options
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +67,67 @@ def describe_filled(filled_fields: dict) -> str:
     return "\n".join(lines)
 
 
+# The one field whose options are a safety decision rather than a wording
+# choice. For a patient answering by touch these tiles are the only danger
+# signs they can report at all.
+DANGER_FIELD = "associated_symptoms"
+
+
+def enforce_danger_options(
+    target_field: str, filled_fields: dict, model_options: list[QuestionOption]
+) -> list[QuestionOption]:
+    """Rebuild the associated_symptoms options from ai/knowledge/danger_symptoms.
+
+    The model translates; it does not choose. A back-pain patient was offered
+    "breathlessness" because the prompt asked the model to work out which
+    warning signs went with the complaint, and it worked it out wrongly. Asking
+    more firmly would not have fixed that — the list has to come from a table,
+    and the model's answer has to be checked against it, which is what this
+    does.
+
+    The model's labels are kept where they match a value we asked for (that is
+    the translation, the one part it is good at). Anything it invented is
+    dropped; anything it omitted comes back with its English label, because a
+    danger sign shown in English is still reportable and a missing one is not.
+    """
+    if target_field != DANGER_FIELD:
+        return model_options
+
+    translated = {o.value: o.label for o in model_options}
+    required = danger_options(filled_fields)
+
+    invented = sorted(set(translated) - {value for value, _ in required})
+    if invented:
+        log.warning(
+            "discarding model-invented danger symptoms %s; the list is not the "
+            "model's to choose",
+            invented,
+        )
+    missing = [value for value, _ in required if value not in translated]
+    if missing:
+        log.warning("model omitted danger symptoms %s; falling back to English labels", missing)
+
+    return [
+        QuestionOption(value=value, label=translated.get(value) or english)
+        for value, english in required
+    ]
+
+
+def _bare(target_field: str, node: InterviewNode, filled_fields: dict):
+    """Fallback when the model gave us nothing usable.
+
+    The question falls back to the stage label, but the danger tiles do NOT
+    fall back to nothing: they come from the table either way, so a model
+    failure on this one question cannot leave a touch-only patient with no way
+    to report a warning sign.
+    """
+    return (
+        target_field,
+        node.phase_label,
+        enforce_danger_options(target_field, filled_fields, []),
+    )
+
+
 def _parse_options(raw_options) -> list[QuestionOption]:
     if not isinstance(raw_options, list):
         return []
@@ -111,17 +173,20 @@ def generate_followup(
         # The WHOLE session's fields, not just this stage's, and with values.
         # A question must not re-ask anything already present in any field.
         already_answered=describe_filled(filled_fields),
+        # Resolved from a table before the call, so the model is handed the
+        # danger symptoms rather than asked to work out which ones apply.
+        danger_symptom_options=describe_danger_options(filled_fields),
         language=language,
     )
 
     try:
         raw = llm.complete_json(prompt)
     except MalformedOutputError:
-        return remaining[0], node.phase_label, []
+        return _bare(remaining[0], node, filled_fields)
 
     text = str(raw.get("question", "")).strip()
     if not text:
-        return remaining[0], node.phase_label, []
+        return _bare(remaining[0], node, filled_fields)
 
     options = _parse_options(raw.get("options", []))
     if options and not (MIN_OPTIONS <= len(options) <= MAX_OPTIONS):
@@ -131,7 +196,8 @@ def generate_followup(
         )
         options = []
 
-    return resolve_target_field(raw.get("target_field"), remaining), text, options
+    target_field = resolve_target_field(raw.get("target_field"), remaining)
+    return target_field, text, enforce_danger_options(target_field, filled_fields, options)
 
 
 def resolve_target_field(claimed, remaining: list[str]) -> str:

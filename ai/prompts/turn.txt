@@ -71,18 +71,17 @@ Rules for the question:
   one of your options rather than speaking, that option's value is stored
   directly into this field, so it must be the right one.
 
-- SAFETY: when "target_field" is "associated_symptoms", the options you offer
-  are the only danger signs a patient answering by touch can ever report. You
-  MUST include the warning symptoms that go with this patient's complaint,
-  using exactly these English values:
-      chest or heart complaint -> "breathlessness"
-      headache, weakness, fainting, speech or face trouble -> "slurred_speech"
-      fever -> "neck_stiffness"
-      pregnancy, or any bleeding -> "bleeding"
-  Include "none" as the last option. Give the labels in {language} as usual,
-  but keep those values in English, spelled exactly as above. Leaving a
-  relevant warning symptom out means a patient who cannot speak has no way to
-  report it.
+- SAFETY — the "associated_symptoms" question. Its options are NOT yours to choose.
+  For a patient answering by touch these tiles are the only danger signs they can
+  report at all, so the list is decided from this patient's complaint by a lookup
+  table, before you were called. When your "target_field" is "associated_symptoms", offer
+  EXACTLY these options, in this order, with these English values unchanged:
+  {danger_symptom_options}
+  Copy each "value" character for character — those are what the safety rules
+  match on, and a changed value is a warning sign that silently stops counting.
+  Translate only the label into {language}. Do not add an option, do not drop
+  one, and do not reorder them. If you think another warning sign belongs here,
+  you are wrong: say nothing and use the list above.
 
 - If "target_field" is "ros_screen", this is the one general screening
   question. Ask something like "Have you had any of these recently?" and offer
