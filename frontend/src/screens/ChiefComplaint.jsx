@@ -1,10 +1,14 @@
 // Owner: Ranjith
-// Screen 5. The first real question, so it carries both answer paths at once:
-// tap a body area, or speak freely. Either one is a complete answer.
+// Screen 5. The first real question, so it carries every answer path at once:
+// tap a body area, speak freely, or type. Any one of them is a complete answer.
 //
-// Three controls: the tile grid, the mic, and "Done speaking".
+// Four controls: the tile grid (one control), the mic, the answer box and
+// "Done speaking". The box counts against the three-control budget now that it
+// takes input rather than only displaying it — accepted deliberately, because
+// a question with no path for a patient who cannot speak is not answerable at
+// all, and that is the worse failure.
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ScreenShell from '../components/ScreenShell.jsx';
 import BigButton from '../components/BigButton.jsx';
 import IconTile from '../components/IconTile.jsx';
@@ -20,9 +24,26 @@ const AREAS = ['head', 'chest', 'stomach', 'back', 'joints', 'skin', 'fever', 'b
 export default function ChiefComplaint() {
   const { tx, voice } = useT();
   const { addAnswer, go } = useSession();
-  const { start, stop, transcript, interim, listening, isSupported } = useSpeechRecognition(voice);
+  const { start, stop, transcript, interim, listening, isSupported, error } =
+    useSpeechRecognition(voice);
+
+  // The answer box is typeable here too. This is the first real question,
+  // and a patient who cannot speak clearly must not be stuck on it with
+  // only nine tiles and a mic that does not hear them.
+  const [answer, setAnswer] = useState('');
+  const lastHeard = useRef('');
+
+  const micUsable = isSupported && !error;
+  const answerHint = micUsable ? tx('common.tapOrType') : tx('common.typeHere');
 
   useEffect(() => stop, [stop]);
+
+  useEffect(() => {
+    const heard = transcript.trim();
+    if (!heard || heard === lastHeard.current) return;
+    lastHeard.current = heard;
+    setAnswer(heard);
+  }, [transcript]);
 
   const commit = (value, text) => {
     stop();
@@ -30,10 +51,13 @@ export default function ChiefComplaint() {
     go(SCREENS.INTERVIEW);
   };
 
-  const hasSpeech = Boolean(transcript.trim());
+  const typed = answer.trim();
 
   return (
-    <ScreenShell prompt={tx('complaint.title')}>
+    <ScreenShell
+      prompt={tx('complaint.title')}
+      repeatAudio={`${tx('complaint.title').audio} ${answerHint.audio}`}
+    >
       <div className="grid-3">
         {AREAS.map((area) => (
           <IconTile
@@ -47,24 +71,28 @@ export default function ChiefComplaint() {
         ))}
       </div>
 
-      <MicButton
-        listening={listening}
-        onStart={start}
-        onStop={stop}
-        supported={isSupported}
-        labelIdle={tx('common.tapToSpeak').label}
-        labelListening={tx('common.listening').label}
-        labelUnsupported={tx('common.micUnavailable').label}
-      />
+      {micUsable ? (
+        <MicButton
+          listening={listening}
+          onStart={start}
+          onStop={stop}
+          supported
+          labelIdle={tx('common.tapToSpeak').label}
+          labelListening={tx('common.listening').label}
+          labelUnsupported={tx('common.micUnavailable').label}
+        />
+      ) : null}
 
       <TranscriptBox
-        final={transcript}
+        value={answer}
         interim={interim}
-        placeholder={tx('common.tapToSpeak').label}
+        onChange={setAnswer}
+        placeholder={answerHint.label}
+        ariaLabel={tx('complaint.title').label}
       />
 
-      {hasSpeech ? (
-        <BigButton variant="primary" center onClick={() => commit(null, transcript.trim())}>
+      {typed ? (
+        <BigButton variant="primary" center onClick={() => commit(null, typed)}>
           {tx('common.doneSpeaking').label}
         </BigButton>
       ) : null}
