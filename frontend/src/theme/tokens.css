@@ -33,6 +33,27 @@
   --dur: 150ms;
 }
 
+/* Short screens — a 1280x800 landscape panel, which is what the demo hardware
+   actually is. The scale above was drawn for a tall portrait kiosk; on 800px of
+   height every single screen overflowed, putting the A-Z keypad's last row, the
+   consent toggles and sometimes the Next button itself below the fold.
+   Type stays large — this is still a screen read by someone who may not read
+   well — but the padding, gaps and touch targets come down to what 800px can
+   actually hold. Touch targets stay at or above 64px, which is still well
+   past the 44px accessibility floor. */
+@media (max-height: 900px) {
+  :root {
+    --fs-question: 30px;
+    --fs-button: 22px;
+    --fs-body: 20px;
+    --fs-caption: 16px;
+    --page-pad: 20px;
+    --gap: 16px;
+    --touch-min: 64px;
+    --bottom-bar-h: 76px;
+  }
+}
+
 /* Physician console only. Different audience, different rules. */
 .physician {
   --fs-body: 16px;
