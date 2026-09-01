@@ -703,3 +703,159 @@
 .shell__bar-btn .bilingual__english {
   font-size: 0.55em;
 }
+
+/* --------------------------------------------- short landscape (1280x800) */
+/* These screens were laid out for a portrait kiosk, where they fit 1080x1920
+   exactly. On a 1280x800 landscape panel the same stack runs to ~1100-1320px
+   and the Next button, the mic, or half the keypad sit below the fold — and a
+   patient who does not know to scroll never finds them.
+ 
+   Landscape has ~560px of unused width, so use it: the question spans the top
+   and the controls flow into two columns. Scoped to a media query, so the
+   portrait layout this was designed for is untouched. Type sizes and the 80px
+   touch targets are unchanged; only the arrangement differs. */
+
+@media (min-width: 1100px) and (max-height: 900px) {
+  .shell__main:has(.keypad),
+  .shell__main:has(.interview__row),
+  .shell__main:has(.grid-2),
+  .shell__main:has(.grid-3),
+  .shell__main:has(.mic-block) {
+    max-width: 1180px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 40px;
+    row-gap: 16px;
+    align-content: start;
+    /* Grid items stretch to their row height by default, which made the Next
+       button 374px tall next to the keypad and the mic block 582px. Each
+       control keeps its own height instead. */
+    align-items: start;
+  }
+
+  /* The question always spans both columns: it is the one thing that must be
+     read first, and splitting it in half would be worse than scrolling. */
+  .shell__main:has(.keypad) > .shell__question,
+  .shell__main:has(.interview__row) > .shell__question,
+  .shell__main:has(.grid-2) > .shell__question,
+  .shell__main:has(.grid-3) > .shell__question,
+  .shell__main:has(.mic-block) > .shell__question {
+    grid-column: 1 / -1;
+  }
+
+  /* The transcript and the understanding panel already sit side by side; keep
+     that pair together rather than splitting it across the two new columns. */
+  .shell__main:has(.interview__row) > .interview__row {
+    grid-column: 1 / -1;
+  }
+
+  /* Auto-placement fills row by row, which paired the 374px keypad with the
+     98px Next button and made that row 374px tall. Give the keypad a column of
+     its own and stack everything else beside it, so the row is as tall as the
+     keypad alone rather than the keypad plus a stack. */
+  .shell__main:has(.keypad) > .keypad {
+    grid-column: 1;
+    grid-row: 2 / span 6;
+  }
+
+  .shell__main:has(.keypad) > *:not(.shell__question):not(.keypad) {
+    grid-column: 2;
+  }
+
+  /* Choice tiles take the full width and gain columns instead of rows: nine
+     tiles in three columns is three rows (582px), in five columns it is two
+     (~340px). The tiles get wider, not smaller. */
+  .shell__main:has(.grid-3) > .grid-3,
+  .shell__main:has(.grid-2) > .grid-2 {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  /* 128px, not 160px. Still far above the 80px touch minimum and unchanged in
+     portrait; it buys back a row of choice tiles on a short screen. */
+  .tile {
+    min-height: 128px;
+  }
+
+  /* The icon is a recognition aid, not the content. Smaller here so the label
+     — which is now two lines — keeps its full size. */
+  .tile svg {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* A little of the height back, without touching the 80px touch minimum. */
+  .mic {
+    width: 112px;
+    height: 112px;
+  }
+
+  .transcript {
+    min-height: 104px;
+  }
+}
+
+/* The interview screen carries the most at once: question, option tiles, mic,
+   transcript, understanding panel and Next. Auto-placement stacked them and
+   ran to ~1045px, so place them explicitly — options down the left, mic and
+   Next down the right, and the transcript/understanding pair full width
+   underneath where both stay readable. Landscape only. */
+@media (min-width: 1100px) and (max-height: 900px) {
+  .shell__main:has(.interview__row) > .shell__question {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .shell__main:has(.interview__row) > .grid-2 {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* grid-3 means more than four options — the ROS screening question offers
+     six. Three columns keeps that to two rows; two columns would be three and
+     push Next off the bottom. */
+  .shell__main:has(.interview__row) > .grid-3 {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .shell__main:has(.interview__row) > .mic-block {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .shell__main:has(.interview__row) > .btn {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .shell__main:has(.interview__row) > .interview__row {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
+}
+
+@media (min-width: 1100px) and (max-height: 900px) {
+  /* The understanding panel accumulates for the whole session — five fields by
+     the third question, twelve by the end — so on a short screen it has to be
+     bounded or it pushes Next off the bottom late in the interview, exactly
+     when the patient is most invested. It scrolls inside itself; the newest
+     fields matter most and the physician sees all of them anyway. */
+  .interview__row {
+    max-height: 196px;
+  }
+
+  .understanding,
+  .interview__row .transcript {
+    max-height: 196px;
+    overflow-y: auto;
+  }
+
+  /* The fixed bar is 96px; 32px of extra clearance is generous on a short
+     screen. */
+  .shell__main {
+    padding-bottom: calc(var(--bottom-bar-h) + 12px);
+  }
+}

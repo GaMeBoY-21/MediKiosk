@@ -79,7 +79,12 @@
 
 .language__grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* Three columns, not two. Seven tiles in two columns is four rows (632px),
+     which pushed the screen to 900px in an 800px viewport — the last language
+     sat below the fold, and a patient who does not know to scroll simply could
+     not choose it. Three columns is three rows and fits, with the tiles still
+     at their full 140px touch target. */
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--gap);
 }
 
