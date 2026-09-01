@@ -11,7 +11,15 @@ import unittest
 from app.schemas import QuestionOption
 
 from ai.interview.followup import enforce_danger_options
-from ai.knowledge.danger_symptoms import category_for, danger_values
+from ai.knowledge.danger_symptoms import (
+    DANGER_LABELS,
+    DANGER_SYMPTOMS,
+    GENERIC_DANGER_SYMPTOMS,
+    NONE_OPTION,
+    category_for,
+    danger_options,
+    danger_values,
+)
 from ai.safety.red_flags import evaluate
 
 
@@ -26,10 +34,15 @@ class TestCategory(unittest.TestCase):
     def test_chest_pain(self):
         self.assertEqual(category_for({"chief_complaint": "chest pain"}), "chest_pain")
 
-    def test_breathlessness_beats_its_chest_site(self):
-        # body_regions files breathlessness under the chest; the danger list
-        # for a breathless patient is not the chest-pain one.
+    def test_breathlessness_gets_its_own_list_not_the_chest_pain_one(self):
         self.assertEqual(category_for({"chief_complaint": "breathlessness"}), "breathlessness")
+
+    def test_the_breathing_tile_value_resolves(self):
+        # The complaint screen sends the bare word, not a sentence.
+        self.assertEqual(category_for({"chief_complaint": "breathing"}), "breathlessness")
+
+    def test_the_chest_tile_value_resolves(self):
+        self.assertEqual(category_for({"chief_complaint": "chest"}), "chest_pain")
 
     def test_site_alone_is_enough(self):
         self.assertEqual(category_for({"symptom_site": "abdomen"}), "abdominal_pain")
@@ -67,6 +80,32 @@ class TestOptions(unittest.TestCase):
             self.assertLessEqual(len(danger_values({"chief_complaint": complaint})), MAX_OPTIONS)
 
 
+class TestLabels(unittest.TestCase):
+    """The fallback list has to be readable by the patient who gets it."""
+
+    LANGS = ("en", "hi", "kn", "ta", "te", "mr", "bn")
+
+    def test_every_offered_symptom_is_translated_into_every_language(self):
+        offered = {NONE_OPTION[0]}
+        for items in list(DANGER_SYMPTOMS.values()) + [GENERIC_DANGER_SYMPTOMS]:
+            offered.update(value for value, _ in items)
+        for value in sorted(offered):
+            self.assertIn(value, DANGER_LABELS, f"{value} has no translations")
+            for lang in self.LANGS:
+                self.assertTrue(
+                    DANGER_LABELS[value].get(lang),
+                    f"{value} has no {lang} label; the fallback would show English",
+                )
+
+    def test_labels_come_back_in_the_requested_language(self):
+        labels = [label for _, label in danger_options({"chief_complaint": "chest pain"}, "hi")]
+        self.assertEqual(labels[0], DANGER_LABELS["breathlessness"]["hi"])
+
+    def test_unknown_language_falls_back_to_english_rather_than_blank(self):
+        labels = [label for _, label in danger_options({"chief_complaint": "chest pain"}, "zz")]
+        self.assertEqual(labels[0], "Breathlessness")
+
+
 class TestEnforcement(unittest.TestCase):
     """The model translates. It does not choose."""
 
@@ -90,10 +129,14 @@ class TestEnforcement(unittest.TestCase):
         )
         self.assertEqual(got[0].label, "पैरों में कमजोरी")
 
-    def test_omitted_options_come_back_in_english_rather_than_missing(self):
-        got = enforce_danger_options("associated_symptoms", {"chief_complaint": "back pain"}, [])
-        self.assertEqual([o.value for o in got], danger_values({"chief_complaint": "back pain"}))
-        self.assertTrue(all(o.label for o in got))
+    def test_omitted_options_come_back_translated_rather_than_missing(self):
+        fields = {"chief_complaint": "back pain"}
+        got = enforce_danger_options("associated_symptoms", fields, [], "hi")
+        self.assertEqual([o.value for o in got], danger_values(fields))
+        # The model gave nothing, so every label is ours — and in Hindi, not
+        # English, because this fallback fires exactly when the model failed.
+        self.assertEqual([o.label for o in got], [l for _, l in danger_options(fields, "hi")])
+        self.assertEqual(got[0].label, DANGER_LABELS["leg_weakness"]["hi"])
 
     def test_other_fields_are_left_alone(self):
         opts = [QuestionOption(value="mild", label="Mild")]
@@ -143,6 +186,36 @@ class TestTappedValuesStillFireRules(unittest.TestCase):
             "coughing_blood",
             _ids({"chief_complaint": "breathlessness", "associated_symptoms": ["coughing_blood"]}),
         )
+
+    def test_tapped_chest_tile_plus_tapped_breathlessness_fires(self):
+        """The most important two taps this kiosk can receive.
+
+        The complaint screen sends the bare token "chest", not the phrase
+        "chest pain", so this raised nothing at all before.
+        """
+        fields = {
+            "chief_complaint": "chest",
+            "symptom_site": "chest",
+            "associated_symptoms": ["breathlessness"],
+        }
+        self.assertIn("chest_pain_breathlessness", _ids(fields))
+
+    def test_tapped_chest_tile_plus_radiation_fires(self):
+        fields = {
+            "chief_complaint": "chest",
+            "symptom_site": "chest",
+            "associated_symptoms": ["pain_radiating_to_arm_or_jaw"],
+        }
+        self.assertIn("chest_pain_radiation", _ids(fields))
+
+    def test_a_breathing_complaint_is_not_treated_as_chest_pain(self):
+        """body_regions derives no site from a respiratory complaint, so a
+        breathless patient does not arrive looking like a chest-pain one."""
+        from ai.interview.reconcile import reconcile
+
+        fields = reconcile({"chief_complaint": "breathlessness"})
+        self.assertNotIn("symptom_site", fields)
+        self.assertNotIn("chest_pain_breathlessness", _ids(fields))
 
     def test_ros_screen_answers_reach_the_rules(self):
         # ros_screen was missing from the fields red_flags reads at all.

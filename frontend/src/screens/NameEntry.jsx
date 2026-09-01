@@ -17,7 +17,14 @@ export default function NameEntry() {
   const { tx, voice } = useT();
   const { setPatient, go } = useSession();
   const [typed, setTyped] = useState('');
-  const { start, stop, transcript, listening, isSupported } = useSpeechRecognition(voice);
+  const { start, stop, transcript, listening, isSupported, error } =
+    useSpeechRecognition(voice);
+
+  // Same rule as every other question: when recognition is missing or has
+  // failed the mic goes away rather than sitting there disabled. The A-Z
+  // keypad below is a complete path on its own, and on a 800px-high panel
+  // the dead button was also what pushed the keypad's last row off screen.
+  const micUsable = isSupported && !error;
 
   useEffect(() => stop, [stop]);
 
@@ -43,18 +50,20 @@ export default function NameEntry() {
           name ? '' : ' keypad__display--empty'
         }`}
       >
-        {name || tx('common.tapToSpeak').label}
+        {name || tx(micUsable ? 'common.tapToSpeak' : 'common.typeHere').label}
       </div>
 
-      <MicButton
-        listening={listening}
-        onStart={start}
-        onStop={stop}
-        supported={isSupported}
-        labelIdle={tx('common.tapToSpeak').label}
-        labelListening={tx('common.listening').label}
-        labelUnsupported={tx('common.micUnavailable').label}
-      />
+      {micUsable ? (
+        <MicButton
+          listening={listening}
+          onStart={start}
+          onStop={stop}
+          supported
+          labelIdle={tx('common.tapToSpeak').label}
+          labelListening={tx('common.listening').label}
+          labelUnsupported={tx('common.micUnavailable').label}
+        />
+      ) : null}
 
       <Keypad
         mode="alpha"

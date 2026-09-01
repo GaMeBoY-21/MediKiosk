@@ -414,7 +414,14 @@ def answer_turn(
     capped = _capped_fields(fields, field_ask_counts)
     advance_node = _node_if_current_completes(fields, node, follow_up_counts)
     result = run_turn(
-        transcript, node, advance_node, fields, language, _llm(), capped_fields=capped
+        transcript,
+        node,
+        advance_node,
+        fields,
+        language,
+        _llm(),
+        capped_fields=capped,
+        asked_field=target_field or "",
     )
 
     coerced = _coerce_fields(result.fields)

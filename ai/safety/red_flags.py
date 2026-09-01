@@ -85,14 +85,43 @@ def _has_any(blob: str, phrases: tuple[str, ...]) -> bool:
     return any(phrase in blob for phrase in phrases)
 
 
-def _rule_chest_pain_breathlessness(fields: dict) -> bool:
+def _norm(value) -> str:
+    """One field's value, lowercased with underscores opened out.
+
+    Used where a whole-value comparison is wanted rather than a substring scan
+    of the blob: symptom_site == "back" must not be satisfied by the word
+    "back" turning up inside some other answer.
+    """
+    if isinstance(value, (list, tuple)):
+        return " ".join(str(item) for item in value).lower().replace("_", " ").strip()
+    return str(value or "").lower().replace("_", " ").strip()
+
+
+def _is_chest_complaint(fields: dict) -> bool:
+    """The patient's problem is in their chest.
+
+    Phrase matching alone was not enough. A patient who taps the "Chest" tile
+    stores chief_complaint="chest" and symptom_site="chest" — canonical tokens,
+    no prose — and every phrase here is written as "chest pain". So a patient
+    who tapped Chest and then tapped Breathlessness raised NO red flag at all,
+    which is the single most important pair of taps this kiosk can receive.
+
+    Only a stated chest site counts. ai/knowledge/body_regions.py deliberately
+    derives no site from "breathlessness" or "cough", so a purely respiratory
+    complaint cannot arrive here looking like a chest-pain one.
+    """
     blob = _text_blob(fields)
-    return _has_any(blob, _CHEST_PAIN) and _has_any(blob, _BREATHLESSNESS)
+    if _has_any(blob, _CHEST_PAIN):
+        return True
+    return "chest" in (_norm(fields.get("symptom_site")), _norm(fields.get("chief_complaint")))
+
+
+def _rule_chest_pain_breathlessness(fields: dict) -> bool:
+    return _is_chest_complaint(fields) and _has_any(_text_blob(fields), _BREATHLESSNESS)
 
 
 def _rule_chest_pain_radiation(fields: dict) -> bool:
-    blob = _text_blob(fields)
-    return _has_any(blob, _CHEST_PAIN) and _has_any(blob, _ARM_JAW_RADIATION)
+    return _is_chest_complaint(fields) and _has_any(_text_blob(fields), _ARM_JAW_RADIATION)
 
 
 def _rule_fast_stroke_signs(fields: dict) -> bool:
@@ -148,16 +177,6 @@ def _rule_vomiting_blood(fields: dict) -> bool:
 
 def _rule_coughing_blood(fields: dict) -> bool:
     return _has_any(_text_blob(fields), _COUGHING_BLOOD)
-
-
-def _norm(value) -> str:
-    """One field's value, lowercased with underscores opened out. Used where a
-    whole-value comparison is wanted rather than a substring scan of the blob:
-    symptom_site == "back" must not be satisfied by the word "back" turning up
-    inside some other answer."""
-    if isinstance(value, (list, tuple)):
-        return " ".join(str(item) for item in value).lower().replace("_", " ").strip()
-    return str(value or "").lower().replace("_", " ").strip()
 
 
 @dataclass(frozen=True)

@@ -11,10 +11,10 @@ import BigButton from '../components/BigButton.jsx';
 import { Pencil } from '../components/Icons.jsx';
 import { useT } from '../i18n/useT.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
-import { generateSummary } from '../api/client.js';
+import { generateSummary, submitAnswer } from '../api/client.js';
 
 export default function Confirm() {
-  const { tx } = useT();
+  const { tx, lang } = useT();
   const { sessionId, answers, setCurrentNode, setSummary, go } = useSession();
   const [saving, setSaving] = useState(false);
 
@@ -39,6 +39,12 @@ export default function Confirm() {
 
   const accept = async () => {
     setSaving(true);
+    // This screen IS the interview's `confirm` stage. Answering it here is what
+    // stops the kiosk asking "is everything correct?" as a question and then
+    // showing this screen asking the same thing. Fire and forget: the summary
+    // is already warm and the patient should not wait on the network.
+    submitAnswer(sessionId, { node_id: 'confirm', value: 'yes', text: '', lang })
+      .catch((e) => console.warn('[confirm] confirmation not recorded:', e));
     go(SCREENS.DONE);
   };
 

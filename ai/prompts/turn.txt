@@ -16,6 +16,10 @@ Patient's answer (verbatim transcript):
 {transcript}
 """
 
+The question the patient is answering was asking for: {asked_field}
+Their answer almost always fills THAT field. Put it there unless they clearly
+answered something else instead, or answered several fields at once.
+
 Rules for extraction:
 - Every extracted value must be written in ENGLISH clinical terms, whatever
   language the patient spoke. Translate as you extract. This is not optional:

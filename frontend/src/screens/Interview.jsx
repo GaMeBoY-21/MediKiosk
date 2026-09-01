@@ -25,6 +25,13 @@ import { useSpeechRecognition } from '../speech/useSpeechRecognition.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
 import { recordKnownFields, submitAnswer } from '../api/client.js';
 
+// Interview stages that are rendered by their own screen instead of as a
+// generic question. Keyed by the node id ai/interview/nodes.py uses.
+const OWN_SCREEN = {
+  documents: SCREENS.DOCUMENTS,
+  confirm: SCREENS.CONFIRM,
+};
+
 export default function Interview({ onError }) {
   const { tx, voice, lang } = useT();
   const { speak } = useSpeech();
@@ -82,6 +89,18 @@ export default function Interview({ onError }) {
         go(SCREENS.DOCUMENTS);
         return;
       }
+      // Two of the state machine's stages already have a purpose-built screen.
+      // Rendering them here as well asked the patient the same thing twice —
+      // "Do you have any old prescriptions or reports with you?" in the
+      // interview, then the documents screen asking it again one tap later.
+      // The state machine still decides when these stages happen; the kiosk
+      // just shows the right screen for them, and that screen answers the node.
+      const own = OWN_SCREEN[res?.node_id];
+      if (own) {
+        setCurrentNode(res);
+        go(own);
+        return;
+      }
       setNode(res);
       setCurrentNode(res);
       setSelected(null);
@@ -129,14 +148,26 @@ export default function Interview({ onError }) {
     if (consentGiven != null) known.consent_given = consentGiven ? 'yes' : 'no';
 
     const previous = answers[answers.length - 1];
+
+    // A tapped complaint tile is seeded, not submitted as an answer. The
+    // complaint screen is the kiosk's own screen — the backend never rendered
+    // that question, so it has no target field recorded for it and a tapped
+    // value arriving as an answer is discarded with nowhere to go. That is
+    // exactly what happened: a patient who tapped "Back" reached the doctor
+    // with no complaint recorded at all.
+    //
+    // Seeding also runs it through reconciliation, so tapping "Back" fills the
+    // site the same way saying "back pain" does.
+    if (previous?.node_id === 'chief_complaint' && previous?.value) {
+      known.chief_complaint = previous.value;
+    }
+
     const firstAsk = () =>
       ask({
         node_id: previous?.node_id ?? 'chief_complaint',
-        value: previous?.value ?? null,
-        // A tapped complaint tile carries no transcript. `previous.text` is
-        // its label, kept for the Confirm screen to show; sending it as speech
-        // would push a tap down the extraction path and pay a model call to
-        // re-derive the canonical token we already have.
+        value: null,
+        // Free speech still goes as a transcript for extraction; a tapped tile
+        // has already been seeded above and sends nothing.
         text: previous?.value ? '' : previous?.text ?? '',
       });
 

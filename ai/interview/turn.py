@@ -139,6 +139,7 @@ def run_turn(
     language: str,
     llm: LLMAdapter,
     capped_fields=(),
+    asked_field: str = "",
 ) -> TurnResult:
     """Extract this answer's fields and phrase the next question, in one call.
 
@@ -146,6 +147,13 @@ def run_turn(
     machine has already determined comes next IF `node`'s required fields all
     end up filled — pass None when there is no next stage, and the model is
     told to stay put.
+
+    `asked_field` is the field the question the patient just answered was
+    trying to fill. We recorded it when we generated that question, so there is
+    no reason to make the model guess: without it the model had the transcript
+    and a list of nine fields and no idea which one the patient was replying
+    to, and an answer filed under the wrong field leaves the right one empty —
+    which is another question the patient gets asked twice.
     """
     allowed = set(node.required_fields) | set(node.optional_fields)
 
@@ -164,11 +172,12 @@ def run_turn(
         # Names AND values, for every stage — not just this one's keys. The
         # model cannot avoid re-asking for something it cannot see the answer to.
         already_answered=describe_filled(filled_fields),
+        asked_field=asked_field or "(not recorded — infer it from the question)",
         advance_node_id=advance_id,
         advance_fields=advance_fields,
         # Resolved from a table before the call. The model is handed this
         # patient's danger symptoms, not asked to work out which ones apply.
-        danger_symptom_options=describe_danger_options(filled_fields),
+        danger_symptom_options=describe_danger_options(filled_fields, language),
         language=language,
     )
 
@@ -212,6 +221,6 @@ def run_turn(
         # ai/knowledge/danger_symptoms.py using the reconciled field set, so
         # the list matches the complaint we have actually landed on.
         options=enforce_danger_options(
-            target_field, answered, _parse_options(raw.get("options"))
+            target_field, answered, _parse_options(raw.get("options")), language
         ),
     )
