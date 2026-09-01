@@ -657,3 +657,49 @@
   letter-spacing: 0.12em;
   pointer-events: none;
 }
+
+/* ----------------------------------------------------------- BilingualText */
+/* Chosen language full size, English beneath at ~60%. Rendered only when a
+   language has actually been chosen and it is not English — see
+   BilingualText.jsx. */
+
+.bilingual {
+  display: flex;
+  flex-direction: column;
+  /* Tight, so the English line reads as a subtitle of the line above rather
+     than as a separate paragraph. */
+  gap: 2px;
+  min-width: 0;
+}
+
+.bilingual__primary {
+  /* Inherits the size of whatever it replaced (question, button, tile). */
+  line-height: 1.25;
+}
+
+.bilingual__english {
+  font-size: 0.6em;
+  line-height: 1.25;
+  font-weight: 400;
+  color: var(--ink-soft);
+  /* Long English sentences must wrap rather than widen a button. */
+  overflow-wrap: anywhere;
+}
+
+/* Buttons and tiles centre their label; keep both lines on the same axis. */
+.btn--center .bilingual,
+.tile .bilingual {
+  align-items: center;
+  text-align: center;
+}
+
+.shell__bar-btn .bilingual {
+  align-items: center;
+  text-align: center;
+}
+
+/* Two lines where there was one: give the fixed bottom bar room rather than
+   letting the English line clip. */
+.shell__bar-btn .bilingual__english {
+  font-size: 0.55em;
+}

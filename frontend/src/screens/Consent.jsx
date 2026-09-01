@@ -15,6 +15,7 @@ import Toggle from '../components/Toggle.jsx';
 import { useT } from '../i18n/useT.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
 import { recordConsent } from '../api/client.js';
+import BilingualText from '../components/BilingualText.jsx';
 
 export default function Consent() {
   const { tx, voice } = useT();
@@ -42,7 +43,7 @@ export default function Consent() {
       prompt={{ label: tx('consent.title').label, audio: explanation.audio }}
       repeatAudio={explanation.audio}
     >
-      <p className="consent__text">{explanation.label}</p>
+      <BilingualText as="p" className="consent__text">{explanation.label}</BilingualText>
 
       <SpeakerButton
         text={explanation.audio}

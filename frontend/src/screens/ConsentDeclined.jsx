@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import ScreenShell from '../components/ScreenShell.jsx';
 import { useT } from '../i18n/useT.js';
 import { useSession } from '../state/SessionContext.jsx';
+import BilingualText from '../components/BilingualText.jsx';
 
 const RETURN_MS = 20000;
 
@@ -25,7 +26,7 @@ export default function ConsentDeclined() {
       prompt={{ label: tx('consent.declinedTitle').label, audio: body.audio }}
       repeatAudio={body.audio}
     >
-      <p className="consent__text">{body.label}</p>
+      <BilingualText as="p" className="consent__text">{body.label}</BilingualText>
     </ScreenShell>
   );
 }

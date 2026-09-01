@@ -12,6 +12,7 @@ import { Pencil } from '../components/Icons.jsx';
 import { useT } from '../i18n/useT.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
 import { generateSummary } from '../api/client.js';
+import BilingualText from '../components/BilingualText.jsx';
 
 export default function Confirm() {
   const { tx } = useT();
@@ -67,7 +68,7 @@ export default function Confirm() {
           ))}
         </div>
       ) : (
-        <p className="shell__caption">{tx('confirm.nothing').label}</p>
+        <BilingualText as="p" className="shell__caption">{tx('confirm.nothing').label}</BilingualText>
       )}
 
       <BigButton variant="primary" center onClick={accept} disabled={saving}>

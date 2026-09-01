@@ -18,6 +18,7 @@ import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSpeechRecognition } from '../speech/useSpeechRecognition.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
 import { recordKnownFields, submitAnswer } from '../api/client.js';
+import BilingualText from '../components/BilingualText.jsx';
 
 export default function Interview({ onError }) {
   const { tx, voice, lang } = useT();
@@ -159,7 +160,7 @@ export default function Interview({ onError }) {
         phase={node?.phase}
       >
         {/* Static text only. No spinner — nothing else in this app moves. */}
-        <p className="shell__caption">{tx('common.oneMoment').label}</p>
+        <BilingualText as="p" className="shell__caption">{tx('common.oneMoment').label}</BilingualText>
       </ScreenShell>
     );
   }
