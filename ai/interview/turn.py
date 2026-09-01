@@ -24,8 +24,9 @@ from pathlib import Path
 from app.schemas import ExtractedField, FieldSource, QuestionOption
 
 from ai.adapters.base import LLMAdapter, MalformedOutputError
-from ai.interview.followup import resolve_target_field
+from ai.interview.followup import describe_filled, resolve_target_field
 from ai.interview.nodes import InterviewNode
+from ai.interview.reconcile import derive_fields
 
 log = logging.getLogger(__name__)
 
@@ -132,6 +133,7 @@ def run_turn(
     filled_fields: dict,
     language: str,
     llm: LLMAdapter,
+    capped_fields=(),
 ) -> TurnResult:
     """Extract this answer's fields and phrase the next question, in one call.
 
@@ -154,7 +156,9 @@ def run_turn(
         node_id=node.id,
         allowed_fields=", ".join(sorted(allowed)) or "(none)",
         required_fields=", ".join(node.required_fields) or "(none)",
-        already_answered=", ".join(sorted(filled_fields)) or "none yet",
+        # Names AND values, for every stage — not just this one's keys. The
+        # model cannot avoid re-asking for something it cannot see the answer to.
+        already_answered=describe_filled(filled_fields),
         advance_node_id=advance_id,
         advance_fields=advance_fields,
         language=language,
@@ -178,10 +182,16 @@ def run_turn(
     scope = advance_node if (advance_node and asking_about == advance_node.id) else node
     answered = dict(filled_fields)
     answered.update({f.name: f.value for f in fields})
+    # Reconcile before working out what is left. The model has just folded the
+    # site into chief_complaint; without this line symptom_site still looks
+    # unanswered here and the question we are about to keep is "where is the
+    # pain?" — to a patient who said "back pain" one sentence ago.
+    answered.update(derive_fields(answered))
+    capped = set(capped_fields or ())
     remaining = [
         f
         for f in list(scope.required_fields) + list(scope.optional_fields)
-        if f not in answered
+        if f not in answered and f not in capped
     ]
 
     return TurnResult(

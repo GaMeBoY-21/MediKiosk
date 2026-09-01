@@ -52,6 +52,11 @@ class SessionState:
     # How many follow-ups ai.interview.state_machine has asked in each node
     # so far, so it can cap a node off even when a field never gets filled.
     follow_up_counts: Dict[str, int] = field(default_factory=dict)
+    # How many times each individual FIELD has been put to the patient. The
+    # per-node cap above is too coarse to stop the same question being asked
+    # twice inside a stage that allows eight follow-ups; this one is what
+    # actually breaks a re-ask loop. See state_machine.MAX_FIELD_ASKS.
+    field_ask_counts: Dict[str, int] = field(default_factory=dict)
     # The exact question dict last rendered for each node, so a past question
     # can be re-shown verbatim (Confirm screen's edit pencil) instead of
     # asking ai.interview.followup to generate a fresh — and possibly

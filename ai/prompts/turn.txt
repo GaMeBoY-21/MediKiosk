@@ -32,7 +32,17 @@ PART 2 — ASK THE NEXT QUESTION
 You do NOT decide where the interview goes. That is already decided for you by
 the rule below. Follow it exactly.
 
-Fields already collected in this stage: {already_answered}
+EVERYTHING THIS PATIENT HAS ALREADY TOLD US — the whole session, every
+stage, with the values as recorded:
+{already_answered}
+
+Read that list before writing your question. It must not ask for information
+already present ANYWHERE in it, not merely in the field you are targeting. One
+answer often fills several fields at once: a patient who said "back pain" has
+already told you WHERE it hurts, and asking "where on your body?" makes the
+kiosk look like it was not listening. If the field you meant to ask about is
+in substance already answered by a different field above, ask about a
+different missing field instead.
 
   - If, AFTER your own extraction above, every one of these required fields is
     filled: {required_fields}

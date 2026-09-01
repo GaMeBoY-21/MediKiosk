@@ -94,7 +94,10 @@ def estimated_total_nodes() -> int:
 
 
 def next_node(
-    fields: Dict[str, Any], follow_up_counts: Dict[str, int], language: str
+    fields: Dict[str, Any],
+    follow_up_counts: Dict[str, int],
+    language: str,
+    field_ask_counts: Optional[Dict[str, int]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Resolve and render the next interview question, live from ai/.
 
@@ -109,9 +112,13 @@ def next_node(
     node_type}.
     """
     from ai.interview import followup
-    from ai.interview.state_machine import next_node as sm_next_node, record_follow_up
+    from ai.interview.state_machine import (
+        next_node as sm_next_node,
+        record_field_ask,
+        record_follow_up,
+    )
 
-    session_state = {"fields": fields, "follow_up_counts": follow_up_counts}
+    session_state = _session_state(fields, follow_up_counts, field_ask_counts)
     node = sm_next_node(session_state)
     if node is None:
         return None
@@ -119,8 +126,11 @@ def next_node(
     record_follow_up(session_state, node.id)
 
     target_field, question_text, options = followup.generate_followup(
-        node, fields, language, _llm()
+        node, fields, language, _llm(), capped_fields=_capped_fields(fields, field_ask_counts)
     )
+    # Counted when the question is RENDERED, not when it comes back answered —
+    # an ask that gets no answer is exactly what the cap is there to count.
+    record_field_ask(session_state, target_field)
     return _render(
         node.id,
         question_text,
@@ -129,6 +139,63 @@ def next_node(
         _is_multi(node, target_field),
         node.phase_label,
     )
+
+
+def _session_state(
+    fields: Dict[str, Any],
+    follow_up_counts: Dict[str, int],
+    field_ask_counts: Optional[Dict[str, int]],
+) -> Dict[str, Any]:
+    """The dict shape ai.interview.state_machine reads.
+
+    Both counter dicts are passed by reference, not copied: the caller's
+    SessionState holds the same objects, so an increment recorded here
+    persists to the next request instead of being thrown away with this one.
+    """
+    return {
+        "fields": fields,
+        "follow_up_counts": follow_up_counts,
+        "field_ask_counts": field_ask_counts if field_ask_counts is not None else {},
+    }
+
+
+def _capped_fields(
+    fields: Dict[str, Any], field_ask_counts: Optional[Dict[str, int]]
+) -> List[str]:
+    """Fields asked about MAX_FIELD_ASKS times and still empty.
+
+    The interview has given up on these. They must not be offered back to the
+    model as something to ask about, or the cap buys nothing — the model just
+    asks again and the loop the cap exists to break carries on.
+    """
+    from ai.interview.state_machine import MAX_FIELD_ASKS
+
+    return [
+        name
+        for name, count in (field_ask_counts or {}).items()
+        if count >= MAX_FIELD_ASKS and name not in fields
+    ]
+
+
+def reconcile_fields(fields: Dict[str, Any]) -> List[ExtractedField]:
+    """Fields implied by ones already captured, as ExtractedField.
+
+    Runs after every extraction and after seeding, BEFORE the state machine
+    is asked what is still missing. "back pain" fills symptom_site=back here,
+    so the kiosk never asks a patient where the pain is when they have
+    already said. Deterministic — a lookup table in ai/knowledge/, not a
+    model call.
+
+    Marked source=derived and confidence 1.0: the table is exact, but the
+    physician's console can still tell a value the patient said from one the
+    kiosk worked out.
+    """
+    from ai.interview.reconcile import derive_fields
+
+    return [
+        ExtractedField(name=name, value=value, confidence=1.0, source=FieldSource.derived)
+        for name, value in derive_fields(fields).items()
+    ]
 
 
 _AGE_RE = re.compile(r"\d{1,3}")
@@ -263,6 +330,7 @@ def answer_turn(
     fields: Dict[str, Any],
     follow_up_counts: Dict[str, int],
     language: str,
+    field_ask_counts: Optional[Dict[str, int]] = None,
 ) -> tuple[List[ExtractedField], Optional[Dict[str, Any]]]:
     """Extract this answer AND get the next question, normally in ONE call.
 
@@ -281,7 +349,11 @@ def answer_turn(
     """
     from ai.interview import followup
     from ai.interview.nodes import InterviewNode, get_node
-    from ai.interview.state_machine import next_node as sm_next_node, record_follow_up
+    from ai.interview.state_machine import (
+        next_node as sm_next_node,
+        record_field_ask,
+        record_follow_up,
+    )
     from ai.interview.turn import run_turn
 
     try:
@@ -331,16 +403,32 @@ def answer_turn(
 
         merged_taps = dict(fields)
         merged_taps.update({f.name: f.value for f in tapped})
-        return tapped, next_node(merged_taps, follow_up_counts, language)
+        # Reconcile before the state machine is consulted, on the tap path
+        # too: tapping the "back" tile answers "where?" just as saying it does.
+        derived = reconcile_fields(merged_taps)
+        merged_taps.update({f.name: f.value for f in derived})
+        return tapped + derived, next_node(
+            merged_taps, follow_up_counts, language, field_ask_counts
+        )
 
+    capped = _capped_fields(fields, field_ask_counts)
     advance_node = _node_if_current_completes(fields, node, follow_up_counts)
-    result = run_turn(transcript, node, advance_node, fields, language, _llm())
+    result = run_turn(
+        transcript, node, advance_node, fields, language, _llm(), capped_fields=capped
+    )
 
     coerced = _coerce_fields(result.fields)
     merged = dict(fields)
     merged.update({f.name: f.value for f in coerced})
 
-    session_state = {"fields": merged, "follow_up_counts": follow_up_counts}
+    # Reconciliation goes HERE — after the merge, before the state machine
+    # decides what is still unfilled. Any later and the patient gets asked
+    # where the pain is when they already said "back pain".
+    derived = reconcile_fields(merged)
+    merged.update({f.name: f.value for f in derived})
+    coerced = coerced + derived
+
+    session_state = _session_state(merged, follow_up_counts, field_ask_counts)
     actual = sm_next_node(session_state)
     if actual is None:
         return coerced, None
@@ -348,8 +436,13 @@ def answer_turn(
     record_follow_up(session_state, actual.id)
 
     # Trust the model's question only if it wrote it for the node we actually
-    # landed on, and it actually produced one.
-    if result.asking_about == actual.id and result.question:
+    # landed on, it produced one, and the field it is filling is genuinely
+    # still open after reconciliation. That last clause is what stops the
+    # re-ask: the model chose its target before we derived symptom_site from
+    # "back pain", so its question can be asking for something we now have.
+    still_open = result.target_field and result.target_field not in merged
+    if result.asking_about == actual.id and result.question and still_open:
+        record_field_ask(session_state, result.target_field)
         return coerced, _render(
             actual.id,
             result.question,
@@ -360,13 +453,17 @@ def answer_turn(
         )
 
     log.info(
-        "turn: regenerating question (model asked about %r, state machine says %r)",
+        "turn: regenerating question (model asked about %r targeting %r, state "
+        "machine says %r, target still open: %s)",
         result.asking_about,
+        result.target_field,
         actual.id,
+        bool(still_open),
     )
     target_field, question_text, options = followup.generate_followup(
-        actual, merged, language, _llm()
+        actual, merged, language, _llm(), capped_fields=_capped_fields(merged, field_ask_counts)
     )
+    record_field_ask(session_state, target_field)
     return coerced, _render(
         actual.id,
         question_text,

@@ -98,6 +98,12 @@ class FieldSource(str, Enum):
     speech = "speech"
     touch = "touch"
     document = "document"
+    # Not stated by the patient in so many words, but implied by something
+    # they DID state — "back pain" implies the site is the back. Derived by
+    # ai/interview/reconcile.py from a lookup table, never by a model. Kept
+    # distinct from `speech` so the console can show the physician which
+    # values the patient said and which the kiosk worked out.
+    derived = "derived"
 
 
 class FindingKind(str, Enum):

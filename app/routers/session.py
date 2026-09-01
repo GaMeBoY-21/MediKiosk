@@ -54,7 +54,9 @@ def start_session(payload: SessionStartRequest | None = None, db: DbSession = De
     # against state.follow_up_counts directly (not a throwaway dict) so the
     # follow-up this counts as is actually recorded, not lost.
     state = store.create(session_id, body.language.value)
-    node = ai_bridge.next_node(state.extracted, state.follow_up_counts, body.language.value)
+    node = ai_bridge.next_node(
+        state.extracted, state.follow_up_counts, body.language.value, state.field_ask_counts
+    )
 
     row = models.Session(
         session_id=session_id,
@@ -117,6 +119,16 @@ def record_known_fields(
         state.extracted[name] = coerced
         state.field_confidence[name] = 1.0
         state.field_source[name] = FieldSource.touch.value
+
+    # Reconcile the seeded set the same way an extracted one is reconciled.
+    # The chief complaint can arrive here from the tile screen, and whatever
+    # site it implies must be filled before the state machine decides to ask
+    # "where on your body?".
+    for derived in ai_bridge.reconcile_fields(state.extracted):
+        accepted[derived.name] = derived.value
+        state.extracted[derived.name] = derived.value
+        state.field_confidence[derived.name] = derived.confidence
+        state.field_source[derived.name] = derived.source.value
     store.save(state)
 
     if accepted:
