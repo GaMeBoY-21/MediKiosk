@@ -61,11 +61,20 @@ you are wrong: say nothing and use the list above.
       "bowel_or_urine_change", "none"
   The patient may pick more than one.
 
+- Also give the SAME question in English as "question_en", and the English of
+  each option label as "label_en". These are shown in smaller text beneath the
+  {language} line, for a family member or a passing doctor who does not read
+  {language}. If {language} is already English, set "question_en" to null and
+  omit "label_en" — the kiosk renders one line, not the same line twice.
+
 Respond with ONLY a JSON object of this exact shape, no markdown fences, no
 commentary:
 
 {{
   "target_field": "<the one field this question fills>",
   "question": "<question text in {language}>",
-  "options": [{{"value": "<canonical_english_token>", "label": "<option text in {language}>"}}]
+  "question_en": "<the same question in English, or null if {language} is English>",
+  "options": [
+    {{"value": "<canonical_english_token>", "label": "<option text in {language}>", "label_en": "<label in English>"}}
+  ]
 }}

@@ -26,6 +26,7 @@ from app.schemas import ExtractedField, FieldSource, QuestionOption
 from ai.adapters.base import LLMAdapter, MalformedOutputError
 from ai.interview.followup import (
     describe_filled,
+    english_of,
     enforce_danger_options,
     resolve_target_field,
 )
@@ -53,7 +54,7 @@ class TurnResult:
     caller must check it against the state machine before trusting `question`.
     """
 
-    __slots__ = ("fields", "asking_about", "target_field", "question", "options")
+    __slots__ = ("fields", "asking_about", "target_field", "question", "question_en", "options")
 
     def __init__(
         self,
@@ -62,11 +63,13 @@ class TurnResult:
         question: str,
         options: list[QuestionOption],
         target_field: str = "",
+        question_en: str | None = None,
     ):
         self.fields = fields
         self.asking_about = asking_about
         self.target_field = target_field
         self.question = question
+        self.question_en = question_en
         self.options = options
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
@@ -117,7 +120,12 @@ def _parse_options(raw_options) -> list[QuestionOption]:
         value = str(item.get("value", "")).strip()
         label = str(item.get("label", "")).strip()
         if value and label:
-            options.append(QuestionOption(value=value, label=label))
+            label_en = str(item.get("label_en") or "").strip() or None
+            options.append(
+                QuestionOption(
+                    value=value, label=label, label_en=None if label_en == label else label_en
+                )
+            )
     if options and not (MIN_OPTIONS <= len(options) <= MAX_OPTIONS):
         # Say so. Silently returning [] here turned a tappable question into a
         # free-text box that a patient who cannot type has no way to answer.
@@ -212,11 +220,13 @@ def run_turn(
     ]
 
     target_field = resolve_target_field(raw.get("target_field"), remaining)
+    question = str(raw.get("question", "")).strip()
     return TurnResult(
         fields=fields,
         asking_about=asking_about,
         target_field=target_field,
-        question=str(raw.get("question", "")).strip(),
+        question=question,
+        question_en=english_of(raw.get("question_en"), question),
         # Safety content is not the model's to choose. Checked against
         # ai/knowledge/danger_symptoms.py using the reconciled field set, so
         # the list matches the complaint we have actually landed on.

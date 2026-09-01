@@ -128,10 +128,17 @@ def _bare(target_field: str, node: InterviewNode, filled_fields: dict, language:
     fall back to nothing: they come from the table either way, so a model
     failure on this one question cannot leave a touch-only patient with no way
     to report a warning sign.
+
+    No English second line: the stage label is already a static string from
+    i18n/strings.js, which the kiosk renders bilingually on its own.
+
+    EVERY early return in generate_followup goes through here, precisely so
+    that none of them can skip enforce_danger_options.
     """
     return (
         target_field,
         node.phase_label,
+        None,
         enforce_danger_options(target_field, filled_fields, [], language),
     )
 
@@ -147,7 +154,12 @@ def _parse_options(raw_options) -> list[QuestionOption]:
         label = str(item.get("label", "")).strip()
         if not value or not label:
             continue
-        options.append(QuestionOption(value=value, label=label))
+        # None, not "", when the model omits it or echoes the same string —
+        # the kiosk then renders one line rather than the tile twice.
+        label_en = str(item.get("label_en") or "").strip() or None
+        options.append(
+            QuestionOption(value=value, label=label, label_en=None if label_en == label else label_en)
+        )
     return options
 
 
@@ -157,10 +169,10 @@ def generate_followup(
     language: str,
     llm: LLMAdapter,
     capped_fields=(),
-) -> tuple[str, str, list[QuestionOption]]:
+) -> tuple[str, str, str | None, list[QuestionOption]]:
     """Generate the next follow-up question for the current node.
 
-    Returns (target field, question text, tappable options).
+    Returns (target field, question text, the same question in English, options).
 
     The target field is what makes touch input work: when a patient taps an
     option instead of speaking, there is no transcript to extract from, so the
@@ -172,7 +184,7 @@ def generate_followup(
     """
     remaining = _unanswered_fields(node, filled_fields, capped_fields)
     if not remaining:
-        return "", node.phase_label, []
+        return _bare("", node, filled_fields, language)
 
     prompt = _load_prompt_template().format(
         phase_label=node.phase_label,
@@ -208,8 +220,20 @@ def generate_followup(
     return (
         target_field,
         text,
+        english_of(raw.get("question_en"), text),
         enforce_danger_options(target_field, filled_fields, options, language),
     )
+
+
+def english_of(raw_en, primary: str) -> str | None:
+    """The English rendering of a question, or None.
+
+    None whenever there is nothing worth showing twice: the model omitted it,
+    or the patient's language IS English so it echoed the same sentence. The
+    kiosk then renders a single line.
+    """
+    english = str(raw_en or "").strip()
+    return english or None if english != primary else None
 
 
 def resolve_target_field(claimed, remaining: list[str]) -> str:

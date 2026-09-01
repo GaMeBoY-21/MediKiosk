@@ -68,6 +68,7 @@ def _to_response(node: dict | None, answered: int, red_flag=None, state=None) ->
     return AnswerResponse(
         node_id=node["node_id"],
         question=node["question"],
+        question_en=node.get("question_en"),
         options=[QuestionOption(**o) for o in node.get("options", [])],
         allow_free_text=node.get("allow_free_text", True),
         node_type=NodeType(node.get("node_type", NodeType.free_text.value)),

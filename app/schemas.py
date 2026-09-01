@@ -425,6 +425,15 @@ class QuestionOption(BaseModel):
 
     value: str = Field(..., description="Stable machine value sent back as selected_option.")
     label: str = Field(..., description="Display text, already translated into the patient's language.")
+    label_en: Optional[str] = Field(
+        None,
+        description=(
+            "The same label in English, shown beneath it at ~60% size. None "
+            "when the patient's language IS English, so the kiosk renders it "
+            "once rather than twice. Family members and passing clinicians "
+            "read these tiles too."
+        ),
+    )
 
 
 class Progress(BaseModel):
@@ -443,6 +452,9 @@ class InterviewNode(BaseModel):
 
     node_id: str = Field(..., description="Identifier to send back with the answer.")
     question: str = Field(..., description="Question text, translated.")
+    question_en: Optional[str] = Field(
+        None, description="Same question in English; None when the language is English."
+    )
     options: List[QuestionOption] = Field(
         default_factory=list, description="Answer tiles. Always present, [] when free-text."
     )
@@ -614,6 +626,15 @@ class AnswerResponse(BaseModel):
 
     node_id: Optional[str] = Field(None, description="Next node to render. None when done.")
     question: Optional[str] = Field(None, description="Next question text, translated.")
+    question_en: Optional[str] = Field(
+        None,
+        description=(
+            "The same question in English, rendered beneath it at ~60% size. "
+            "None when the patient's language IS English. The interview screen "
+            "is seen ~25 times a session and is what a relative or a passing "
+            "doctor most needs to be able to read."
+        ),
+    )
     options: List[QuestionOption] = Field(
         default_factory=list,
         description="Answer tiles. ALWAYS present, [] when empty. Never omitted.",

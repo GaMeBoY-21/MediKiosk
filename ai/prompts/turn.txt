@@ -95,6 +95,12 @@ Rules for the question:
       "bowel_or_urine_change", "none"
   The patient may pick more than one.
 
+- Also give the SAME question in English as "question_en", and the English of
+  each option label as "label_en". These are shown in smaller text beneath the
+  {language} line, for a family member or a passing doctor who does not read
+  {language}. If {language} is already English, set "question_en" to null and
+  omit "label_en" — the kiosk renders one line, not the same line twice.
+
 RESPOND with ONLY this JSON object. No markdown fences, no commentary.
 
 {{
@@ -104,5 +110,8 @@ RESPOND with ONLY this JSON object. No markdown fences, no commentary.
   "asking_about": "<stage id you are asking about>",
   "target_field": "<the one field your question fills>",
   "question": "<question text in {language}>",
-  "options": [{{"value": "<english_token>", "label": "<label in {language}>"}}]
+  "question_en": "<the same question in English, or null if {language} is English>",
+  "options": [
+    {{"value": "<english_token>", "label": "<label in {language}>", "label_en": "<label in English>"}}
+  ]
 }}

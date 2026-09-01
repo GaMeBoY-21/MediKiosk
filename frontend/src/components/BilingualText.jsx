@@ -23,6 +23,11 @@ export default function BilingualText({
    *  screens set this: the person reading them is usually staff, who may not
    *  share the patient's language. */
   always = false,
+  /** The English line, supplied explicitly. Clinical content — the interview
+   *  question and its option tiles — is generated per patient, so it has no
+   *  entry in strings.js to look up. The API returns its English alongside it
+   *  (question_en / label_en) and it arrives here. Null means render once. */
+  english: englishProp,
   className = '',
   as: Tag = 'span',
 }) {
@@ -35,13 +40,17 @@ export default function BilingualText({
   const lang = chosen ? session.language : 'en';
 
   const text = typeof children === 'string' ? children : null;
-  const secondary =
-    text && (chosen || always) && lang !== 'en' ? englishFor(text, lang) : undefined;
+  // An explicit English line always wins over the lookup: it came from the
+  // same model call that produced the primary text, so it actually matches.
+  const looked = text && (chosen || always) && lang !== 'en' ? englishFor(text, lang) : undefined;
+  const candidate = englishProp ?? looked;
+  // Never render the same sentence twice.
+  const secondary = candidate && candidate !== text ? candidate : undefined;
 
   if (!secondary) {
-    // One language: either English is the choice, nothing is chosen yet, or
-    // this string has no counterpart. Render plainly, with no wrapper that
-    // would change layout.
+    // One language: English is the choice, nothing is chosen yet, or this
+    // string has no counterpart. Render plainly, with no wrapper that would
+    // change layout.
     return <Tag className={className}>{children}</Tag>;
   }
 

@@ -29,6 +29,9 @@ export default function ScreenShell({
   /** force the English line even before a language is chosen — error and
    *  emergency screens, which staff read. */
   alwaysBilingual = false,
+  /** English of the prompt, when it is clinical content from the API rather
+   *  than a string with an entry in strings.js. */
+  promptEnglish,
   /** identifies what is being spoken, so it is spoken exactly once */
   speechKey,
   children,
@@ -79,7 +82,12 @@ export default function ScreenShell({
 
       <main className="shell__main">
         {prompt && !hideHeading ? (
-          <BilingualText as="h1" className="shell__question" always={alwaysBilingual}>
+          <BilingualText
+            as="h1"
+            className="shell__question"
+            always={alwaysBilingual}
+            english={promptEnglish}
+          >
             {prompt.label}
           </BilingualText>
         ) : null}

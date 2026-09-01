@@ -125,7 +125,7 @@ def next_node(
 
     record_follow_up(session_state, node.id)
 
-    target_field, question_text, options = followup.generate_followup(
+    target_field, question_text, question_en, options = followup.generate_followup(
         node, fields, language, _llm(), capped_fields=_capped_fields(fields, field_ask_counts)
     )
     # Counted when the question is RENDERED, not when it comes back answered —
@@ -138,6 +138,7 @@ def next_node(
         target_field,
         _is_multi(node, target_field),
         node.phase_label,
+        question_en,
     )
 
 
@@ -282,6 +283,7 @@ def _render(
     target_field: str = "",
     multi: bool = False,
     phase: str = "",
+    question_en: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Shape a question the way the frontend expects it.
 
@@ -293,7 +295,12 @@ def _render(
     return {
         "node_id": node_id,
         "question": question,
-        "options": [{"value": o.value, "label": o.label} for o in options],
+        # None when the patient's language is English, so the kiosk renders one
+        # line rather than the same sentence twice.
+        "question_en": question_en,
+        "options": [
+            {"value": o.value, "label": o.label, "label_en": o.label_en} for o in options
+        ],
         "allow_free_text": True,
         "node_type": ("multi_choice" if multi else "single_choice") if options else "free_text",
         "target_field": target_field,
@@ -457,6 +464,7 @@ def answer_turn(
             result.target_field,
             _is_multi(actual, result.target_field),
             actual.phase_label,
+            result.question_en,
         )
 
     log.info(
@@ -467,7 +475,7 @@ def answer_turn(
         actual.id,
         bool(still_open),
     )
-    target_field, question_text, options = followup.generate_followup(
+    target_field, question_text, question_en, options = followup.generate_followup(
         actual, merged, language, _llm(), capped_fields=_capped_fields(merged, field_ask_counts)
     )
     record_field_ask(session_state, target_field)
@@ -478,6 +486,7 @@ def answer_turn(
         target_field,
         _is_multi(actual, target_field),
         actual.phase_label,
+        question_en,
     )
 
 
