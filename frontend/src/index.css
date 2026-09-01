@@ -34,6 +34,20 @@ body {
   user-select: none;
 }
 
+/* The PAGE never scrolls. At 1280x800 almost every screen was taller than the
+   viewport — the A-Z keypad's bottom row, the consent toggles, and on some
+   questions the Next button itself all sat below the fold, behind or under the
+   fixed bottom bar. A kiosk patient does not scroll a page: they see a screen
+   with a button missing off the end of it and stop.
+   Anything that genuinely cannot fit now scrolls INSIDE .shell__main, above
+   the bar, so the bar and the phase label never move and nothing is ever
+   hidden behind them. See the compact tokens in theme/tokens.css, which are
+   what keeps that scroll from being needed on the ordinary screens. */
+html,
+body {
+  overflow: hidden;
+}
+
 h1,
 h2,
 h3,

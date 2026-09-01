@@ -45,6 +45,7 @@ export const strings = {
       listening: { label: 'Listening', audio: 'I am listening.' },
       oneMoment: { label: 'One moment', audio: 'One moment please.' },
       understood: { label: 'What we understood', audio: '' },
+      moreFields: { label: '+{n} more', audio: '' },
       notSure: { label: 'Not sure — please check', audio: '' },
       edit: { label: 'Edit', audio: 'Change this answer.' },
       micUnavailable: {
@@ -170,6 +171,7 @@ export const strings = {
       listening: { label: 'सुन रहे हैं', audio: 'मैं सुन रहा हूँ।' },
       oneMoment: { label: 'एक क्षण', audio: 'कृपया एक क्षण रुकिए।' },
       understood: { label: 'हमने क्या समझा', audio: '' },
+      moreFields: { label: '+{n} और', audio: '' },
       notSure: { label: 'पक्का नहीं — कृपया जाँचें', audio: '' },
       edit: { label: 'बदलें', audio: 'यह जवाब बदलिए।' },
       micUnavailable: {
@@ -295,6 +297,7 @@ export const strings = {
       listening: { label: 'ಕೇಳುತ್ತಿದೆ', audio: 'ನಾನು ಕೇಳುತ್ತಿದ್ದೇನೆ.' },
       oneMoment: { label: 'ಒಂದು ಕ್ಷಣ', audio: 'ದಯವಿಟ್ಟು ಒಂದು ಕ್ಷಣ ಕಾಯಿರಿ.' },
       understood: { label: 'ನಾವು ಏನು ಅರ್ಥಮಾಡಿಕೊಂಡೆವು', audio: '' },
+      moreFields: { label: '+{n} ಇನ್ನಷ್ಟು', audio: '' },
       notSure: { label: 'ಖಚಿತವಿಲ್ಲ — ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ', audio: '' },
       edit: { label: 'ಬದಲಾಯಿಸಿ', audio: 'ಈ ಉತ್ತರವನ್ನು ಬದಲಾಯಿಸಿ.' },
       micUnavailable: {
@@ -420,6 +423,7 @@ export const strings = {
       listening: { label: 'கேட்கிறது', audio: 'நான் கேட்கிறேன்.' },
       oneMoment: { label: 'ஒரு நிமிடம்', audio: 'தயவுசெய்து ஒரு நிமிடம் காத்திருங்கள்.' },
       understood: { label: 'நாங்கள் புரிந்துகொண்டது', audio: '' },
+      moreFields: { label: '+{n} மேலும்', audio: '' },
       notSure: { label: 'உறுதியாக இல்லை — சரிபார்க்கவும்', audio: '' },
       edit: { label: 'மாற்று', audio: 'இந்த பதிலை மாற்றுங்கள்.' },
       micUnavailable: {
@@ -545,6 +549,7 @@ export const strings = {
       listening: { label: 'వింటున్నాము', audio: 'నేను వింటున్నాను.' },
       oneMoment: { label: 'ఒక్క క్షణం', audio: 'దయచేసి ఒక్క క్షణం ఆగండి.' },
       understood: { label: 'మేము అర్థం చేసుకున్నది', audio: '' },
+      moreFields: { label: '+{n} మరిన్ని', audio: '' },
       notSure: { label: 'ఖచ్చితంగా తెలియదు — తనిఖీ చేయండి', audio: '' },
       edit: { label: 'మార్చు', audio: 'ఈ సమాధానాన్ని మార్చండి.' },
       micUnavailable: {
@@ -670,6 +675,7 @@ export const strings = {
       listening: { label: 'ऐकत आहे', audio: 'मी ऐकत आहे.' },
       oneMoment: { label: 'एक क्षण', audio: 'कृपया एक क्षण थांबा.' },
       understood: { label: 'आम्हाला काय समजले', audio: '' },
+      moreFields: { label: '+{n} आणखी', audio: '' },
       notSure: { label: 'खात्री नाही — कृपया तपासा', audio: '' },
       edit: { label: 'बदला', audio: 'हे उत्तर बदला.' },
       micUnavailable: {
@@ -795,6 +801,7 @@ export const strings = {
       listening: { label: 'শুনছি', audio: 'আমি শুনছি।' },
       oneMoment: { label: 'এক মুহূর্ত', audio: 'অনুগ্রহ করে এক মুহূর্ত অপেক্ষা করুন।' },
       understood: { label: 'আমরা যা বুঝেছি', audio: '' },
+      moreFields: { label: '+{n} আরও', audio: '' },
       notSure: { label: 'নিশ্চিত নই — দয়া করে দেখুন', audio: '' },
       edit: { label: 'পরিবর্তন', audio: 'এই উত্তরটি পরিবর্তন করুন।' },
       micUnavailable: {
