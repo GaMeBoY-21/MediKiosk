@@ -74,7 +74,10 @@ DANGER_FIELD = "associated_symptoms"
 
 
 def enforce_danger_options(
-    target_field: str, filled_fields: dict, model_options: list[QuestionOption]
+    target_field: str,
+    filled_fields: dict,
+    model_options: list[QuestionOption],
+    language: str = "en",
 ) -> list[QuestionOption]:
     """Rebuild the associated_symptoms options from ai/knowledge/danger_symptoms.
 
@@ -87,14 +90,16 @@ def enforce_danger_options(
 
     The model's labels are kept where they match a value we asked for (that is
     the translation, the one part it is good at). Anything it invented is
-    dropped; anything it omitted comes back with its English label, because a
-    danger sign shown in English is still reportable and a missing one is not.
+    dropped; anything it omitted comes back from ai/knowledge/danger_symptoms'
+    own translation table, in the patient's language — the fallback is used
+    exactly when the model misbehaved, and handing a Hindi-only patient a list
+    of danger signs in English is the same as not offering them at all.
     """
     if target_field != DANGER_FIELD:
         return model_options
 
     translated = {o.value: o.label for o in model_options}
-    required = danger_options(filled_fields)
+    required = danger_options(filled_fields, language)
 
     invented = sorted(set(translated) - {value for value, _ in required})
     if invented:
@@ -105,15 +110,18 @@ def enforce_danger_options(
         )
     missing = [value for value, _ in required if value not in translated]
     if missing:
-        log.warning("model omitted danger symptoms %s; falling back to English labels", missing)
+        log.warning(
+            "model omitted danger symptoms %s; using our own translations for them",
+            missing,
+        )
 
     return [
-        QuestionOption(value=value, label=translated.get(value) or english)
-        for value, english in required
+        QuestionOption(value=value, label=translated.get(value) or fallback)
+        for value, fallback in required
     ]
 
 
-def _bare(target_field: str, node: InterviewNode, filled_fields: dict):
+def _bare(target_field: str, node: InterviewNode, filled_fields: dict, language: str):
     """Fallback when the model gave us nothing usable.
 
     The question falls back to the stage label, but the danger tiles do NOT
@@ -124,7 +132,7 @@ def _bare(target_field: str, node: InterviewNode, filled_fields: dict):
     return (
         target_field,
         node.phase_label,
-        enforce_danger_options(target_field, filled_fields, []),
+        enforce_danger_options(target_field, filled_fields, [], language),
     )
 
 
@@ -175,18 +183,18 @@ def generate_followup(
         already_answered=describe_filled(filled_fields),
         # Resolved from a table before the call, so the model is handed the
         # danger symptoms rather than asked to work out which ones apply.
-        danger_symptom_options=describe_danger_options(filled_fields),
+        danger_symptom_options=describe_danger_options(filled_fields, language),
         language=language,
     )
 
     try:
         raw = llm.complete_json(prompt)
     except MalformedOutputError:
-        return _bare(remaining[0], node, filled_fields)
+        return _bare(remaining[0], node, filled_fields, language)
 
     text = str(raw.get("question", "")).strip()
     if not text:
-        return _bare(remaining[0], node, filled_fields)
+        return _bare(remaining[0], node, filled_fields, language)
 
     options = _parse_options(raw.get("options", []))
     if options and not (MIN_OPTIONS <= len(options) <= MAX_OPTIONS):
@@ -197,7 +205,11 @@ def generate_followup(
         options = []
 
     target_field = resolve_target_field(raw.get("target_field"), remaining)
-    return target_field, text, enforce_danger_options(target_field, filled_fields, options)
+    return (
+        target_field,
+        text,
+        enforce_danger_options(target_field, filled_fields, options, language),
+    )
 
 
 def resolve_target_field(claimed, remaining: list[str]) -> str:

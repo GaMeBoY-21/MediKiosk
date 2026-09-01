@@ -11,12 +11,12 @@ import BigButton from '../components/BigButton.jsx';
 import { Camera, Cross, Document } from '../components/Icons.jsx';
 import { useT } from '../i18n/useT.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
-import { uploadDocument } from '../api/client.js';
+import { submitAnswer, uploadDocument } from '../api/client.js';
 
 const JPEG_QUALITY = 0.85;
 
 export default function Documents() {
-  const { tx } = useT();
+  const { tx, lang } = useT();
   const { sessionId, documents, addDocument, updateDocument, removeDocument, go } = useSession();
 
   const [capturing, setCapturing] = useState(false);
@@ -32,7 +32,16 @@ export default function Documents() {
 
   useEffect(() => stopCamera, [stopCamera]);
 
+  // Answer the interview's `documents` stage from here, so it is asked once.
+  // Fire and forget, like consent: the patient must never wait on the network
+  // between themselves and the doctor.
+  const answerNode = (value) => {
+    submitAnswer(sessionId, { node_id: 'documents', value, text: '', lang })
+      .catch((e) => console.warn('[documents] answer not recorded:', e));
+  };
+
   const startCamera = async () => {
+    answerNode('yes');
     setCapturing(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -83,6 +92,11 @@ export default function Documents() {
     go(SCREENS.CONFIRM);
   };
 
+  const decline = () => {
+    answerNode('no');
+    finish();
+  };
+
   /* ---------------------------------------------------------- ask first */
 
   if (!capturing) {
@@ -92,7 +106,7 @@ export default function Documents() {
           <BigButton variant="primary" icon={Document} onClick={startCamera}>
             {tx('documents.yes').label}
           </BigButton>
-          <BigButton variant="outline" onClick={finish}>
+          <BigButton variant="outline" onClick={decline}>
             {tx('documents.no').label}
           </BigButton>
         </div>

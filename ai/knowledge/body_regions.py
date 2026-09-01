@@ -50,11 +50,6 @@ BODY_REGIONS: dict[str, str] = {
     "chest discomfort": "chest",
     "chest tightness": "chest",
     "chest": "chest",
-    "breathlessness": "chest",
-    "shortness of breath": "chest",
-    "difficulty breathing": "chest",
-    "cough": "chest",
-    "palpitations": "chest",
     # --- abdomen ---
     "abdominal pain": "abdomen",
     "stomach pain": "abdomen",
@@ -64,11 +59,6 @@ BODY_REGIONS: dict[str, str] = {
     "tummy pain": "abdomen",
     "abdomen": "abdomen",
     "stomach": "abdomen",
-    "vomiting": "abdomen",
-    "loose motions": "abdomen",
-    "diarrhoea": "abdomen",
-    "diarrhea": "abdomen",
-    "constipation": "abdomen",
     "acidity": "abdomen",
     # --- back ---
     "back pain": "back",
@@ -122,6 +112,23 @@ NO_SITE_COMPLAINTS: frozenset = frozenset(
         "swelling",
         "bleeding",
         "injury",
+        # Respiratory and gastrointestinal symptoms name no place the patient
+        # can point to, and mapping them to a region was actively harmful:
+        # "breathlessness" resolving to symptom_site=chest made a purely
+        # respiratory complaint indistinguishable from a chest-pain one, and
+        # ai/safety/red_flags.py reads symptom_site. A derived site must never
+        # invent a clinical picture the patient did not describe.
+        "breathlessness",
+        "breathing",
+        "shortness of breath",
+        "difficulty breathing",
+        "cough",
+        "palpitations",
+        "vomiting",
+        "loose motions",
+        "diarrhoea",
+        "diarrhea",
+        "constipation",
     }
 )
 
