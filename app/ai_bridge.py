@@ -94,7 +94,10 @@ def estimated_total_nodes() -> int:
 
 
 def next_node(
-    fields: Dict[str, Any], follow_up_counts: Dict[str, int], language: str
+    fields: Dict[str, Any],
+    follow_up_counts: Dict[str, int],
+    language: str,
+    field_ask_counts: Optional[Dict[str, int]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Resolve and render the next interview question, live from ai/.
 
@@ -109,9 +112,17 @@ def next_node(
     node_type}.
     """
     from ai.interview import followup
-    from ai.interview.state_machine import next_node as sm_next_node, record_follow_up
+    from ai.interview.state_machine import (
+        next_node as sm_next_node,
+        record_field_ask,
+        record_follow_up,
+    )
 
-    session_state = {"fields": fields, "follow_up_counts": follow_up_counts}
+    session_state = {
+        "fields": fields,
+        "follow_up_counts": follow_up_counts,
+        "field_ask_counts": field_ask_counts if field_ask_counts is not None else {},
+    }
     node = sm_next_node(session_state)
     if node is None:
         return None
@@ -119,8 +130,9 @@ def next_node(
     record_follow_up(session_state, node.id)
 
     target_field, question_text, question_en, options = followup.generate_followup(
-        node, fields, language, _llm()
+        node, fields, language, _llm(), _abandoned_for(node, session_state)
     )
+    record_field_ask(session_state, target_field)
     return _render(
         node.id,
         question_text,
@@ -242,6 +254,14 @@ def _render(
     }
 
 
+def _abandoned_for(node, session_state: Dict[str, Any]) -> tuple:
+    """Fields in this node the interview has given up asking about."""
+    from ai.interview.state_machine import is_abandoned
+
+    all_fields = list(node.required_fields) + list(node.optional_fields)
+    return tuple(f for f in all_fields if is_abandoned(f, session_state))
+
+
 def _is_multi(node, target_field: str) -> bool:
     return bool(target_field) and target_field in getattr(node, "multi_select_fields", ())
 
@@ -270,6 +290,7 @@ def answer_turn(
     fields: Dict[str, Any],
     follow_up_counts: Dict[str, int],
     language: str,
+    field_ask_counts: Optional[Dict[str, int]] = None,
 ) -> tuple[List[ExtractedField], Optional[Dict[str, Any]]]:
     """Extract this answer AND get the next question, normally in ONE call.
 
@@ -288,8 +309,14 @@ def answer_turn(
     """
     from ai.interview import followup
     from ai.interview.nodes import InterviewNode, get_node
-    from ai.interview.state_machine import next_node as sm_next_node, record_follow_up
+    from ai.interview.state_machine import (
+        next_node as sm_next_node,
+        record_field_ask,
+        record_follow_up,
+    )
     from ai.interview.turn import run_turn
+
+    asks = field_ask_counts if field_ask_counts is not None else {}
 
     try:
         node = get_node(node_id)
@@ -338,16 +365,28 @@ def answer_turn(
 
         merged_taps = dict(fields)
         merged_taps.update({f.name: f.value for f in tapped})
-        return tapped, next_node(merged_taps, follow_up_counts, language)
+        return tapped, next_node(merged_taps, follow_up_counts, language, asks)
 
     advance_node = _node_if_current_completes(fields, node, follow_up_counts)
-    result = run_turn(transcript, node, advance_node, fields, language, _llm())
+    result = run_turn(
+        transcript,
+        node,
+        advance_node,
+        fields,
+        language,
+        _llm(),
+        _abandoned_for(node, {"fields": fields, "field_ask_counts": asks}),
+    )
 
     coerced = _coerce_fields(result.fields)
     merged = dict(fields)
     merged.update({f.name: f.value for f in coerced})
 
-    session_state = {"fields": merged, "follow_up_counts": follow_up_counts}
+    session_state = {
+        "fields": merged,
+        "follow_up_counts": follow_up_counts,
+        "field_ask_counts": asks,
+    }
     actual = sm_next_node(session_state)
     if actual is None:
         return coerced, None
@@ -357,6 +396,7 @@ def answer_turn(
     # Trust the model's question only if it wrote it for the node we actually
     # landed on, and it actually produced one.
     if result.asking_about == actual.id and result.question:
+        record_field_ask(session_state, result.target_field)
         return coerced, _render(
             actual.id,
             result.question,
@@ -373,8 +413,9 @@ def answer_turn(
         actual.id,
     )
     target_field, question_text, question_en, options = followup.generate_followup(
-        actual, merged, language, _llm()
+        actual, merged, language, _llm(), _abandoned_for(actual, session_state)
     )
+    record_field_ask(session_state, target_field)
     return coerced, _render(
         actual.id,
         question_text,

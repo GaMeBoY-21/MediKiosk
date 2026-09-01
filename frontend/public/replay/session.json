@@ -1,16 +1,17 @@
 {
-  "recorded_at": "2026-09-01T04:12:46.199229+00:00",
+  "recorded_at": "2026-09-01T09:22:09.397503+00:00",
   "note": "Recorded from a live session against the real Gemini API. Replayed verbatim when VITE_REPLAY=true so the kiosk demos with no network and no API quota. Regenerate with scripts/record_replay.py.",
   "language": "en",
   "kiosk": {
     "session": {
-      "session_id": "mk-7c8dee19daa1",
+      "session_id": "mk-498f0490f405",
       "language": "en",
       "status": "in_progress",
-      "started_at": "2026-09-01T04:11:48.694980",
+      "started_at": "2026-09-01T09:21:10.380306",
       "first_question": {
         "node_id": "identity",
         "question": "What is your name?",
+        "question_en": null,
         "options": [],
         "allow_free_text": true,
         "node_type": "free_text",
@@ -53,6 +54,7 @@
         "response": {
           "node_id": "chief_complaint",
           "question": "What is your main problem today?",
+          "question_en": null,
           "options": [],
           "allow_free_text": true,
           "node_type": "free_text",
@@ -96,31 +98,11 @@
         "said": "for the last two days",
         "response": {
           "node_id": "chief_complaint",
-          "question": "What is your main health problem today?",
-          "options": [
-            {
-              "value": "fever",
-              "label": "Fever"
-            },
-            {
-              "value": "cough",
-              "label": "Cough"
-            },
-            {
-              "value": "pain",
-              "label": "Pain"
-            },
-            {
-              "value": "weakness",
-              "label": "Weakness"
-            },
-            {
-              "value": "other",
-              "label": "Other problem"
-            }
-          ],
+          "question": "What is the main problem you are facing today?",
+          "question_en": null,
+          "options": [],
           "allow_free_text": true,
-          "node_type": "single_choice",
+          "node_type": "free_text",
           "progress": {
             "answered": 2,
             "total": 11
@@ -167,23 +149,28 @@
         "said": "in the middle of my chest",
         "response": {
           "node_id": "hpi",
-          "question": "Where exactly is the discomfort located?",
+          "question": "What does the discomfort feel like?",
+          "question_en": null,
           "options": [
             {
-              "value": "center_of_chest",
-              "label": "Center of chest"
+              "value": "sharp",
+              "label": "Sharp",
+              "label_en": null
             },
             {
-              "value": "left_chest",
-              "label": "Left side of chest"
+              "value": "heavy",
+              "label": "Heavy or pressure",
+              "label_en": null
             },
             {
-              "value": "right_chest",
-              "label": "Right side of chest"
+              "value": "burning",
+              "label": "Burning",
+              "label_en": null
             },
             {
-              "value": "whole_chest",
-              "label": "Whole chest"
+              "value": "aching",
+              "label": "Aching",
+              "label_en": null
             }
           ],
           "allow_free_text": true,
@@ -227,7 +214,7 @@
             {
               "name": "chief_complaint",
               "value": "chest discomfort",
-              "confidence": 0.9,
+              "confidence": 0.95,
               "source": "speech"
             }
           ],
@@ -237,10 +224,11 @@
         }
       },
       {
-        "said": "behind my breastbone, in the centre of my chest",
+        "said": "it feels like a burning pressure",
         "response": {
           "node_id": "hpi",
-          "question": "When did this chest discomfort start?",
+          "question": "Where exactly on your body are you feeling this?",
+          "question_en": null,
           "options": [],
           "allow_free_text": true,
           "node_type": "free_text",
@@ -283,13 +271,13 @@
             {
               "name": "chief_complaint",
               "value": "chest discomfort",
-              "confidence": 0.9,
+              "confidence": 0.95,
               "source": "speech"
             },
             {
-              "name": "symptom_site",
-              "value": "centre of chest behind breastbone",
-              "confidence": 1.0,
+              "name": "symptom_character",
+              "value": "burning pressure",
+              "confidence": 0.95,
               "source": "speech"
             }
           ],
@@ -299,26 +287,26 @@
         }
       },
       {
-        "said": "it started suddenly while I was resting",
+        "said": "behind my breastbone, in the centre of my chest",
         "response": {
           "node_id": "hpi",
-          "question": "How would you describe what it feels like?",
+          "question": "When did this chest pain start?",
+          "question_en": null,
           "options": [
             {
-              "value": "sharp",
-              "label": "Sharp"
+              "value": "today",
+              "label": "Today",
+              "label_en": null
             },
             {
-              "value": "dull",
-              "label": "Dull ache"
+              "value": "few_days_ago",
+              "label": "A few days ago",
+              "label_en": null
             },
             {
-              "value": "pressure",
-              "label": "Pressure or tightness"
-            },
-            {
-              "value": "burning",
-              "label": "Burning"
+              "value": "weeks_ago",
+              "label": "Weeks ago",
+              "label_en": null
             }
           ],
           "allow_free_text": true,
@@ -362,25 +350,19 @@
             {
               "name": "chief_complaint",
               "value": "chest discomfort",
-              "confidence": 0.9,
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_character",
+              "value": "burning pressure",
+              "confidence": 0.95,
               "source": "speech"
             },
             {
               "name": "symptom_site",
               "value": "centre of chest behind breastbone",
-              "confidence": 1.0,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_onset",
-              "value": "sudden",
-              "confidence": 1.0,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_relieving_factors",
-              "value": "resting",
-              "confidence": 1.0,
+              "confidence": 0.99,
               "source": "speech"
             }
           ],
@@ -390,22 +372,26 @@
         }
       },
       {
-        "said": "it feels like a burning pressure",
+        "said": "it started suddenly while I was resting",
         "response": {
           "node_id": "hpi",
-          "question": "How severe is the discomfort?",
+          "question": "How severe is your symptom?",
+          "question_en": null,
           "options": [
             {
               "value": "mild",
-              "label": "Mild"
+              "label": "Mild",
+              "label_en": null
             },
             {
               "value": "moderate",
-              "label": "Moderate"
+              "label": "Moderate",
+              "label_en": null
             },
             {
               "value": "severe",
-              "label": "Severe"
+              "label": "Severe",
+              "label_en": null
             }
           ],
           "allow_free_text": true,
@@ -449,30 +435,24 @@
             {
               "name": "chief_complaint",
               "value": "chest discomfort",
-              "confidence": 0.9,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_site",
-              "value": "centre of chest behind breastbone",
-              "confidence": 1.0,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_onset",
-              "value": "sudden",
-              "confidence": 1.0,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_relieving_factors",
-              "value": "resting",
-              "confidence": 1.0,
+              "confidence": 0.95,
               "source": "speech"
             },
             {
               "name": "symptom_character",
               "value": "burning pressure",
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_site",
+              "value": "centre of chest behind breastbone",
+              "confidence": 0.99,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_onset",
+              "value": "sudden",
               "confidence": 0.95,
               "source": "speech"
             }
@@ -486,15 +466,18 @@
         "said": "it is severe, the worst I have had",
         "response": {
           "node_id": "hpi",
-          "question": "Are you experiencing any other symptoms along with this?",
+          "question": "Do you have any other problems along with this, like trouble breathing?",
+          "question_en": null,
           "options": [
             {
               "value": "breathlessness",
-              "label": "Breathlessness"
+              "label": "Trouble breathing",
+              "label_en": null
             },
             {
               "value": "none",
-              "label": "None"
+              "label": "None",
+              "label_en": null
             }
           ],
           "allow_free_text": true,
@@ -538,30 +521,24 @@
             {
               "name": "chief_complaint",
               "value": "chest discomfort",
-              "confidence": 0.9,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_site",
-              "value": "centre of chest behind breastbone",
-              "confidence": 1.0,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_onset",
-              "value": "sudden",
-              "confidence": 1.0,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_relieving_factors",
-              "value": "resting",
-              "confidence": 1.0,
+              "confidence": 0.95,
               "source": "speech"
             },
             {
               "name": "symptom_character",
               "value": "burning pressure",
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_site",
+              "value": "centre of chest behind breastbone",
+              "confidence": 0.99,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_onset",
+              "value": "sudden",
               "confidence": 0.95,
               "source": "speech"
             },
@@ -582,6 +559,7 @@
         "response": {
           "node_id": null,
           "question": null,
+          "question_en": null,
           "options": [],
           "allow_free_text": true,
           "node_type": "free_text",
@@ -624,30 +602,24 @@
             {
               "name": "chief_complaint",
               "value": "chest discomfort",
-              "confidence": 0.9,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_site",
-              "value": "centre of chest behind breastbone",
-              "confidence": 1.0,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_onset",
-              "value": "sudden",
-              "confidence": 1.0,
-              "source": "speech"
-            },
-            {
-              "name": "symptom_relieving_factors",
-              "value": "resting",
-              "confidence": 1.0,
+              "confidence": 0.95,
               "source": "speech"
             },
             {
               "name": "symptom_character",
               "value": "burning pressure",
+              "confidence": 0.95,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_site",
+              "value": "centre of chest behind breastbone",
+              "confidence": 0.99,
+              "source": "speech"
+            },
+            {
+              "name": "symptom_onset",
+              "value": "sudden",
               "confidence": 0.95,
               "source": "speech"
             },
@@ -669,7 +641,7 @@
             "label": "Chest pain with breathlessness",
             "severity": "critical",
             "triggered_by": [],
-            "detected_at": "2026-09-01T04:12:40.317283Z"
+            "detected_at": "2026-09-01T09:22:03.274192Z"
           },
           "done": true,
           "terminal_reason": "red_flag"
@@ -678,7 +650,7 @@
     ],
     "summary": {
       "chief_complaint": "Chest discomfort for 2 days",
-      "hpi_narrative": "Lakshmi Devi is a 65-year-old female presenting with a sudden onset of severe chest discomfort localized to the centre of the chest behind the breastbone, of 2 days duration. The character of the discomfort is described as burning pressure. The symptom is relieved by resting and is associated with shortness of breath.",
+      "hpi_narrative": "Lakshmi Devi is a 65-year-old female presenting with a 2-day history of chest discomfort. The onset was sudden, and the severity is reported as severe. The discomfort is described as a burning pressure located in the centre of the chest behind the breastbone. It is associated with shortness of breath.",
       "sections": {
         "past_history": "Not collected",
         "drugs_allergies": "Not collected",
@@ -690,7 +662,7 @@
         {
           "doc_id": "doc-1",
           "type": "lab_report",
-          "captured_at": "2026-09-01T04:12:44.850030Z",
+          "captured_at": "2026-09-01T09:22:07.814083Z",
           "status": "done",
           "extracted": {},
           "title": "Lipid profile - District Lab",
@@ -725,7 +697,7 @@
         {
           "doc_id": "doc-2",
           "type": "lab_report",
-          "captured_at": "2026-09-01T04:12:44.850067Z",
+          "captured_at": "2026-09-01T09:22:07.814162Z",
           "status": "done",
           "extracted": {},
           "title": "HbA1c - District Lab",
@@ -748,33 +720,43 @@
           "label": "Chest pain with breathlessness",
           "severity": "critical",
           "triggered_by": [],
-          "detected_at": "2026-09-01T04:12:40.317283Z"
+          "detected_at": "2026-09-01T09:22:03.274192Z"
         }
       ],
       "low_confidence_fields": [],
-      "generated_at": "2026-09-01T04:12:45.990065Z",
+      "generated_at": "2026-09-01T09:22:09.192310Z",
       "verified_by": null,
       "verified_at": null,
       "token": "A-42",
       "room": "12"
     },
-    "session_id": "mk-7c8dee19daa1"
+    "session_id": "mk-498f0490f405"
   },
   "physician": {
     "queue": [
       {
-        "session_id": "mk-7c8dee19daa1",
+        "session_id": "mk-498f0490f405",
         "token": "A-42",
         "name": "Lakshmi Devi",
         "age": 65,
         "sex": "female",
         "complaint": "Chest discomfort for 2 days",
         "red_flag": "Chest pain with breathlessness",
-        "waiting_since": "04:11"
+        "waiting_since": "09:21"
+      },
+      {
+        "session_id": "mk-1e85f8f345a1",
+        "token": "A-42",
+        "name": "R",
+        "age": 45,
+        "sex": "male",
+        "complaint": "chest pain",
+        "red_flag": null,
+        "waiting_since": "09:20"
       }
     ],
     "case": {
-      "session_id": "mk-7c8dee19daa1",
+      "session_id": "mk-498f0490f405",
       "patient": {
         "name": "Lakshmi Devi",
         "age": 65,
@@ -783,7 +765,7 @@
       },
       "summary": {
         "chief_complaint": "Chest discomfort for 2 days",
-        "hpi": "Lakshmi Devi is a 65-year-old female presenting with a sudden onset of severe chest discomfort localized to the centre of the chest behind the breastbone, of 2 days duration. The character of the discomfort is described as burning pressure. The symptom is relieved by resting and is associated with shortness of breath.",
+        "hpi": "Lakshmi Devi is a 65-year-old female presenting with a 2-day history of chest discomfort. The onset was sudden, and the severity is reported as severe. The discomfort is described as a burning pressure located in the centre of the chest behind the breastbone. It is associated with shortness of breath.",
         "past_history": "Not collected",
         "drugs_allergies": "Not collected",
         "family": "Not collected",
@@ -794,7 +776,7 @@
         {
           "doc_id": "doc-1",
           "type": "lab_report",
-          "captured_at": "2026-09-01T04:12:44.850030Z",
+          "captured_at": "2026-09-01T09:22:07.814083Z",
           "status": "done",
           "extracted": {},
           "title": "Lipid profile - District Lab",
@@ -829,7 +811,7 @@
         {
           "doc_id": "doc-2",
           "type": "lab_report",
-          "captured_at": "2026-09-01T04:12:44.850067Z",
+          "captured_at": "2026-09-01T09:22:07.814162Z",
           "status": "done",
           "extracted": {},
           "title": "HbA1c - District Lab",
@@ -852,7 +834,7 @@
           "label": "Chest pain with breathlessness",
           "severity": "critical",
           "triggered_by": [],
-          "detected_at": "2026-09-01T04:12:40.317283Z"
+          "detected_at": "2026-09-01T09:22:03.274192Z"
         }
       ],
       "low_confidence_fields": [],
@@ -864,19 +846,19 @@
       ],
       "fhir": {
         "resourceType": "Bundle",
-        "id": "b178762f-c45e-5184-b7dd-50aff0829a22",
+        "id": "f6ae849e-22ad-5625-80aa-aee5a0e647e1",
         "identifier": {
           "system": "urn:ietf:rfc:3986",
-          "value": "urn:uuid:b178762f-c45e-5184-b7dd-50aff0829a22"
+          "value": "urn:uuid:f6ae849e-22ad-5625-80aa-aee5a0e647e1"
         },
         "type": "document",
-        "timestamp": "2026-09-01T04:12:45.990065+00:00",
+        "timestamp": "2026-09-01T09:22:09.192310+00:00",
         "entry": [
           {
-            "fullUrl": "urn:uuid:d5fa495e-719f-5ebf-9da0-7e61d00de6f7",
+            "fullUrl": "urn:uuid:c53d1ab7-170d-589b-a5c0-0dd12365e370",
             "resource": {
               "resourceType": "Composition",
-              "id": "d5fa495e-719f-5ebf-9da0-7e61d00de6f7",
+              "id": "c53d1ab7-170d-589b-a5c0-0dd12365e370",
               "status": "preliminary",
               "type": {
                 "coding": [
@@ -888,9 +870,9 @@
                 ]
               },
               "subject": {
-                "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+                "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
               },
-              "date": "2026-09-01T04:12:45.990065+00:00",
+              "date": "2026-09-01T09:22:09.192310+00:00",
               "author": [
                 {
                   "display": "MediKiosk, Ministry of Ayush OPD"
@@ -916,7 +898,7 @@
                   },
                   "entry": [
                     {
-                      "reference": "urn:uuid:32b2c37a-9eda-5b3d-a9a4-bb17d101c47d"
+                      "reference": "urn:uuid:d3e1cda4-e940-563a-94aa-98ddf4c6dbe3"
                     }
                   ]
                 },
@@ -933,7 +915,7 @@
                   },
                   "text": {
                     "status": "generated",
-                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Lakshmi Devi is a 65-year-old female presenting with a sudden onset of severe chest discomfort localized to the centre of the chest behind the breastbone, of 2 days duration. The character of the discomfort is described as burning pressure. The symptom is relieved by resting and is associated with shortness of breath.</p></div>"
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Lakshmi Devi is a 65-year-old female presenting with a 2-day history of chest discomfort. The onset was sudden, and the severity is reported as severe. The discomfort is described as a burning pressure located in the centre of the chest behind the breastbone. It is associated with shortness of breath.</p></div>"
                   }
                 },
                 {
@@ -1029,16 +1011,16 @@
                   },
                   "entry": [
                     {
-                      "reference": "urn:uuid:bc6ab9c0-84ee-53d8-9db0-cd4bb9db26f8"
+                      "reference": "urn:uuid:18ae8f88-0c1a-5aa2-bdfb-4fa887575cb3"
                     },
                     {
-                      "reference": "urn:uuid:ee5aaff6-d47a-5d25-9fe9-8babd28c2b3c"
+                      "reference": "urn:uuid:1314d636-3fb0-5ff0-ab09-7627fe92f76c"
                     },
                     {
-                      "reference": "urn:uuid:677c5fc2-8fe2-59a5-985f-1067ddf177a0"
+                      "reference": "urn:uuid:471fe41d-0dc1-5615-8a0c-e67d09559426"
                     },
                     {
-                      "reference": "urn:uuid:bace0a09-da51-5900-bffc-41c239231fcc"
+                      "reference": "urn:uuid:5c5ff943-f69a-5f38-ad6f-964480385531"
                     }
                   ]
                 }
@@ -1046,10 +1028,10 @@
             }
           },
           {
-            "fullUrl": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83",
+            "fullUrl": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f",
             "resource": {
               "resourceType": "Patient",
-              "id": "2b1c6e70-278f-5f05-aa27-2041535adb83",
+              "id": "e24797ba-432a-501c-9657-57fa44beea9f",
               "active": true,
               "gender": "female",
               "name": [
@@ -1081,10 +1063,10 @@
             }
           },
           {
-            "fullUrl": "urn:uuid:32b2c37a-9eda-5b3d-a9a4-bb17d101c47d",
+            "fullUrl": "urn:uuid:d3e1cda4-e940-563a-94aa-98ddf4c6dbe3",
             "resource": {
               "resourceType": "Condition",
-              "id": "32b2c37a-9eda-5b3d-a9a4-bb17d101c47d",
+              "id": "d3e1cda4-e940-563a-94aa-98ddf4c6dbe3",
               "clinicalStatus": {
                 "coding": [
                   {
@@ -1115,16 +1097,16 @@
                 "text": "Chest discomfort for 2 days"
               },
               "subject": {
-                "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+                "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
               },
-              "recordedDate": "2026-09-01T04:12:45.990065+00:00"
+              "recordedDate": "2026-09-01T09:22:09.192310+00:00"
             }
           },
           {
-            "fullUrl": "urn:uuid:bc6ab9c0-84ee-53d8-9db0-cd4bb9db26f8",
+            "fullUrl": "urn:uuid:18ae8f88-0c1a-5aa2-bdfb-4fa887575cb3",
             "resource": {
               "resourceType": "Observation",
-              "id": "bc6ab9c0-84ee-53d8-9db0-cd4bb9db26f8",
+              "id": "18ae8f88-0c1a-5aa2-bdfb-4fa887575cb3",
               "status": "preliminary",
               "category": [
                 {
@@ -1140,7 +1122,7 @@
                 "text": "Total cholesterol"
               },
               "subject": {
-                "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+                "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
               },
               "effectiveDateTime": "2026-06-12",
               "valueQuantity": {
@@ -1167,10 +1149,10 @@
             }
           },
           {
-            "fullUrl": "urn:uuid:ee5aaff6-d47a-5d25-9fe9-8babd28c2b3c",
+            "fullUrl": "urn:uuid:1314d636-3fb0-5ff0-ab09-7627fe92f76c",
             "resource": {
               "resourceType": "Observation",
-              "id": "ee5aaff6-d47a-5d25-9fe9-8babd28c2b3c",
+              "id": "1314d636-3fb0-5ff0-ab09-7627fe92f76c",
               "status": "preliminary",
               "category": [
                 {
@@ -1186,7 +1168,7 @@
                 "text": "LDL"
               },
               "subject": {
-                "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+                "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
               },
               "effectiveDateTime": "2026-06-12",
               "valueQuantity": {
@@ -1213,10 +1195,10 @@
             }
           },
           {
-            "fullUrl": "urn:uuid:677c5fc2-8fe2-59a5-985f-1067ddf177a0",
+            "fullUrl": "urn:uuid:471fe41d-0dc1-5615-8a0c-e67d09559426",
             "resource": {
               "resourceType": "Observation",
-              "id": "677c5fc2-8fe2-59a5-985f-1067ddf177a0",
+              "id": "471fe41d-0dc1-5615-8a0c-e67d09559426",
               "status": "preliminary",
               "category": [
                 {
@@ -1232,7 +1214,7 @@
                 "text": "HDL"
               },
               "subject": {
-                "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+                "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
               },
               "effectiveDateTime": "2026-06-12",
               "valueQuantity": {
@@ -1259,10 +1241,10 @@
             }
           },
           {
-            "fullUrl": "urn:uuid:bace0a09-da51-5900-bffc-41c239231fcc",
+            "fullUrl": "urn:uuid:5c5ff943-f69a-5f38-ad6f-964480385531",
             "resource": {
               "resourceType": "Observation",
-              "id": "bace0a09-da51-5900-bffc-41c239231fcc",
+              "id": "5c5ff943-f69a-5f38-ad6f-964480385531",
               "status": "preliminary",
               "category": [
                 {
@@ -1278,7 +1260,7 @@
                 "text": "HbA1c"
               },
               "subject": {
-                "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+                "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
               },
               "effectiveDateTime": "2026-07-03",
               "valueQuantity": {
@@ -1311,19 +1293,19 @@
     },
     "fhir": {
       "resourceType": "Bundle",
-      "id": "b178762f-c45e-5184-b7dd-50aff0829a22",
+      "id": "f6ae849e-22ad-5625-80aa-aee5a0e647e1",
       "identifier": {
         "system": "urn:ietf:rfc:3986",
-        "value": "urn:uuid:b178762f-c45e-5184-b7dd-50aff0829a22"
+        "value": "urn:uuid:f6ae849e-22ad-5625-80aa-aee5a0e647e1"
       },
       "type": "document",
-      "timestamp": "2026-09-01T04:12:45.990065+00:00",
+      "timestamp": "2026-09-01T09:22:09.192310+00:00",
       "entry": [
         {
-          "fullUrl": "urn:uuid:d5fa495e-719f-5ebf-9da0-7e61d00de6f7",
+          "fullUrl": "urn:uuid:c53d1ab7-170d-589b-a5c0-0dd12365e370",
           "resource": {
             "resourceType": "Composition",
-            "id": "d5fa495e-719f-5ebf-9da0-7e61d00de6f7",
+            "id": "c53d1ab7-170d-589b-a5c0-0dd12365e370",
             "status": "preliminary",
             "type": {
               "coding": [
@@ -1335,9 +1317,9 @@
               ]
             },
             "subject": {
-              "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+              "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
             },
-            "date": "2026-09-01T04:12:45.990065+00:00",
+            "date": "2026-09-01T09:22:09.192310+00:00",
             "author": [
               {
                 "display": "MediKiosk, Ministry of Ayush OPD"
@@ -1363,7 +1345,7 @@
                 },
                 "entry": [
                   {
-                    "reference": "urn:uuid:32b2c37a-9eda-5b3d-a9a4-bb17d101c47d"
+                    "reference": "urn:uuid:d3e1cda4-e940-563a-94aa-98ddf4c6dbe3"
                   }
                 ]
               },
@@ -1380,7 +1362,7 @@
                 },
                 "text": {
                   "status": "generated",
-                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Lakshmi Devi is a 65-year-old female presenting with a sudden onset of severe chest discomfort localized to the centre of the chest behind the breastbone, of 2 days duration. The character of the discomfort is described as burning pressure. The symptom is relieved by resting and is associated with shortness of breath.</p></div>"
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Lakshmi Devi is a 65-year-old female presenting with a 2-day history of chest discomfort. The onset was sudden, and the severity is reported as severe. The discomfort is described as a burning pressure located in the centre of the chest behind the breastbone. It is associated with shortness of breath.</p></div>"
                 }
               },
               {
@@ -1476,16 +1458,16 @@
                 },
                 "entry": [
                   {
-                    "reference": "urn:uuid:bc6ab9c0-84ee-53d8-9db0-cd4bb9db26f8"
+                    "reference": "urn:uuid:18ae8f88-0c1a-5aa2-bdfb-4fa887575cb3"
                   },
                   {
-                    "reference": "urn:uuid:ee5aaff6-d47a-5d25-9fe9-8babd28c2b3c"
+                    "reference": "urn:uuid:1314d636-3fb0-5ff0-ab09-7627fe92f76c"
                   },
                   {
-                    "reference": "urn:uuid:677c5fc2-8fe2-59a5-985f-1067ddf177a0"
+                    "reference": "urn:uuid:471fe41d-0dc1-5615-8a0c-e67d09559426"
                   },
                   {
-                    "reference": "urn:uuid:bace0a09-da51-5900-bffc-41c239231fcc"
+                    "reference": "urn:uuid:5c5ff943-f69a-5f38-ad6f-964480385531"
                   }
                 ]
               }
@@ -1493,10 +1475,10 @@
           }
         },
         {
-          "fullUrl": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83",
+          "fullUrl": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f",
           "resource": {
             "resourceType": "Patient",
-            "id": "2b1c6e70-278f-5f05-aa27-2041535adb83",
+            "id": "e24797ba-432a-501c-9657-57fa44beea9f",
             "active": true,
             "gender": "female",
             "name": [
@@ -1528,10 +1510,10 @@
           }
         },
         {
-          "fullUrl": "urn:uuid:32b2c37a-9eda-5b3d-a9a4-bb17d101c47d",
+          "fullUrl": "urn:uuid:d3e1cda4-e940-563a-94aa-98ddf4c6dbe3",
           "resource": {
             "resourceType": "Condition",
-            "id": "32b2c37a-9eda-5b3d-a9a4-bb17d101c47d",
+            "id": "d3e1cda4-e940-563a-94aa-98ddf4c6dbe3",
             "clinicalStatus": {
               "coding": [
                 {
@@ -1562,16 +1544,16 @@
               "text": "Chest discomfort for 2 days"
             },
             "subject": {
-              "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+              "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
             },
-            "recordedDate": "2026-09-01T04:12:45.990065+00:00"
+            "recordedDate": "2026-09-01T09:22:09.192310+00:00"
           }
         },
         {
-          "fullUrl": "urn:uuid:bc6ab9c0-84ee-53d8-9db0-cd4bb9db26f8",
+          "fullUrl": "urn:uuid:18ae8f88-0c1a-5aa2-bdfb-4fa887575cb3",
           "resource": {
             "resourceType": "Observation",
-            "id": "bc6ab9c0-84ee-53d8-9db0-cd4bb9db26f8",
+            "id": "18ae8f88-0c1a-5aa2-bdfb-4fa887575cb3",
             "status": "preliminary",
             "category": [
               {
@@ -1587,7 +1569,7 @@
               "text": "Total cholesterol"
             },
             "subject": {
-              "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+              "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
             },
             "effectiveDateTime": "2026-06-12",
             "valueQuantity": {
@@ -1614,10 +1596,10 @@
           }
         },
         {
-          "fullUrl": "urn:uuid:ee5aaff6-d47a-5d25-9fe9-8babd28c2b3c",
+          "fullUrl": "urn:uuid:1314d636-3fb0-5ff0-ab09-7627fe92f76c",
           "resource": {
             "resourceType": "Observation",
-            "id": "ee5aaff6-d47a-5d25-9fe9-8babd28c2b3c",
+            "id": "1314d636-3fb0-5ff0-ab09-7627fe92f76c",
             "status": "preliminary",
             "category": [
               {
@@ -1633,7 +1615,7 @@
               "text": "LDL"
             },
             "subject": {
-              "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+              "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
             },
             "effectiveDateTime": "2026-06-12",
             "valueQuantity": {
@@ -1660,10 +1642,10 @@
           }
         },
         {
-          "fullUrl": "urn:uuid:677c5fc2-8fe2-59a5-985f-1067ddf177a0",
+          "fullUrl": "urn:uuid:471fe41d-0dc1-5615-8a0c-e67d09559426",
           "resource": {
             "resourceType": "Observation",
-            "id": "677c5fc2-8fe2-59a5-985f-1067ddf177a0",
+            "id": "471fe41d-0dc1-5615-8a0c-e67d09559426",
             "status": "preliminary",
             "category": [
               {
@@ -1679,7 +1661,7 @@
               "text": "HDL"
             },
             "subject": {
-              "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+              "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
             },
             "effectiveDateTime": "2026-06-12",
             "valueQuantity": {
@@ -1706,10 +1688,10 @@
           }
         },
         {
-          "fullUrl": "urn:uuid:bace0a09-da51-5900-bffc-41c239231fcc",
+          "fullUrl": "urn:uuid:5c5ff943-f69a-5f38-ad6f-964480385531",
           "resource": {
             "resourceType": "Observation",
-            "id": "bace0a09-da51-5900-bffc-41c239231fcc",
+            "id": "5c5ff943-f69a-5f38-ad6f-964480385531",
             "status": "preliminary",
             "category": [
               {
@@ -1725,7 +1707,7 @@
               "text": "HbA1c"
             },
             "subject": {
-              "reference": "urn:uuid:2b1c6e70-278f-5f05-aa27-2041535adb83"
+              "reference": "urn:uuid:e24797ba-432a-501c-9657-57fa44beea9f"
             },
             "effectiveDateTime": "2026-07-03",
             "valueQuantity": {
@@ -1755,7 +1737,7 @@
     },
     "summary": {
       "chief_complaint": "Chest discomfort for 2 days",
-      "hpi_narrative": "Lakshmi Devi is a 65-year-old female presenting with a sudden onset of severe chest discomfort localized to the centre of the chest behind the breastbone, of 2 days duration. The character of the discomfort is described as burning pressure. The symptom is relieved by resting and is associated with shortness of breath.",
+      "hpi_narrative": "Lakshmi Devi is a 65-year-old female presenting with a 2-day history of chest discomfort. The onset was sudden, and the severity is reported as severe. The discomfort is described as a burning pressure located in the centre of the chest behind the breastbone. It is associated with shortness of breath.",
       "sections": {
         "past_history": "Not collected",
         "drugs_allergies": "Not collected",
@@ -1767,7 +1749,7 @@
         {
           "doc_id": "doc-1",
           "type": "lab_report",
-          "captured_at": "2026-09-01T04:12:44.850030Z",
+          "captured_at": "2026-09-01T09:22:07.814083Z",
           "status": "done",
           "extracted": {},
           "title": "Lipid profile - District Lab",
@@ -1802,7 +1784,7 @@
         {
           "doc_id": "doc-2",
           "type": "lab_report",
-          "captured_at": "2026-09-01T04:12:44.850067Z",
+          "captured_at": "2026-09-01T09:22:07.814162Z",
           "status": "done",
           "extracted": {},
           "title": "HbA1c - District Lab",
@@ -1825,11 +1807,11 @@
           "label": "Chest pain with breathlessness",
           "severity": "critical",
           "triggered_by": [],
-          "detected_at": "2026-09-01T04:12:40.317283Z"
+          "detected_at": "2026-09-01T09:22:03.274192Z"
         }
       ],
       "low_confidence_fields": [],
-      "generated_at": "2026-09-01T04:12:45.990065Z",
+      "generated_at": "2026-09-01T09:22:09.192310Z",
       "verified_by": null,
       "verified_at": null,
       "token": "A-42",

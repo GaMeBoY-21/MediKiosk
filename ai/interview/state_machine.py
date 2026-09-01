@@ -17,13 +17,49 @@ next.
 from ai.interview.nodes import NODE_ORDER, InterviewNode, get_node
 
 
+# How many times one field may be asked about before the interview gives up on
+# it and moves on. Two, not more: a field that has not filled after a second
+# attempt is usually one the model has already recorded under another name, and
+# no amount of rephrasing will fill it. A missing field is recoverable — the
+# physician asks in the consultation. A kiosk stuck asking "where is the pain?"
+# eight times is not: the patient concludes it is broken and walks away.
+MAX_FIELD_ASKS = 2
+
+
+def is_abandoned(field_name: str, session_state: dict) -> bool:
+    """True once a field has been asked about MAX_FIELD_ASKS times unfilled."""
+    if field_name in session_state.get("fields", {}):
+        return False
+    return session_state.get("field_ask_counts", {}).get(field_name, 0) >= MAX_FIELD_ASKS
+
+
+def record_field_ask(session_state: dict, field_name: str) -> dict:
+    """Note that a question was asked targeting `field_name`.
+
+    Called once per generated question. Without this the node-level
+    max_follow_ups cap is the only limit, which allows the same field to be
+    re-asked up to eight times inside one node.
+    """
+    if not field_name:
+        return session_state
+    session_state.setdefault("field_ask_counts", {})
+    counts = session_state["field_ask_counts"]
+    counts[field_name] = counts.get(field_name, 0) + 1
+    return session_state
+
+
 def _is_node_satisfied(node_id: str, session_state: dict) -> bool:
     node = get_node(node_id)
     fields = session_state.get("fields", {})
     follow_up_counts = session_state.get("follow_up_counts", {})
     if follow_up_counts.get(node_id, 0) >= node.max_follow_ups:
         return True
-    return all(field_name in fields for field_name in node.required_fields)
+    # A field counts as settled when it is filled OR when we have given up on
+    # it, so one unfillable field can no longer hold the whole node open.
+    return all(
+        field_name in fields or is_abandoned(field_name, session_state)
+        for field_name in node.required_fields
+    )
 
 
 def next_node(session_state: dict) -> InterviewNode | None:

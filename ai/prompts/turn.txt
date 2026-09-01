@@ -34,6 +34,10 @@ the rule below. Follow it exactly.
 
 Fields already collected in this stage: {already_answered}
 
+Fields you must NOT ask about, because the interview has already tried twice
+and moved on: {abandoned_fields}
+Asking about any of these is the single worst failure mode of this screen.
+
   - If, AFTER your own extraction above, every one of these required fields is
     filled: {required_fields}
     then ask about the NEXT stage, "{advance_node_id}", whose fields are:
@@ -81,6 +85,14 @@ Rules for the question:
       "fever", "weight_loss", "appetite_change", "sleep_problems",
       "bowel_or_urine_change", "none"
   The patient may pick more than one.
+
+- NEVER ask for something you already have. Before writing the question, read
+  the collected values: if the answer is already sitting inside another field —
+  a chief complaint of "middle of chest pain" already states the site — do not
+  ask for it again. Extract it into the right field instead, and ask about
+  something genuinely missing. Re-asking a question the patient has already
+  answered reads as broken, and after two attempts the interview gives up on
+  that field and moves on regardless.
 
 - Also give the SAME question in English as "question_en", and the English of
   each option label as "label_en". These are shown in smaller text beneath the

@@ -52,6 +52,10 @@ class SessionState:
     # How many follow-ups ai.interview.state_machine has asked in each node
     # so far, so it can cap a node off even when a field never gets filled.
     follow_up_counts: Dict[str, int] = field(default_factory=dict)
+    # How many questions have targeted each field. Capped in
+    # ai.interview.state_machine so one unfillable field cannot make the kiosk
+    # ask the same question over and over.
+    field_ask_counts: Dict[str, int] = field(default_factory=dict)
     # The exact question dict last rendered for each node, so a past question
     # can be re-shown verbatim (Confirm screen's edit pencil) instead of
     # asking ai.interview.followup to generate a fresh — and possibly

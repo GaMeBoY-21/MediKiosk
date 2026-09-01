@@ -54,7 +54,9 @@ def start_session(payload: SessionStartRequest | None = None, db: DbSession = De
     # against state.follow_up_counts directly (not a throwaway dict) so the
     # follow-up this counts as is actually recorded, not lost.
     state = store.create(session_id, body.language.value)
-    node = ai_bridge.next_node(state.extracted, state.follow_up_counts, body.language.value)
+    node = ai_bridge.next_node(
+        state.extracted, state.follow_up_counts, body.language.value, state.field_ask_counts
+    )
 
     row = models.Session(
         session_id=session_id,

@@ -139,6 +139,7 @@ def run_turn(
     filled_fields: dict,
     language: str,
     llm: LLMAdapter,
+    abandoned: tuple = (),
 ) -> TurnResult:
     """Extract this answer's fields and phrase the next question, in one call.
 
@@ -157,6 +158,7 @@ def run_turn(
     )
 
     prompt = _load_prompt_template().format(
+        abandoned_fields=", ".join(abandoned) or "(none)",
         transcript=transcript,
         node_id=node.id,
         allowed_fields=", ".join(sorted(allowed)) or "(none)",
@@ -188,7 +190,7 @@ def run_turn(
     remaining = [
         f
         for f in list(scope.required_fields) + list(scope.optional_fields)
-        if f not in answered
+        if f not in answered and f not in abandoned
     ]
 
     question = str(raw.get("question", "")).strip()

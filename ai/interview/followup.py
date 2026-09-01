@@ -33,9 +33,14 @@ def _load_prompt_template() -> str:
     return _PROMPT_PATH.read_text()
 
 
-def _unanswered_fields(node: InterviewNode, filled_fields: dict) -> list[str]:
+def _unanswered_fields(node: InterviewNode, filled_fields: dict, abandoned=()) -> list[str]:
+    """Fields still worth asking about.
+
+    Excludes fields we have given up on, so a question is never generated for
+    something the interview has already decided to move past.
+    """
     all_fields = list(node.required_fields) + list(node.optional_fields)
-    return [f for f in all_fields if f not in filled_fields]
+    return [f for f in all_fields if f not in filled_fields and f not in abandoned]
 
 
 def _parse_options(raw_options) -> list[QuestionOption]:
@@ -59,7 +64,11 @@ def _parse_options(raw_options) -> list[QuestionOption]:
 
 
 def generate_followup(
-    node: InterviewNode, filled_fields: dict, language: str, llm: LLMAdapter
+    node: InterviewNode,
+    filled_fields: dict,
+    language: str,
+    llm: LLMAdapter,
+    abandoned: tuple = (),
 ) -> tuple[str, str, str | None, list[QuestionOption]]:
     """Generate the next follow-up question for the current node.
 
@@ -73,7 +82,7 @@ def generate_followup(
     `options` is [] for a genuinely open-ended question — never omitted,
     never None.
     """
-    remaining = _unanswered_fields(node, filled_fields)
+    remaining = _unanswered_fields(node, filled_fields, abandoned)
     if not remaining:
         return "", node.phase_label, None, []
 
