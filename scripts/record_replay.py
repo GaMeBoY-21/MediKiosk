@@ -24,19 +24,42 @@ PACE = 4.5
 OUT = pathlib.Path("/Users/nikhilesh/projects/Medikiosk/frontend/public/replay/session.json")
 
 
+TOKEN = {"access": None}
+
+
+def _headers():
+    h = {"Content-Type": "application/json"}
+    if TOKEN["access"]:
+        h["Authorization"] = f"Bearer {TOKEN['access']}"
+    return h
+
+
 def call(path, body=None, method="POST"):
     data = json.dumps(body if body is not None else {}).encode()
     req = urllib.request.Request(
         B + path, data=data if method != "GET" else None,
-        headers={"Content-Type": "application/json"}, method=method,
+        headers=_headers(), method=method,
     )
     with urllib.request.urlopen(req) as r:
         return json.load(r)
 
 
 def get(path):
-    with urllib.request.urlopen(B + path) as r:
+    req = urllib.request.Request(B + path, headers=_headers(), method="GET")
+    with urllib.request.urlopen(req) as r:
         return json.load(r)
+
+
+def sign_in():
+    """The physician routes need a clinician token now. Credentials come from
+    app/.demo-credentials, written when the account was seeded."""
+    creds_file = pathlib.Path("/Users/nikhilesh/projects/Medikiosk/app/.demo-credentials")
+    creds = dict(
+        line.split(": ", 1) for line in creds_file.read_text().strip().splitlines()
+    )
+    TOKEN["access"] = call(
+        "/auth/login", {"username": creds["username"], "password": creds["password"]}
+    )["access"]
 
 
 SEED = {"patient_name": "Lakshmi Devi", "age": "65", "sex": "female", "consent_given": "yes"}
@@ -120,6 +143,7 @@ def record_kiosk():
 
 def record_physician(sid):
     print("== recording physician track ==")
+    sign_in()
     out = {}
     out["queue"] = get("/physician/queue")
     out["case"] = get(f"/physician/{sid}")

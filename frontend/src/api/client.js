@@ -92,6 +92,24 @@ async function request(path, { method = 'GET', body, isForm = false, retry = tru
 /* -------------------------------------------------------------------- auth */
 
 export async function login(username, password) {
+  if (REPLAY) {
+    // Offline demo. The login form is still shown and still has to be filled,
+    // so the flow demonstrates honestly, but there is no server to verify
+    // against. Safe only because replay serves a recorded session and nothing
+    // else: no live patient data exists in this mode, and the REPLAY badge is
+    // on screen throughout.
+    await wait(MOCK_DELAY);
+    if (!username || !password) throw new Error('Invalid username or password.');
+    const session = {
+      access: 'replay',
+      refresh: 'replay',
+      role: 'doctor',
+      name: 'Dr. A. Mehta (replay)',
+      expires_in: 3600,
+    };
+    setSession({ ...session, username });
+    return session;
+  }
   const res = await fetch(`${BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -112,6 +130,7 @@ export async function login(username, password) {
 
 /** Exchange the refresh token for a new access token. Returns true on success. */
 export async function renewAccess() {
+  if (REPLAY) return true;
   const refresh = refreshToken();
   if (!refresh) return false;
   try {
@@ -133,6 +152,10 @@ export async function renewAccess() {
 }
 
 export async function logout() {
+  if (REPLAY) {
+    clearSession();
+    return;
+  }
   const refresh = refreshToken();
   // Clear locally first: even if the network call fails, this browser must
   // stop holding a usable token.
