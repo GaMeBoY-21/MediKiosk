@@ -2,7 +2,13 @@
 // Screen 6. The workhorse — seen 15-20 times in one session. The layout never
 // changes, so it stops needing to be read after the second question:
 //
-//   phase · question · optional tiles · mic · transcript · [Next] · bottom bar
+//   phase · question · optional tiles · mic · answer box · [Next] · bottom bar
+//
+// The answer box takes typing on every question, always. Open-ended questions
+// used to render a mic and nothing else, so a patient who cannot speak clearly
+// — or who is standing in a noisy OPD where recognition just fails — could not
+// answer them at all. When recognition is missing or has errored the mic is
+// removed entirely and typing carries the screen.
 //
 // Fully data-driven. Question text and options come from the API response.
 // There is no clinical content in this file, and there must never be any.
@@ -40,9 +46,23 @@ export default function Interview({ onError }) {
   const [understood, setUnderstood] = useState([]);
   const [thinking, setThinking] = useState(!currentNode);
   const [selected, setSelected] = useState(null);
+  // What is actually in the answer box. Speech writes into it, the patient
+  // can type into it, and either one alone is a complete answer. Held here
+  // rather than read straight off the speech hook so an edit survives.
+  const [answer, setAnswer] = useState('');
 
-  const { start, stop, reset, transcript, interim, listening, isSupported } =
+  const { start, stop, reset, transcript, interim, listening, isSupported, error } =
     useSpeechRecognition(voice);
+
+  // No mic at all when recognition is missing or has failed. A dead button
+  // next to a box that does work only invites the patient to keep pressing
+  // it; typing carries the screen instead.
+  const micUsable = isSupported && !error;
+  const answerHint = micUsable ? tx('common.tapOrType') : tx('common.typeHere');
+
+  // Speech overwrites the box, but only when new words actually arrive, so
+  // a correction typed between utterances is not thrown away.
+  const lastHeard = useRef('');
 
   // StrictMode double-invokes effects in dev; without this the mocked interview
   // would advance two questions on the first render.
@@ -65,6 +85,8 @@ export default function Interview({ onError }) {
       setNode(res);
       setCurrentNode(res);
       setSelected(null);
+      setAnswer('');
+      lastHeard.current = '';
       reset();
       setThinking(false);
     },
@@ -111,7 +133,11 @@ export default function Interview({ onError }) {
       ask({
         node_id: previous?.node_id ?? 'chief_complaint',
         value: previous?.value ?? null,
-        text: previous?.text ?? '',
+        // A tapped complaint tile carries no transcript. `previous.text` is
+        // its label, kept for the Confirm screen to show; sending it as speech
+        // would push a tap down the extraction path and pay a model call to
+        // re-derive the canonical token we already have.
+        text: previous?.value ? '' : previous?.text ?? '',
       });
 
     if (!Object.keys(known).length) {
@@ -128,27 +154,51 @@ export default function Interview({ onError }) {
 
   useEffect(() => stop, [stop]);
 
-  const answerText = selected
-    ? node?.options?.find((o) => o.value === selected)?.label ?? ''
-    : transcript.trim();
+  useEffect(() => {
+    const heard = transcript.trim();
+    if (!heard || heard === lastHeard.current) return;
+    lastHeard.current = heard;
+    setAnswer(heard);
+    // Speaking after tapping means the patient changed their mind.
+    setSelected(null);
+  }, [transcript]);
 
-  const canAdvance = Boolean(selected || transcript.trim());
+  const typed = answer.trim();
+  // Three independent ways to have answered. Any one of them is enough — that
+  // is the whole point: no question may be reachable with no usable input.
+  const canAdvance = Boolean(selected || typed);
+
+  const handleType = (text) => {
+    setAnswer(text);
+    // Typing over a tapped tile replaces it rather than sending both.
+    if (selected) setSelected(null);
+  };
 
   const next = () => {
     if (!node || !canAdvance) return;
+    const label = node?.options?.find((o) => o.value === selected)?.label ?? '';
+    // A tapped tile sends NO text. Its value is already a canonical English
+    // token, so app/ files it straight into the target field with no model
+    // call; sending the label as a transcript as well sent the tap down the
+    // extraction path instead, spending a request and a round trip to
+    // re-derive what we already knew.
+    const text = selected ? '' : typed;
     addAnswer({
       node_id: node.node_id,
       question: node.question,
       value: selected,
-      text: answerText,
+      text: selected ? label : typed,
     });
-    ask({ node_id: node.node_id, value: selected, text: answerText });
+    ask({ node_id: node.node_id, value: selected, text });
   };
 
   const chooseOption = (value) => {
     setSelected(value);
     const label = node?.options?.find((o) => o.value === value)?.label;
-    if (label) speak(label, voice);
+    if (label) {
+      setAnswer(label);
+      speak(label, voice);
+    }
   };
 
   if (thinking || !node) {
@@ -167,6 +217,7 @@ export default function Interview({ onError }) {
   return (
     <ScreenShell
       prompt={{ label: node.question, audio: node.question }}
+      repeatAudio={`${node.question} ${answerHint.audio}`}
       phase={node.phase}
       speechKey={node.node_id}
     >
@@ -186,21 +237,25 @@ export default function Interview({ onError }) {
         </div>
       ) : null}
 
-      <MicButton
-        listening={listening}
-        onStart={start}
-        onStop={stop}
-        supported={isSupported}
-        labelIdle={tx('common.tapToSpeak').label}
-        labelListening={tx('common.listening').label}
-        labelUnsupported={tx('common.micUnavailable').label}
-      />
+      {micUsable ? (
+        <MicButton
+          listening={listening}
+          onStart={start}
+          onStop={stop}
+          supported
+          labelIdle={tx('common.tapToSpeak').label}
+          labelListening={tx('common.listening').label}
+          labelUnsupported={tx('common.micUnavailable').label}
+        />
+      ) : null}
 
       <div className="interview__row">
         <TranscriptBox
-          final={selected ? answerText : transcript}
+          value={answer}
           interim={selected ? '' : interim}
-          placeholder={tx('common.tapToSpeak').label}
+          onChange={handleType}
+          placeholder={answerHint.label}
+          ariaLabel={node.question}
         />
         <UnderstandingPanel extracted={understood} />
       </div>

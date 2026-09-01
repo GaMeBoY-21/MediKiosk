@@ -34,6 +34,14 @@ export const strings = {
       no: { label: 'No', audio: 'No.' },
       doneSpeaking: { label: 'Done speaking', audio: 'Finished speaking.' },
       tapToSpeak: { label: 'Tap to speak', audio: 'Tap the green circle and speak.' },
+      tapOrType: {
+        label: 'Tap the mic to speak, or type here',
+        audio: 'Tap the green circle and speak, or type your answer here.',
+      },
+      typeHere: {
+        label: 'Type your answer here',
+        audio: 'The microphone is not working. Please type your answer here.',
+      },
       listening: { label: 'Listening', audio: 'I am listening.' },
       oneMoment: { label: 'One moment', audio: 'One moment please.' },
       understood: { label: 'What we understood', audio: '' },
@@ -151,6 +159,14 @@ export const strings = {
       no: { label: 'नहीं', audio: 'नहीं।' },
       doneSpeaking: { label: 'बोलना पूरा हुआ', audio: 'बोलना पूरा हुआ।' },
       tapToSpeak: { label: 'बोलने के लिए दबाएँ', audio: 'हरे गोले को दबाइए और बोलिए।' },
+      tapOrType: {
+        label: 'बोलने के लिए माइक दबाएँ, या यहाँ लिखें',
+        audio: 'हरे गोले को दबाकर बोलिए, या अपना जवाब यहाँ लिखिए।',
+      },
+      typeHere: {
+        label: 'अपना जवाब यहाँ लिखें',
+        audio: 'माइक काम नहीं कर रहा। कृपया अपना जवाब यहाँ लिखिए।',
+      },
       listening: { label: 'सुन रहे हैं', audio: 'मैं सुन रहा हूँ।' },
       oneMoment: { label: 'एक क्षण', audio: 'कृपया एक क्षण रुकिए।' },
       understood: { label: 'हमने क्या समझा', audio: '' },
@@ -268,6 +284,14 @@ export const strings = {
       no: { label: 'ಇಲ್ಲ', audio: 'ಇಲ್ಲ.' },
       doneSpeaking: { label: 'ಮಾತು ಮುಗಿಯಿತು', audio: 'ಮಾತು ಮುಗಿಯಿತು.' },
       tapToSpeak: { label: 'ಮಾತನಾಡಲು ಒತ್ತಿ', audio: 'ಹಸಿರು ವೃತ್ತವನ್ನು ಒತ್ತಿ ಮಾತನಾಡಿ.' },
+      tapOrType: {
+        label: 'ಮಾತನಾಡಲು ಮೈಕ್ ಒತ್ತಿ, ಅಥವಾ ಇಲ್ಲಿ ಬರೆಯಿರಿ',
+        audio: 'ಹಸಿರು ವೃತ್ತವನ್ನು ಒತ್ತಿ ಮಾತನಾಡಿ, ಅಥವಾ ನಿಮ್ಮ ಉತ್ತರವನ್ನು ಇಲ್ಲಿ ಬರೆಯಿರಿ.',
+      },
+      typeHere: {
+        label: 'ನಿಮ್ಮ ಉತ್ತರವನ್ನು ಇಲ್ಲಿ ಬರೆಯಿರಿ',
+        audio: 'ಮೈಕ್ ಕೆಲಸ ಮಾಡುತ್ತಿಲ್ಲ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಉತ್ತರವನ್ನು ಇಲ್ಲಿ ಬರೆಯಿರಿ.',
+      },
       listening: { label: 'ಕೇಳುತ್ತಿದೆ', audio: 'ನಾನು ಕೇಳುತ್ತಿದ್ದೇನೆ.' },
       oneMoment: { label: 'ಒಂದು ಕ್ಷಣ', audio: 'ದಯವಿಟ್ಟು ಒಂದು ಕ್ಷಣ ಕಾಯಿರಿ.' },
       understood: { label: 'ನಾವು ಏನು ಅರ್ಥಮಾಡಿಕೊಂಡೆವು', audio: '' },
@@ -385,6 +409,14 @@ export const strings = {
       no: { label: 'இல்லை', audio: 'இல்லை.' },
       doneSpeaking: { label: 'பேசி முடித்தேன்', audio: 'பேசி முடித்தேன்.' },
       tapToSpeak: { label: 'பேச தொடவும்', audio: 'பச்சை வட்டத்தைத் தொட்டு பேசுங்கள்.' },
+      tapOrType: {
+        label: 'பேச மைக்கை அழுத்துங்கள், அல்லது இங்கே எழுதுங்கள்',
+        audio: 'பச்சை வட்டத்தை அழுத்திப் பேசுங்கள், அல்லது உங்கள் பதிலை இங்கே எழுதுங்கள்.',
+      },
+      typeHere: {
+        label: 'உங்கள் பதிலை இங்கே எழுதுங்கள்',
+        audio: 'மைக் வேலை செய்யவில்லை. உங்கள் பதிலை இங்கே எழுதுங்கள்.',
+      },
       listening: { label: 'கேட்கிறது', audio: 'நான் கேட்கிறேன்.' },
       oneMoment: { label: 'ஒரு நிமிடம்', audio: 'தயவுசெய்து ஒரு நிமிடம் காத்திருங்கள்.' },
       understood: { label: 'நாங்கள் புரிந்துகொண்டது', audio: '' },
@@ -502,6 +534,14 @@ export const strings = {
       no: { label: 'కాదు', audio: 'కాదు.' },
       doneSpeaking: { label: 'మాట్లాడటం పూర్తయింది', audio: 'మాట్లాడటం పూర్తయింది.' },
       tapToSpeak: { label: 'మాట్లాడటానికి నొక్కండి', audio: 'ఆకుపచ్చ వృత్తాన్ని నొక్కి మాట్లాడండి.' },
+      tapOrType: {
+        label: 'మాట్లాడటానికి మైక్ నొక్కండి, లేదా ఇక్కడ రాయండి',
+        audio: 'ఆకుపచ్చ వృత్తాన్ని నొక్కి మాట్లాడండి, లేదా మీ సమాధానాన్ని ఇక్కడ రాయండి.',
+      },
+      typeHere: {
+        label: 'మీ సమాధానాన్ని ఇక్కడ రాయండి',
+        audio: 'మైక్ పని చేయడం లేదు. దయచేసి మీ సమాధానాన్ని ఇక్కడ రాయండి.',
+      },
       listening: { label: 'వింటున్నాము', audio: 'నేను వింటున్నాను.' },
       oneMoment: { label: 'ఒక్క క్షణం', audio: 'దయచేసి ఒక్క క్షణం ఆగండి.' },
       understood: { label: 'మేము అర్థం చేసుకున్నది', audio: '' },
@@ -619,6 +659,14 @@ export const strings = {
       no: { label: 'नाही', audio: 'नाही.' },
       doneSpeaking: { label: 'बोलणे पूर्ण', audio: 'बोलणे पूर्ण झाले.' },
       tapToSpeak: { label: 'बोलण्यासाठी दाबा', audio: 'हिरव्या वर्तुळावर दाबा आणि बोला.' },
+      tapOrType: {
+        label: 'बोलण्यासाठी माइक दाबा, किंवा येथे लिहा',
+        audio: 'हिरवे वर्तुळ दाबून बोला, किंवा तुमचे उत्तर येथे लिहा.',
+      },
+      typeHere: {
+        label: 'तुमचे उत्तर येथे लिहा',
+        audio: 'माइक काम करत नाही. कृपया तुमचे उत्तर येथे लिहा.',
+      },
       listening: { label: 'ऐकत आहे', audio: 'मी ऐकत आहे.' },
       oneMoment: { label: 'एक क्षण', audio: 'कृपया एक क्षण थांबा.' },
       understood: { label: 'आम्हाला काय समजले', audio: '' },
@@ -736,6 +784,14 @@ export const strings = {
       no: { label: 'না', audio: 'না।' },
       doneSpeaking: { label: 'বলা শেষ', audio: 'বলা শেষ হয়েছে।' },
       tapToSpeak: { label: 'বলতে চাপুন', audio: 'সবুজ বৃত্তে চাপ দিয়ে বলুন।' },
+      tapOrType: {
+        label: 'বলতে মাইকে চাপুন, বা এখানে লিখুন',
+        audio: 'সবুজ বৃত্তে চাপ দিয়ে বলুন, বা আপনার উত্তর এখানে লিখুন।',
+      },
+      typeHere: {
+        label: 'আপনার উত্তর এখানে লিখুন',
+        audio: 'মাইক কাজ করছে না। অনুগ্রহ করে আপনার উত্তর এখানে লিখুন।',
+      },
       listening: { label: 'শুনছি', audio: 'আমি শুনছি।' },
       oneMoment: { label: 'এক মুহূর্ত', audio: 'অনুগ্রহ করে এক মুহূর্ত অপেক্ষা করুন।' },
       understood: { label: 'আমরা যা বুঝেছি', audio: '' },
