@@ -925,3 +925,41 @@ export function t(lang, path) {
   }
   return entry;
 }
+
+/* ------------------------------------------------------- bilingual lookup */
+
+// Reverse index: a rendered label in some language -> the English label for the
+// same entry. Built once from `strings` above.
+//
+// This exists so the bilingual rule can be applied in the shared components
+// rather than edited into all ~48 places a screen renders a label. A screen
+// keeps passing a plain string; the component finds its English counterpart.
+//
+// Text with no entry here — an interview question or option, which the API
+// sends already translated — simply returns undefined and renders once. That
+// is correct: there is no English counterpart on the client to show.
+const REVERSE = (() => {
+  const index = {};
+  for (const [lang, screens] of Object.entries(strings)) {
+    if (lang === DEFAULT_LANG) continue;
+    const map = new Map();
+    for (const [screen, entries] of Object.entries(screens)) {
+      for (const [key, entry] of Object.entries(entries)) {
+        const english = strings[DEFAULT_LANG]?.[screen]?.[key]?.label;
+        if (entry?.label && english && entry.label !== english) {
+          // First writer wins. A duplicate label in one language means the two
+          // entries say the same thing, so either English rendering is right.
+          if (!map.has(entry.label)) map.set(entry.label, english);
+        }
+      }
+    }
+    index[lang] = map;
+  }
+  return index;
+})();
+
+/** The English label matching `text` in `lang`, or undefined if unknown. */
+export function englishFor(text, lang) {
+  if (!text || lang === DEFAULT_LANG) return undefined;
+  return REVERSE[lang]?.get(String(text));
+}

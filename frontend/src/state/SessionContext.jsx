@@ -28,6 +28,11 @@ export const SCREENS = {
 
 const INITIAL = {
   language: DEFAULT_LANG,
+  // Whether the patient has actually PICKED a language, as opposed to us
+  // sitting on the default. Without this the app could not tell "English
+  // because they chose it" from "English because nobody has chosen yet", so
+  // pre-selection screens rendered in whatever happened to be in state.
+  languageChosen: false,
   sessionId: null,
   patient: { name: '', age: '', sex: '', idKind: null, idMasked: null },
   consentGiven: null, // null = not asked, false = refused
@@ -74,7 +79,10 @@ export function SessionProvider({ children }) {
     setState((s) => ({ ...s, ...fields }));
   }, []);
 
-  const setLanguage = useCallback((language) => patch({ language }), [patch]);
+  const setLanguage = useCallback(
+    (language) => patch({ language, languageChosen: true }),
+    [patch],
+  );
   const setSessionId = useCallback((sessionId) => patch({ sessionId }), [patch]);
   const setSummary = useCallback((summary) => patch({ summary }), [patch]);
   const setCurrentNode = useCallback((currentNode) => patch({ currentNode }), [patch]);
@@ -192,4 +200,13 @@ export function useSession() {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error('useSession must be used inside <SessionProvider>');
   return ctx;
+}
+
+/** Session state if there is one, otherwise null — never throws.
+ *
+ *  For shared components that render on both sides of the app. The physician
+ *  console lives outside SessionProvider, so anything reaching for session
+ *  state there must degrade rather than crash the whole console. */
+export function useOptionalSession() {
+  return useContext(SessionContext);
 }

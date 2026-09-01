@@ -8,6 +8,7 @@
 // --alert is reserved for exactly this screen.
 
 import { useEffect, useRef, useState } from 'react';
+import BilingualText from '../components/BilingualText.jsx';
 import { Warning } from '../components/Icons.jsx';
 import { useT } from '../i18n/useT.js';
 import { useSpeech } from '../speech/SpeechProvider.jsx';
@@ -15,6 +16,7 @@ import { useSession, SCREENS } from '../state/SessionContext.jsx';
 
 const HOLD_MS = 3000;
 const TICK_MS = 50;
+
 
 export default function Emergency() {
   const { tx, voice } = useT();
@@ -54,7 +56,9 @@ export default function Emergency() {
       <div className="emergency__inner">
         <Warning size={96} />
 
-        <h1 className="emergency__headline">{patient.label}</h1>
+        <BilingualText as="h1" className="emergency__headline" always>
+          {patient.label}
+        </BilingualText>
 
         {/* Staff-facing, always English — the person reading this is clinical.
             The API field is `label` (see app/schemas.py RedFlag); this used to

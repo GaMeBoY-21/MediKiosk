@@ -11,6 +11,7 @@
 // option tiles counts as one control.
 
 import { useEffect } from 'react';
+import BilingualText from './BilingualText.jsx';
 import { ArrowLeft, Speaker } from './Icons.jsx';
 import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSession } from '../state/SessionContext.jsx';
@@ -25,6 +26,9 @@ export default function ScreenShell({
   hideHeading = false,
   /** patient-facing stage name from the API's `phase`. Absent renders nothing. */
   phase,
+  /** force the English line even before a language is chosen — error and
+   *  emergency screens, which staff read. */
+  alwaysBilingual = false,
   /** identifies what is being spoken, so it is spoken exactly once */
   speechKey,
   children,
@@ -74,7 +78,11 @@ export default function ScreenShell({
       </div>
 
       <main className="shell__main">
-        {prompt && !hideHeading ? <h1 className="shell__question">{prompt.label}</h1> : null}
+        {prompt && !hideHeading ? (
+          <BilingualText as="h1" className="shell__question" always={alwaysBilingual}>
+            {prompt.label}
+          </BilingualText>
+        ) : null}
         {children}
       </main>
 
@@ -87,11 +95,11 @@ export default function ScreenShell({
           onClick={() => speak(toRepeat, voice)}
         >
           <Speaker />
-          <span>{label('common.repeat')}</span>
+          <BilingualText always={alwaysBilingual}>{label('common.repeat')}</BilingualText>
         </button>
         <button type="button" className="shell__bar-btn" onClick={handleBack}>
           <ArrowLeft />
-          <span>{label('common.back')}</span>
+          <BilingualText always={alwaysBilingual}>{label('common.back')}</BilingualText>
         </button>
       </nav>
     </div>

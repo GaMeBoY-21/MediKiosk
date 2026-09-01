@@ -24,6 +24,7 @@ import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSpeechRecognition } from '../speech/useSpeechRecognition.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
 import { recordKnownFields, submitAnswer } from '../api/client.js';
+import BilingualText from '../components/BilingualText.jsx';
 
 // Interview stages that are rendered by their own screen instead of as a
 // generic question. Keyed by the node id ai/interview/nodes.py uses.
@@ -240,7 +241,7 @@ export default function Interview({ onError }) {
         phase={node?.phase}
       >
         {/* Static text only. No spinner — nothing else in this app moves. */}
-        <p className="shell__caption">{tx('common.oneMoment').label}</p>
+        <BilingualText as="p" className="shell__caption">{tx('common.oneMoment').label}</BilingualText>
       </ScreenShell>
     );
   }

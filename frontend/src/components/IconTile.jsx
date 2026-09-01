@@ -4,6 +4,8 @@
 
 import { useSpeech } from '../speech/SpeechProvider.jsx';
 
+import BilingualText from './BilingualText.jsx';
+
 export default function IconTile({
   icon: Icon,
   label,
@@ -28,7 +30,7 @@ export default function IconTile({
       aria-pressed={selected}
     >
       {Icon ? <Icon /> : null}
-      <span className="tile__label">{label}</span>
+      <BilingualText className="tile__label">{label}</BilingualText>
     </button>
   );
 }
