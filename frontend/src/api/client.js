@@ -44,6 +44,28 @@ function loadMocks() {
   return mockPromise;
 }
 
+/** The API host could not be reached at all — no response, no status.
+ *
+ *  Almost always means the backend is not running. The browser reports this as
+ *  a bare "TypeError: Failed to fetch" with 0 bytes on both the preflight and
+ *  the request, which says nothing about what to do next, so this replaces it
+ *  with the base URL that was tried and the command that fixes it. A genuine
+ *  CORS rejection looks different: a real response arrives, with headers.
+ */
+export class ApiUnreachable extends Error {
+  constructor(path, cause) {
+    super(
+      `Cannot reach the API at ${BASE}${path}. ` +
+        `Is the backend running? Start it with:\n` +
+        `    python3 -m uvicorn app.main:app --port 8000\n` +
+        `(or set VITE_REPLAY=true in frontend/.env.local to demo with no backend)`,
+    );
+    this.name = 'ApiUnreachable';
+    this.base = BASE;
+    this.cause = cause;
+  }
+}
+
 /** Thrown on 401 so callers can route to the login screen instead of showing
  *  a generic failure. */
 export class Unauthorized extends Error {
@@ -63,12 +85,19 @@ function buildHeaders(isForm) {
 }
 
 async function request(path, { method = 'GET', body, isForm = false, retry = true } = {}) {
-  const send = () =>
-    fetch(`${BASE}${path}`, {
-      method,
-      headers: buildHeaders(isForm),
-      body: isForm ? body : body ? JSON.stringify(body) : undefined,
-    });
+  const send = async () => {
+    try {
+      return await fetch(`${BASE}${path}`, {
+        method,
+        headers: buildHeaders(isForm),
+        body: isForm ? body : body ? JSON.stringify(body) : undefined,
+      });
+    } catch (cause) {
+      // fetch only rejects for network-level failures — DNS, refused
+      // connection, blocked preflight. An HTTP error status resolves normally.
+      throw new ApiUnreachable(path, cause);
+    }
+  };
 
   let res = await send();
 
@@ -110,11 +139,16 @@ export async function login(username, password) {
     setSession({ ...session, username });
     return session;
   }
-  const res = await fetch(`${BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+  } catch (cause) {
+    throw new ApiUnreachable('/auth/login', cause);
+  }
   if (!res.ok) {
     // The server deliberately returns one message for every failure mode.
     // Show exactly that; do not add detail it withheld on purpose.
