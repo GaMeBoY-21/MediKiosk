@@ -24,9 +24,14 @@ from pathlib import Path
 from app.schemas import ExtractedField, FieldSource, QuestionOption
 
 from ai.adapters.base import LLMAdapter, MalformedOutputError
-from ai.interview.followup import describe_filled, resolve_target_field
+from ai.interview.followup import (
+    describe_filled,
+    enforce_danger_options,
+    resolve_target_field,
+)
 from ai.interview.nodes import InterviewNode
 from ai.interview.reconcile import derive_fields
+from ai.knowledge.danger_symptoms import describe_danger_options
 
 log = logging.getLogger(__name__)
 
@@ -161,6 +166,9 @@ def run_turn(
         already_answered=describe_filled(filled_fields),
         advance_node_id=advance_id,
         advance_fields=advance_fields,
+        # Resolved from a table before the call. The model is handed this
+        # patient's danger symptoms, not asked to work out which ones apply.
+        danger_symptom_options=describe_danger_options(filled_fields),
         language=language,
     )
 
@@ -194,10 +202,16 @@ def run_turn(
         if f not in answered and f not in capped
     ]
 
+    target_field = resolve_target_field(raw.get("target_field"), remaining)
     return TurnResult(
         fields=fields,
         asking_about=asking_about,
-        target_field=resolve_target_field(raw.get("target_field"), remaining),
+        target_field=target_field,
         question=str(raw.get("question", "")).strip(),
-        options=_parse_options(raw.get("options")),
+        # Safety content is not the model's to choose. Checked against
+        # ai/knowledge/danger_symptoms.py using the reconciled field set, so
+        # the list matches the complaint we have actually landed on.
+        options=enforce_danger_options(
+            target_field, answered, _parse_options(raw.get("options"))
+        ),
     )

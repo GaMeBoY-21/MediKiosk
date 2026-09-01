@@ -18,6 +18,10 @@ _SYMPTOM_FIELDS = (
     "symptom_site",
     "symptom_radiation",
     "associated_symptoms",
+    # The one general screening question. It is a symptom-bearing field and was
+    # simply missing from this list, so nothing a patient reported there was
+    # ever checked against a rule.
+    "ros_screen",
     "ros_cardiovascular",
     "ros_respiratory",
     "ros_neurological",
@@ -45,10 +49,28 @@ _PREGNANT = ("pregnant", "pregnancy")
 _BLEEDING = ("bleeding",)
 _SEVERE_ABDOMINAL_PAIN = ("severe abdominal pain", "severe stomach pain", "severe belly pain")
 
+# Cauda equina: back pain with bladder/bowel loss or leg weakness. A surgical
+# emergency with a window measured in hours, and the OPD queue is not it.
+_BACK_COMPLAINT = ("back pain", "backache", "back ache", "lower back", "low back", "spine")
+_BLADDER_BOWEL_LOSS = (
+    "loss of bladder", "loss of bowel", "bladder or bowel", "incontinence",
+    "cannot control urine", "loss of control of urine",
+)
+_LEG_WEAKNESS = ("leg weakness", "weakness in the legs", "weakness in legs", "legs give way")
+_VOMITING_BLOOD = ("vomiting blood", "vomited blood", "blood in vomit", "haematemesis", "hematemesis")
+_COUGHING_BLOOD = ("coughing blood", "cough with blood", "blood in sputum", "haemoptysis", "hemoptysis")
+
 
 def _text_blob(fields: dict) -> str:
     """Flatten every symptom-bearing field into one lowercase string for
-    substring matching."""
+    substring matching.
+
+    Underscores become spaces. Values reaching here are not all prose any more:
+    a tapped option stores a canonical token like "loss_of_bladder_or_bowel_
+    control", and every phrase in this module is written with spaces. Without
+    this one replace, a danger sign the patient tapped matches nothing at all —
+    which is the whole failure mode the touch path exists to avoid.
+    """
     parts = []
     for key in _SYMPTOM_FIELDS:
         value = fields.get(key)
@@ -56,7 +78,7 @@ def _text_blob(fields: dict) -> str:
             parts.append(value)
         elif isinstance(value, (list, tuple)):
             parts.extend(str(item) for item in value)
-    return " ".join(parts).lower()
+    return " ".join(parts).lower().replace("_", " ")
 
 
 def _has_any(blob: str, phrases: tuple[str, ...]) -> bool:
@@ -112,6 +134,32 @@ def _rule_pregnancy_complication(fields: dict) -> bool:
     return _has_any(blob, _BLEEDING) or _has_any(blob, _SEVERE_ABDOMINAL_PAIN)
 
 
+def _rule_cauda_equina(fields: dict) -> bool:
+    blob = _text_blob(fields)
+    is_back = _has_any(blob, _BACK_COMPLAINT) or _norm(fields.get("symptom_site")) == "back"
+    if not is_back:
+        return False
+    return _has_any(blob, _BLADDER_BOWEL_LOSS) or _has_any(blob, _LEG_WEAKNESS)
+
+
+def _rule_vomiting_blood(fields: dict) -> bool:
+    return _has_any(_text_blob(fields), _VOMITING_BLOOD)
+
+
+def _rule_coughing_blood(fields: dict) -> bool:
+    return _has_any(_text_blob(fields), _COUGHING_BLOOD)
+
+
+def _norm(value) -> str:
+    """One field's value, lowercased with underscores opened out. Used where a
+    whole-value comparison is wanted rather than a substring scan of the blob:
+    symptom_site == "back" must not be satisfied by the word "back" turning up
+    inside some other answer."""
+    if isinstance(value, (list, tuple)):
+        return " ".join(str(item) for item in value).lower().replace("_", " ").strip()
+    return str(value or "").lower().replace("_", " ").strip()
+
+
 @dataclass(frozen=True)
 class RedFlagRule:
     rule_id: str
@@ -130,6 +178,14 @@ RED_FLAG_RULES: tuple[RedFlagRule, ...] = (
     RedFlagRule("suicidal_ideation", "Suicidal ideation", FlagSeverity.critical, _rule_suicidal_ideation),
     RedFlagRule("high_fever_neck_stiffness", "High fever with neck stiffness", FlagSeverity.high, _rule_high_fever_neck_stiffness),
     RedFlagRule("pregnancy_complication", "Pregnancy with bleeding or severe abdominal pain", FlagSeverity.critical, _rule_pregnancy_complication),
+    # Added alongside ai/knowledge/danger_symptoms.py. That table now puts
+    # these signs in front of back-pain, abdominal-pain and breathlessness
+    # patients as tappable tiles; offering a danger sign that fires no rule is
+    # the same silent success this codebase has been bitten by repeatedly — the
+    # patient reports it, the record shows it, and nothing happens.
+    RedFlagRule("cauda_equina", "Back pain with leg weakness or loss of bladder or bowel control", FlagSeverity.critical, _rule_cauda_equina),
+    RedFlagRule("vomiting_blood", "Vomiting blood", FlagSeverity.critical, _rule_vomiting_blood),
+    RedFlagRule("coughing_blood", "Coughing blood", FlagSeverity.high, _rule_coughing_blood),
 )
 
 
