@@ -7,7 +7,7 @@
 #   ./dev.sh --check    run preflight only and exit
 #
 # Launcher only: it never edits app/, ai/ or frontend/, and never prints the
-# contents of .env or any secret — presence is reported, values are not.
+# contents of .env or any secret -- presence is reported, values are not.
 
 set -euo pipefail
 
@@ -19,8 +19,8 @@ set -m
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-API_PORT=8000
-WEB_PORT=5173
+API_PORT="${API_PORT:-8000}"
+WEB_PORT="${WEB_PORT:-5173}"
 VENV="$ROOT/venv"
 ENV_FILE="$ROOT/app/.env"
 CRED_FILE="$ROOT/app/.demo-credentials"
@@ -41,14 +41,14 @@ else
   BOLD=""; RED=""; GREEN=""; YELLOW=""; DIM=""; RESET=""
 fi
 
-ok()   { printf '  %s✓%s %s\n' "$GREEN" "$RESET" "$1"; }
-warn() { printf '  %s!%s %s\n' "$YELLOW" "$RESET" "$1"; }
-info() { printf '  %s·%s %s\n' "$DIM" "$RESET" "$1"; }
+ok()   { printf '  %s[ok]%s   %s\n' "$GREEN" "$RESET" "$1"; }
+warn() { printf '  %s[warn]%s %s\n' "$YELLOW" "$RESET" "$1"; }
+info() { printf '  %s[..]%s   %s\n' "$DIM" "$RESET" "$1"; }
 
 # Every failure names the file and the command that fixes it. A preflight that
 # just says "failed" costs more time than no preflight at all.
 die() {
-  printf '\n  %s✗ %s%s\n' "$RED$BOLD" "$1" "$RESET" >&2
+  printf '\n  %s[FAIL] %s%s\n' "$RED$BOLD" "$1" "$RESET" >&2
   shift
   for line in "$@"; do printf '    %s\n' "$line" >&2; done
   printf '\n' >&2
@@ -138,7 +138,7 @@ preflight() {
   ok "python3 $(python3 --version 2>&1 | awk '{print $2}')"
 
   if [ ! -x "$VENV/bin/python" ]; then
-    warn "no virtualenv at venv/ — creating one (first run only)"
+    warn "no virtualenv at venv/ -- creating one (first run only)"
     python3 -m venv "$VENV" \
       || die "could not create the virtualenv" \
              "Try:  python3 -m venv venv" \
@@ -153,7 +153,7 @@ preflight() {
   # Deps live in the venv, not the system interpreter. Checked by import
   # rather than by pip list, because that is what actually has to work.
   if ! "$PY" -c 'import fastapi, uvicorn, sqlalchemy, pydantic_settings' >/dev/null 2>&1; then
-    warn "backend dependencies missing in venv/ — installing (first run only)"
+    warn "backend dependencies missing in venv/ -- installing (first run only)"
     "$PY" -m pip install --quiet --upgrade pip >/dev/null 2>&1 || true
     "$PY" -m pip install --quiet -r "$ROOT/requirements.txt" \
       || die "pip install failed" \
@@ -187,7 +187,7 @@ preflight() {
   model="$(env_value GEMINI_MODEL "$ENV_FILE")"
   [ -n "$model" ] \
     || die "GEMINI_MODEL is not set in app/.env" \
-           "Deliberately has no default — Google retires model names without" \
+           "Deliberately has no default -- Google retires model names without" \
            "notice and a stale default takes the whole app down with 404s." \
            "Set, for example:" \
            "    GEMINI_MODEL=gemini-3.5-flash-lite"
@@ -202,7 +202,7 @@ preflight() {
   ok "node $(node --version) / npm $(npm --version)"
 
   if [ ! -d "$ROOT/frontend/node_modules" ]; then
-    warn "frontend/node_modules missing — running npm install (first run only)"
+    warn "frontend/node_modules missing -- running npm install (first run only)"
     ( cd "$ROOT/frontend" && npm install ) \
       || die "npm install failed" "Install by hand and re-run:" "    cd frontend && npm install"
     ok "installed frontend dependencies"
@@ -221,7 +221,7 @@ from sqlalchemy import create_engine
 create_engine(sys.argv[1]).connect().close()
 PYCHECK
     then
-      ok "PostgreSQL reachable — demoing on Postgres"
+      ok "PostgreSQL reachable -- demoing on Postgres"
       DB_MODE="PostgreSQL"
     else
       die "DATABASE_URL is set but the database is not reachable" \
@@ -230,7 +230,7 @@ PYCHECK
           "  Linux:  sudo systemctl start postgresql"
     fi
   else
-    ok "DATABASE_URL not set — using the SQLite fallback (./medikiosk.db)"
+    ok "DATABASE_URL not set -- using the SQLite fallback (./medikiosk.db)"
     DB_MODE="SQLite (medikiosk.db)"
   fi
 
@@ -271,7 +271,7 @@ cleanup() {
   # clean Ctrl-C does not report "the backend exited" as if something broke.
   SHUTTING_DOWN=true
 
-  # Nothing was started — a preflight failure, --check, or --help. There is
+  # Nothing was started -- a preflight failure, --check, or --help. There is
   # nothing of ours to stop, and anything currently on those ports belongs to
   # somebody else. Preflight already printed the PID and the kill command; it
   # is not this script's business to kill a process it did not spawn.
@@ -279,11 +279,11 @@ cleanup() {
     return 0
   fi
 
-  printf '\n%sShutting down…%s\n' "$BOLD" "$RESET"
+  printf '\n%sShutting down...%s\n' "$BOLD" "$RESET"
   kill_group "$WEB_PID"
   kill_group "$API_PID"
 
-  # Give them a moment, then make sure the ports are actually released — the
+  # Give them a moment, then make sure the ports are actually released -- the
   # whole point of the trap is that the next run is not blocked.
   for _ in 1 2 3 4 5 6 7 8 9 10; do
     [ -z "$(pids_on_port "$API_PORT")$(pids_on_port "$WEB_PORT")" ] && break
@@ -318,7 +318,7 @@ printf '\n%sStarting%s\n' "$BOLD" "$RESET"
 "$VENV/bin/python" -m uvicorn app.main:app --reload --port "$API_PORT" \
   > >(awk '{ print "[api] " $0; fflush() }') 2>&1 &
 API_PID=$!
-info "uvicorn started (pid $API_PID), waiting for /health…"
+info "uvicorn started (pid $API_PID), waiting for /health..."
 
 # The frontend must NOT start before the backend answers. Starting it early is
 # what produced the "Something went wrong" screen twice this week: the kiosk
@@ -353,7 +353,7 @@ fi
 ( cd "$ROOT/frontend" && npm run dev -- --port "$WEB_PORT" --strictPort ) \
   > >(awk '{ print "[web] " $0; fflush() }') 2>&1 &
 WEB_PID=$!
-info "vite started (pid $WEB_PID), waiting for :$WEB_PORT…"
+info "vite started (pid $WEB_PID), waiting for :$WEB_PORT..."
 
 deadline=$(( $(date +%s) + HEALTH_TIMEOUT ))
 served=false
@@ -376,7 +376,7 @@ ok "frontend serving on :$WEB_PORT"
 MODE="LIVE"
 $REPLAY && MODE="REPLAY  (recorded session, no network, no quota)"
 USERNAME="$(env_value CLINICIAN_USERNAME "$ENV_FILE")"
-[ -n "$USERNAME" ] || USERNAME="(none seeded — set CLINICIAN_USERNAME in app/.env)"
+[ -n "$USERNAME" ] || USERNAME="(none seeded -- set CLINICIAN_USERNAME in app/.env)"
 
 cat <<SUMMARY
 
@@ -402,14 +402,14 @@ while true; do
   if ! kill -0 "$API_PID" 2>/dev/null; then
     $SHUTTING_DOWN && exit 0
     wait "$API_PID" 2>/dev/null && code=0 || code=$?
-    printf '\n%s✗ the backend (uvicorn) exited — status %s%s\n' "$RED$BOLD" "$code" "$RESET" >&2
+    printf '\n%s[FAIL] the backend (uvicorn) exited -- status %s%s\n' "$RED$BOLD" "$code" "$RESET" >&2
     printf '  Scroll up for the [api] log. Stopping the frontend too.\n' >&2
     exit 1
   fi
   if ! kill -0 "$WEB_PID" 2>/dev/null; then
     $SHUTTING_DOWN && exit 0
     wait "$WEB_PID" 2>/dev/null && code=0 || code=$?
-    printf '\n%s✗ the frontend (vite) exited — status %s%s\n' "$RED$BOLD" "$code" "$RESET" >&2
+    printf '\n%s[FAIL] the frontend (vite) exited -- status %s%s\n' "$RED$BOLD" "$code" "$RESET" >&2
     printf '  Scroll up for the [web] log. Stopping the backend too.\n' >&2
     exit 1
   fi
