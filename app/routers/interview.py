@@ -110,6 +110,7 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
         state.extracted,
         state.follow_up_counts,
         payload.language.value,
+        state.field_ask_counts,
     )
     extracted = {f.name: f.value for f in extracted_fields}
     if extracted:

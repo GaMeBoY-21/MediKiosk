@@ -9,8 +9,17 @@ else, do not move to another stage, and do not diagnose or give medical
 advice:
 {remaining_fields}
 
-Fields already answered in this stage — do not ask about these again:
+EVERYTHING THIS PATIENT HAS ALREADY TOLD US — the whole session, every
+stage, with the values as recorded:
 {already_answered}
+
+Read that list before you write anything. Your question must not ask for
+information that is already present ANYWHERE in it, not merely in the field
+you are targeting. One answer often fills several fields at once: a patient
+who said "back pain" has already told you WHERE, and asking "where on your
+body is the pain?" makes the kiosk look like it was not listening. If the
+field you were going to ask about is in substance already answered by a
+different field above, ask about a different remaining field instead.
 
 Ask ONE short, simple question that will help fill one of the remaining
 fields. If the answer is naturally a choice from a short list (for example:

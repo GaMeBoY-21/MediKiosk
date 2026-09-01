@@ -33,9 +33,37 @@ def _load_prompt_template() -> str:
     return _PROMPT_PATH.read_text()
 
 
-def _unanswered_fields(node: InterviewNode, filled_fields: dict) -> list[str]:
+def _unanswered_fields(
+    node: InterviewNode, filled_fields: dict, capped_fields=()
+) -> list[str]:
+    """This node's fields still worth asking about.
+
+    Capped fields are excluded as well as filled ones. A field the state
+    machine has already given up on must never be offered back to the model,
+    or the cap buys nothing — the model just asks about it again.
+    """
+    capped = set(capped_fields or ())
     all_fields = list(node.required_fields) + list(node.optional_fields)
-    return [f for f in all_fields if f not in filled_fields]
+    return [f for f in all_fields if f not in filled_fields and f not in capped]
+
+
+def describe_filled(filled_fields: dict) -> str:
+    """Every field already captured, with its value, one per line.
+
+    Names alone were not enough. The model was told "chief_complaint is
+    answered" and asked "where is the pain?" anyway, because nothing in the
+    prompt let it see that the answer WAS "back pain". It cannot avoid
+    re-asking for something it cannot see.
+    """
+    if not filled_fields:
+        return "(nothing captured yet)"
+    lines = []
+    for name in sorted(filled_fields):
+        value = filled_fields[name]
+        if isinstance(value, (list, tuple)):
+            value = ", ".join(str(item) for item in value)
+        lines.append(f"- {name}: {value}")
+    return "\n".join(lines)
 
 
 def _parse_options(raw_options) -> list[QuestionOption]:
@@ -54,7 +82,11 @@ def _parse_options(raw_options) -> list[QuestionOption]:
 
 
 def generate_followup(
-    node: InterviewNode, filled_fields: dict, language: str, llm: LLMAdapter
+    node: InterviewNode,
+    filled_fields: dict,
+    language: str,
+    llm: LLMAdapter,
+    capped_fields=(),
 ) -> tuple[str, str, list[QuestionOption]]:
     """Generate the next follow-up question for the current node.
 
@@ -68,7 +100,7 @@ def generate_followup(
     `options` is [] for a genuinely open-ended question — never omitted,
     never None.
     """
-    remaining = _unanswered_fields(node, filled_fields)
+    remaining = _unanswered_fields(node, filled_fields, capped_fields)
     if not remaining:
         return "", node.phase_label, []
 
@@ -76,7 +108,9 @@ def generate_followup(
         phase_label=node.phase_label,
         node_id=node.id,
         remaining_fields=", ".join(remaining),
-        already_answered=", ".join(filled_fields.keys()) or "none yet",
+        # The WHOLE session's fields, not just this stage's, and with values.
+        # A question must not re-ask anything already present in any field.
+        already_answered=describe_filled(filled_fields),
         language=language,
     )
 
