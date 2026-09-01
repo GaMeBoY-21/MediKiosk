@@ -15,6 +15,7 @@ import NameEntry from './screens/NameEntry.jsx';
 import AgeEntry from './screens/AgeEntry.jsx';
 import SexEntry from './screens/SexEntry.jsx';
 import Consent from './screens/Consent.jsx';
+import ConsentChoices from './screens/ConsentChoices.jsx';
 import ConsentDeclined from './screens/ConsentDeclined.jsx';
 import ChiefComplaint from './screens/ChiefComplaint.jsx';
 import Interview from './screens/Interview.jsx';
@@ -69,6 +70,7 @@ export default function Kiosk() {
     [SCREENS.AGE]: <AgeEntry />,
     [SCREENS.SEX]: <SexEntry />,
     [SCREENS.CONSENT]: <Consent />,
+    [SCREENS.CONSENT_CHOICES]: <ConsentChoices />,
     [SCREENS.CONSENT_DECLINED]: <ConsentDeclined />,
     [SCREENS.COMPLAINT]: <ChiefComplaint />,
     [SCREENS.INTERVIEW]: <Interview onError={() => setFailed(true)} />,

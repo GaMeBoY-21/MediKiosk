@@ -17,6 +17,7 @@ export const SCREENS = {
   AGE: 'age',
   SEX: 'sex',
   CONSENT: 'consent',
+  CONSENT_CHOICES: 'consent-choices',
   CONSENT_DECLINED: 'consent-declined',
   COMPLAINT: 'complaint',
   INTERVIEW: 'interview',
