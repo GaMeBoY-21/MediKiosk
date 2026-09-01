@@ -37,6 +37,22 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/physician", tags=["physician"])
 
 
+# Worst first, matching app/ai_bridge.py's ranking.
+_SEVERITY_ORDER = {"critical": 0, "high": 1, "moderate": 2, "low": 3}
+
+
+def _worst_flag_label(flags: List[Dict[str, Any]]) -> str | None:
+    """Label of the most severe flag on a session, or None.
+
+    The queue row shows one flag. Showing whichever fired first would let a
+    critical hide behind an earlier moderate.
+    """
+    if not flags:
+        return None
+    worst = min(flags, key=lambda f: _SEVERITY_ORDER.get(f.get("severity", "low"), 99))
+    return worst.get("label")
+
+
 def _flatten(summary: ClinicalSummary) -> FlatSummary:
     """ClinicalSummary -> the seven flat keys the console renders.
 
@@ -118,24 +134,34 @@ def physician_queue(db: DbSession = Depends(get_db)):
             .one_or_none()
         )
         flags = (record.red_flags if record else None) or []
+        history = (record.history if record else None) or {}
+        stored = (record.summary if record else None) or {}
+
+        # The patient's actual words, not a fixture. Prefer the generated
+        # summary's one-liner, fall back to the extracted field.
+        complaint = stored.get("chief_complaint") or history.get("chief_complaint")
+
         items.append(
             PhysicianQueueItem(
                 session_id=row.session_id,
                 token=row.token,
-                name=row.patient_name,
-                age=row.age,
-                sex=row.sex,
-                complaint=fixtures.DEMO_CHIEF_COMPLAINT,
-                red_flag=flags[0].get("label") if flags else None,
+                # Demographics are still demo values; the case view names them
+                # in mocked_fields. Left as the row's own (possibly empty)
+                # values here rather than inventing a name per queue row.
+                name=row.patient_name or history.get("patient_name"),
+                age=row.age if row.age is not None else history.get("age"),
+                sex=row.sex or history.get("sex"),
+                complaint=str(complaint) if complaint else None,
+                # Worst flag, not merely the first: a critical must not be
+                # hidden behind a high that happened to be recorded earlier.
+                red_flag=_worst_flag_label(flags),
                 waiting_since=row.created_at.strftime("%H:%M") if row.created_at else None,
             )
         )
 
-    # Demo rows so the console is never empty before a kiosk run.
-    # TODO(block 4): drop once real sessions populate the queue.
-    if not items:
-        items = [PhysicianQueueItem(**p) for p in fixtures.DEMO_QUEUE]
-
+    # No demo rows. An empty queue means no patient has finished an intake —
+    # which is the truth, and far better than a doctor scanning invented
+    # patients. The console renders its own empty state.
     items.sort(key=lambda i: (i.red_flag is None, i.waiting_since or ""))
     return items
 
@@ -149,6 +175,19 @@ def fetch_case(session_id: str, db: DbSession = Depends(get_db)):
     models.write_audit(db, action="physician.read", actor="physician", session_id=session_id)
     db.commit()
 
+    # Demographics are not collected for real yet, so they fall back to demo
+    # values. Every substituted field is named in `mocked_fields` below so the
+    # console can label it and nobody presents invented demographics as real.
+    mocked: List[str] = []
+    if not row.patient_name:
+        mocked.append("name")
+    if row.age is None:
+        mocked.append("age")
+    if not row.sex:
+        mocked.append("sex")
+    if not row.abha_id:
+        mocked.append("abha")
+
     return PhysicianCaseResponse(
         session_id=session_id,
         patient=PhysicianPatient(
@@ -158,8 +197,17 @@ def fetch_case(session_id: str, db: DbSession = Depends(get_db)):
             abha=row.abha_id or fixtures.DEMO_PATIENT["abha"],
         ),
         summary=_flatten(summary),
-        documents=summary.document_timeline or [DocumentRecord(**d) for d in fixtures.DEMO_DOCUMENTS],
-        red_flags=summary.red_flags,
+        documents=summary.document_timeline,
+        # LIVE, from the clinical record — never summary.red_flags.
+        #
+        # This is the highest-severity bug found on this project. The stored
+        # summary is a snapshot taken when it was generated; a flag raised
+        # after that appeared in the queue (which always read live) but NOT
+        # here. The two screens disagreed, and a doctor would have trusted this
+        # one, because it is the one showing the whole case.
+        red_flags=current_red_flags(db, session_id),
+        low_confidence_fields=summary.low_confidence_fields,
+        mocked_fields=mocked,
         fhir=_bundle_for(db, row, summary),
         verified_by=summary.verified_by,
         verified_at=summary.verified_at,

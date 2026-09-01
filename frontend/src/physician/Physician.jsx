@@ -16,6 +16,53 @@ import {
 } from '../api/client.js';
 import './physician.css';
 
+// Red flags must be legible without colour: on a projector, in greyscale, and
+// to a colour-blind reader. Icon + word + colour, three independent signals.
+function WarningIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="warn-icon" aria-hidden="true" focusable="false">
+      <path
+        d="M12 3 L22 20 H2 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+      <path d="M12 9 v5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="12" cy="17.2" r="1.2" fill="currentColor" />
+    </svg>
+  );
+}
+
+// Which flat console keys the backend's low_confidence_fields map onto. The
+// backend names extracted fields (symptom_site); the console renders clinical
+// sections (hpi). Anything unmapped still hedges its own section if the name
+// matches a section key directly.
+const FIELD_TO_SECTION = {
+  chief_complaint: 'chief_complaint',
+  symptom_duration: 'hpi',
+  symptom_site: 'hpi',
+  symptom_onset: 'hpi',
+  symptom_character: 'hpi',
+  symptom_severity: 'hpi',
+  symptom_radiation: 'hpi',
+  symptom_timing: 'hpi',
+  symptom_exacerbating_factors: 'hpi',
+  symptom_relieving_factors: 'hpi',
+  associated_symptoms: 'hpi',
+  ros_screen: 'ros',
+  past_medical_conditions: 'past_history',
+  past_surgeries: 'past_history',
+  current_medications: 'drugs_allergies',
+  known_allergies: 'drugs_allergies',
+  family_history: 'family',
+  smoking_status: 'personal',
+  alcohol_use: 'personal',
+  diet: 'personal',
+  sleep_pattern: 'personal',
+  occupation: 'personal',
+};
+
 // Standard clinical reading order. Not alphabetical, not API order.
 const SECTIONS = [
   { key: 'chief_complaint', title: 'Chief complaint' },
@@ -35,13 +82,27 @@ export default function Physician() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
 
+  // Poll the queue. A doctor leaves this open; a patient who finishes intake
+  // while they are reading a case must appear without a manual refresh, and a
+  // red flag raised mid-read must climb to the top on its own.
   useEffect(() => {
-    fetchPatientList()
-      .then((list) => {
-        setQueue(list);
-        if (list.length) setActiveId(list[0].session_id);
-      })
-      .catch((e) => console.error('[physician] queue failed:', e));
+    let cancelled = false;
+    const load = () =>
+      fetchPatientList()
+        .then((list) => {
+          if (cancelled) return;
+          setQueue(list);
+          // Only auto-select on first load; never yank the doctor off the case
+          // they are reading because the queue re-ordered underneath them.
+          setActiveId((cur) => cur ?? (list.length ? list[0].session_id : null));
+        })
+        .catch((e) => console.error('[physician] queue failed:', e));
+    load();
+    const id = setInterval(load, 10000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
   useEffect(() => {
@@ -94,6 +155,15 @@ export default function Physician() {
 
   const summary = record?.summary ?? {};
 
+  // Sections containing at least one low-confidence field, hedged the same way
+  // the kiosk hedges them so the two screens never disagree about certainty.
+  const lowConfidence = new Set(
+    (record?.low_confidence_fields ?? [])
+      .map((f) => FIELD_TO_SECTION[f] ?? f)
+      .filter(Boolean),
+  );
+  const mocked = new Set(record?.mocked_fields ?? []);
+
   return (
     <div className="physician">
       <div
@@ -126,9 +196,21 @@ export default function Physician() {
               <div className="queue__meta">
                 {p.age}/{p.sex} · {p.complaint}
               </div>
-              {p.red_flag ? <div className="queue__flag">RED FLAG · {p.red_flag}</div> : null}
+              {p.red_flag ? (
+                <div className="queue__flag">
+                  {/* Icon AND colour AND text. Colour alone is a WCAG failure
+                      and washes out on a projector. */}
+                  <WarningIcon />
+                  <span>RED FLAG · {p.red_flag}</span>
+                </div>
+              ) : null}
             </button>
           ))}
+          {queue.length === 0 ? (
+            <p className="queue__empty">
+              No completed intakes yet. Rows appear here as patients finish at the kiosk.
+            </p>
+          ) : null}
         </aside>
 
         {record ? (
@@ -139,17 +221,49 @@ export default function Physician() {
                 {record.patient.age}/{record.patient.sex} · ABHA {record.patient.abha ?? '—'} ·
                 session {record.session_id}
               </span>
+              {/* Say so on screen. Demographics are not collected for real yet,
+                  and demo values must never be presented as patient data. */}
+              {mocked.size ? (
+                <span className="case__mocked" title={`Demo values: ${[...mocked].join(', ')}`}>
+                  DEMO DATA · {[...mocked].join(', ')}
+                </span>
+              ) : null}
             </header>
+
+            {/* Red flags, read live from the clinical record by the API — not
+                from the stored summary snapshot. This block is why that
+                matters: it is the view a doctor trusts, so it must never show
+                fewer flags than the queue row they clicked. */}
+            {(record.red_flags ?? []).length ? (
+              <section className="flags" aria-label="Safety flags">
+                {record.red_flags.map((f) => (
+                  <div key={f.rule_id} className={`flags__row flags__row--${f.severity}`}>
+                    <WarningIcon />
+                    <span className="flags__severity">{f.severity}</span>
+                    <span className="flags__label">{f.label}</span>
+                  </div>
+                ))}
+              </section>
+            ) : null}
 
             <div className="case__cols">
               {SECTIONS.map((s) => (
                 <section className="section" key={s.key}>
-                  <h2 className="section__title">{s.title}</h2>
-                  <EditableField
-                    value={summary[s.key]}
-                    onCommit={(v) => editField(s.key, v)}
-                    multiline={s.key !== 'chief_complaint'}
-                  />
+                  <h2 className="section__title">
+                    {s.title}
+                    {lowConfidence.has(s.key) ? (
+                      <span className="section__unsure" title="Extracted with low confidence">
+                        ? low confidence
+                      </span>
+                    ) : null}
+                  </h2>
+                  <div className={lowConfidence.has(s.key) ? 'section__body--unsure' : undefined}>
+                    <EditableField
+                      value={summary[s.key]}
+                      onCommit={(v) => editField(s.key, v)}
+                      multiline={s.key !== 'chief_complaint'}
+                    />
+                  </div>
                 </section>
               ))}
 

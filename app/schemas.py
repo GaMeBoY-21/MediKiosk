@@ -721,7 +721,31 @@ class PhysicianCaseResponse(BaseModel):
     documents: List[DocumentRecord] = Field(
         default_factory=list, description="Document timeline with findings."
     )
-    red_flags: List[RedFlag] = Field(default_factory=list, description="Flags raised this session.")
+    red_flags: List[RedFlag] = Field(
+        default_factory=list,
+        description=(
+            "Flags as of RIGHT NOW, read live from the clinical record — never "
+            "from the stored summary snapshot. A flag raised after the summary "
+            "was generated must appear here, or this view and the queue "
+            "disagree and the doctor trusts this one."
+        ),
+    )
+    low_confidence_fields: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Fields the AI was unsure of. The console hedges these the same way "
+            "the kiosk does, so an uncertain value never reads as a confident one."
+        ),
+    )
+    mocked_fields: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Names of fields in this payload that are demo values, not real "
+            "patient data — currently the demographics. Stated explicitly so "
+            "the console can label them and nobody demonstrates invented data "
+            "believing it was collected."
+        ),
+    )
     fhir: Dict[str, Any] = Field(
         default_factory=dict, description="FHIR R4 bundle, embedded so the panel needs no second call."
     )
