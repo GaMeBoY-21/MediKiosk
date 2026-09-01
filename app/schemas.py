@@ -777,6 +777,65 @@ class VerifyResponse(BaseModel):
     verified_at: Optional[datetime] = Field(None, description="Acceptance timestamp.")
 
 
+class LoginRequest(BaseModel):
+    """POST /api/auth/login"""
+
+    username: str = Field(..., description="Clinician username.")
+    password: str = Field(
+        ...,
+        description=(
+            "Plaintext, over TLS only. Hashed with bcrypt on arrival and never "
+            "stored, logged or returned in any payload."
+        ),
+    )
+
+
+class LoginResponse(BaseModel):
+    """POST /api/auth/login
+
+    Carries no password material of any kind, not even a hash.
+    """
+
+    access: str = Field(..., description="Access token, 15 minutes. Hold in memory only.")
+    refresh: str = Field(..., description="Refresh token, 8 hours. Revocable via /auth/logout.")
+    role: str = Field(..., description="doctor | triage | admin.")
+    name: str = Field(..., description="Display name for the console header.")
+    expires_in: int = Field(..., description="Access token lifetime in seconds.")
+
+
+class RefreshRequest(BaseModel):
+    """POST /api/auth/refresh and /api/auth/logout"""
+
+    refresh: str = Field(..., description="A refresh token issued by /auth/login.")
+
+
+class RefreshResponse(BaseModel):
+    """POST /api/auth/refresh"""
+
+    access: str = Field(..., description="A fresh access token.")
+    role: str = Field(..., description="doctor | triage | admin.")
+    name: str = Field(..., description="Display name.")
+    expires_in: int = Field(..., description="Access token lifetime in seconds.")
+
+
+class LogoutResponse(BaseModel):
+    """POST /api/auth/logout
+
+    Always ok, whether or not the token was valid — a truthful answer would let
+    someone probe tokens against this endpoint.
+    """
+
+    ok: bool = Field(True, description="Always True.")
+
+
+class MeResponse(BaseModel):
+    """GET /api/auth/me"""
+
+    username: str = Field(..., description="Clinician username.")
+    role: str = Field(..., description="doctor | triage | admin.")
+    name: str = Field(..., description="Display name.")
+
+
 class AbhaVerifyRequest(BaseModel):
     """POST /api/identity/abha/verify — MOCKED, see app/routers/identity.py."""
 

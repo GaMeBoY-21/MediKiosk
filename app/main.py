@@ -18,8 +18,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.auth import users as auth_users
 from app.database import init_db
-from app.routers import documents, identity, interview, physician, session, summary
+from app.routers import auth, documents, identity, interview, physician, session, summary
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -30,6 +31,8 @@ API_PREFIX = "/api"
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
+    # Hash the demo clinician's password once, at startup.
+    auth_users.seed_from_settings()
     log.info("MediKiosk API up | env=%s | sqlite_fallback=%s", settings.APP_ENV, settings.using_sqlite)
     yield
 
@@ -50,6 +53,7 @@ app.add_middleware(
 )
 
 for router in (
+    auth.router,
     session.router,
     interview.router,
     documents.router,

@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session as DbSession
 from app import fixtures, models
 from app.database import get_db
 from app.fhir import build_fhir_bundle
+from app.routers.auth import require_clinician
 from app.routers.session import load_session
 from app.routers.summary import _build_summary, current_red_flags
 from app.schemas import (
@@ -113,7 +114,7 @@ def _load_summary(db: DbSession, row: models.Session) -> ClinicalSummary:
 
 # /queue must be declared before /{session_id}, or "queue" is captured as an id.
 @router.get("/queue", response_model=List[PhysicianQueueItem])
-def physician_queue(db: DbSession = Depends(get_db)):
+def physician_queue(db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)):
     """Waiting patients, red-flagged first.
 
     Ordering is the whole point of this screen: a doctor with 90 seconds should
@@ -167,12 +168,12 @@ def physician_queue(db: DbSession = Depends(get_db)):
 
 
 @router.get("/{session_id}", response_model=PhysicianCaseResponse)
-def fetch_case(session_id: str, db: DbSession = Depends(get_db)):
+def fetch_case(session_id: str, db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)):
     """Everything the console renders for one patient, FHIR bundle included."""
     row = load_session(db, session_id)
     summary = _load_summary(db, row)
 
-    models.write_audit(db, action="physician.read", actor="physician", session_id=session_id)
+    models.write_audit(db, action="physician.read", actor=claims.get("sub", "physician"), session_id=session_id)
     db.commit()
 
     # Demographics are not collected for real yet, so they fall back to demo
@@ -215,7 +216,7 @@ def fetch_case(session_id: str, db: DbSession = Depends(get_db)):
 
 
 @router.post("/{session_id}/verify", response_model=VerifyResponse)
-def verify_case(session_id: str, payload: VerifyRequest, db: DbSession = Depends(get_db)):
+def verify_case(session_id: str, payload: VerifyRequest, db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)):
     """Accept, amend or reject a draft record. The canonical write path.
 
     Nothing leaves this system until action=accept lands here — that is what the
@@ -286,31 +287,31 @@ def verify_case(session_id: str, payload: VerifyRequest, db: DbSession = Depends
 
 
 @router.post("/{session_id}/confirm", response_model=VerifyResponse)
-def confirm_case(session_id: str, db: DbSession = Depends(get_db)):
+def confirm_case(session_id: str, db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)):
     """Alias for verify(accept)."""
     return verify_case(session_id, VerifyRequest(action=VerifyAction.accept), db)
 
 
 @router.post("/{session_id}/reject", response_model=VerifyResponse)
-def reject_case(session_id: str, payload: Dict[str, Any] | None = None, db: DbSession = Depends(get_db)):
+def reject_case(session_id: str, payload: Dict[str, Any] | None = None, db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)):
     """Alias for verify(reject)."""
     reason = (payload or {}).get("reason")
     return verify_case(session_id, VerifyRequest(action=VerifyAction.reject, reason=reason), db)
 
 
 @router.put("/{session_id}", response_model=VerifyResponse)
-def amend_case(session_id: str, payload: Dict[str, str], db: DbSession = Depends(get_db)):
+def amend_case(session_id: str, payload: Dict[str, str], db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)):
     """Alias for verify(amend). The console PUTs one edited field at a time."""
     amendments = {k: str(v) for k, v in (payload or {}).items() if k != "action"}
     return verify_case(session_id, VerifyRequest(action=VerifyAction.amend, amendments=amendments), db)
 
 
 @router.get("/{session_id}/fhir")
-def fetch_fhir(session_id: str, db: DbSession = Depends(get_db)) -> Dict[str, Any]:
+def fetch_fhir(session_id: str, db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)) -> Dict[str, Any]:
     """The FHIR R4 bundle as raw JSON, for the console's collapsible panel."""
     row = load_session(db, session_id)
     summary = _load_summary(db, row)
 
-    models.write_audit(db, action="fhir.read", actor="physician", session_id=session_id)
+    models.write_audit(db, action="fhir.read", actor=claims.get("sub", "physician"), session_id=session_id)
     db.commit()
     return _bundle_for(db, row, summary)

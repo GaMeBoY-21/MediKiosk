@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import Kiosk from './Kiosk.jsx';
 import Physician from './physician/Physician.jsx';
+import ProtectedRoute from './physician/ProtectedRoute.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import ReplayBadge from './components/ReplayBadge.jsx';
 import ErrorScreen from './screens/ErrorScreen.jsx';
@@ -28,11 +29,16 @@ export default function App() {
 
   // The badge wraps BOTH destinations: the physician console is replayed too,
   // and a recorded queue must not be mistaken for live patients either.
+  // EVERY /physician route is behind the gate, including /physician/login
+  // itself — ProtectedRoute renders the login form when there is no session,
+  // so there is no path into the console that skips it.
   if (path.startsWith('/physician')) {
     return (
       <>
         <ReplayBadge />
-        <Physician />
+        <ProtectedRoute>
+          {({ auth, signOut }) => <Physician auth={auth} onSignOut={signOut} />}
+        </ProtectedRoute>
       </>
     );
   }

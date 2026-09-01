@@ -74,7 +74,7 @@ const SECTIONS = [
   { key: 'ros', title: 'Review of systems' },
 ];
 
-export default function Physician() {
+export default function Physician({ auth, onSignOut }) {
   const [queue, setQueue] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [record, setRecord] = useState(null);
@@ -96,7 +96,11 @@ export default function Physician() {
           // they are reading because the queue re-ordered underneath them.
           setActiveId((cur) => cur ?? (list.length ? list[0].session_id : null));
         })
-        .catch((e) => console.error('[physician] queue failed:', e));
+        .catch((e) => {
+          // A 401 has already cleared the session; ProtectedRoute will swap in
+          // the login screen. Nothing useful to show here.
+          if (e?.name !== 'Unauthorized') console.error('[physician] queue failed:', e);
+        });
     load();
     const id = setInterval(load, 10000);
     return () => {
@@ -111,7 +115,9 @@ export default function Physician() {
     setNote('');
     fetchCase(activeId)
       .then(setRecord)
-      .catch((e) => console.error('[physician] case failed:', e));
+      .catch((e) => {
+        if (e?.name !== 'Unauthorized') console.error('[physician] case failed:', e);
+      });
   }, [activeId]);
 
   const editField = useCallback(
@@ -176,6 +182,16 @@ export default function Physician() {
           : status === 'rejected'
             ? 'Rejected — nothing written'
             : 'Unverified draft — nothing is written until you press Accept'}
+      </div>
+
+      <div className="physician__whoami">
+        <span>
+          Signed in as <strong>{auth?.name ?? auth?.username ?? 'clinician'}</strong>
+          {auth?.role ? ` · ${auth.role}` : ''}
+        </span>
+        <button type="button" className="physician__signout" onClick={() => onSignOut?.(false)}>
+          Sign out
+        </button>
       </div>
 
       <div className="physician__layout">

@@ -7,6 +7,9 @@
 // Mocks used to default ON, which quietly meant the kiosk never called app/ at
 // all — a fully mocked session looked exactly like a real one, so none of the
 // backend work was visible here. Opt IN now: real API is the default.
+// Tokens live in memory only — see authStore.js for why.
+import { accessToken, clearSession, refreshToken, setSession } from '../physician/authStore.js';
+
 const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
 // VITE_REPLAY=true serves a real recorded session from /replay/session.json:
@@ -27,6 +30,7 @@ export const REPLAY = import.meta.env.VITE_REPLAY === 'true';
 const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000/api';
 const MOCK_DELAY = 300;
 
+
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let mockPromise = null;
@@ -40,15 +44,109 @@ function loadMocks() {
   return mockPromise;
 }
 
-async function request(path, { method = 'GET', body, isForm = false } = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: isForm ? undefined : { 'Content-Type': 'application/json' },
-    body: isForm ? body : body ? JSON.stringify(body) : undefined,
-  });
+/** Thrown on 401 so callers can route to the login screen instead of showing
+ *  a generic failure. */
+export class Unauthorized extends Error {
+  constructor(path) {
+    super(`unauthorized: ${path}`);
+    this.name = 'Unauthorized';
+  }
+}
+
+function buildHeaders(isForm) {
+  const headers = isForm ? {} : { 'Content-Type': 'application/json' };
+  const token = accessToken();
+  // Bearer, not a cookie: nothing here should ride along automatically on a
+  // cross-site request.
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+async function request(path, { method = 'GET', body, isForm = false, retry = true } = {}) {
+  const send = () =>
+    fetch(`${BASE}${path}`, {
+      method,
+      headers: buildHeaders(isForm),
+      body: isForm ? body : body ? JSON.stringify(body) : undefined,
+    });
+
+  let res = await send();
+
+  // Access tokens last 15 minutes; a doctor reading one case can easily cross
+  // that. Spend the refresh token once, transparently, before giving up and
+  // sending them back to the login screen.
+  if (res.status === 401 && retry && refreshToken()) {
+    const renewed = await renewAccess();
+    if (renewed) res = await send();
+  }
+
+  if (res.status === 401) {
+    clearSession();
+    throw new Unauthorized(path);
+  }
   if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
   if (res.status === 204) return null;
   return res.json();
+}
+
+/* -------------------------------------------------------------------- auth */
+
+export async function login(username, password) {
+  const res = await fetch(`${BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    // The server deliberately returns one message for every failure mode.
+    // Show exactly that; do not add detail it withheld on purpose.
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(body.detail || 'Invalid username or password.');
+    err.status = res.status;
+    throw err;
+  }
+  const data = await res.json();
+  setSession({ ...data, username });
+  return data;
+}
+
+/** Exchange the refresh token for a new access token. Returns true on success. */
+export async function renewAccess() {
+  const refresh = refreshToken();
+  if (!refresh) return false;
+  try {
+    const res = await fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh }),
+    });
+    if (!res.ok) {
+      clearSession();
+      return false;
+    }
+    setSession(await res.json());
+    return true;
+  } catch {
+    clearSession();
+    return false;
+  }
+}
+
+export async function logout() {
+  const refresh = refreshToken();
+  // Clear locally first: even if the network call fails, this browser must
+  // stop holding a usable token.
+  clearSession();
+  if (!refresh) return;
+  try {
+    await fetch(`${BASE}/auth/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh }),
+    });
+  } catch {
+    // Best effort. The token still expires on its own.
+  }
 }
 
 let replayPromise = null;

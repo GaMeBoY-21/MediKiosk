@@ -12,6 +12,7 @@ from typing import List
 
 from app import ai_bridge, fixtures, models
 from app.database import get_db
+from app.routers.auth import require_clinician
 from app.routers.session import load_session
 from app.schemas import ClinicalSummary, DocumentRecord, ExtractedField, FieldSource, RedFlag
 from app.session_store import store
@@ -128,7 +129,7 @@ def generate_summary(session_id: str, db: DbSession = Depends(get_db)):
 
 
 @router.get("/{session_id}", response_model=ClinicalSummary)
-def get_summary(session_id: str, db: DbSession = Depends(get_db)):
+def get_summary(session_id: str, db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)):
     """Fetch the stored summary. Generates one on first read if absent."""
     row = load_session(db, session_id)
 
@@ -147,6 +148,6 @@ def get_summary(session_id: str, db: DbSession = Depends(get_db)):
         # still be visible.
         summary.red_flags = current_red_flags(db, session_id) or summary.red_flags
 
-    models.write_audit(db, action="summary.read", actor="physician", session_id=session_id)
+    models.write_audit(db, action="summary.read", actor=claims.get("sub", "physician"), session_id=session_id)
     db.commit()
     return summary

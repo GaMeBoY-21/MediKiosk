@@ -13,3 +13,4 @@ uploads/
 # local db side files (WAL mode)
 *.db-shm
 *.db-wal
+app/.demo-credentials

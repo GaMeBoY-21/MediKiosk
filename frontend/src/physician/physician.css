@@ -400,3 +400,115 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+
+/* ------------------------------------------------------------------- login */
+/* The only password field in the app. Plain on purpose. */
+
+.login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f6f5;
+}
+
+.login__card {
+  width: 360px;
+  padding: 32px;
+  background: #fff;
+  border: 1px solid #c4cbc8;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.login__title {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.login__sub {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: #5a625e;
+}
+
+.login__label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.login__input {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid #c4cbc8;
+  border-radius: 6px;
+}
+
+.login__input:focus-visible,
+.login__submit:focus-visible,
+.physician__signout:focus-visible {
+  outline: 3px solid #0b6b4f;
+  outline-offset: 2px;
+}
+
+.login__error {
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #8a1f1f;
+  background: #fdf3f3;
+  border: 1px solid #e0b4b4;
+  border-radius: 6px;
+}
+
+.login__notice {
+  margin: 0;
+  padding: 10px;
+  text-align: center;
+  font-size: 13px;
+  background: #fff8e6;
+  border-bottom: 1px solid #e6d3a3;
+  color: #7a4a00;
+}
+
+.login__submit {
+  padding: 11px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: #0b6b4f;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.login__submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ------------------------------------------------------------- signed-in bar */
+
+.physician__whoami {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: #5a625e;
+  border-bottom: 1px solid #e2e6e4;
+  background: #fafbfb;
+}
+
+.physician__signout {
+  padding: 4px 12px;
+  font-size: 13px;
+  border: 1px solid #c4cbc8;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}

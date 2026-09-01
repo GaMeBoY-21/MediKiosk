@@ -58,6 +58,23 @@ class Settings(BaseSettings):
     SESSION_TTL_SECONDS: int = 3600
     """How long an abandoned session lingers in memory before purge."""
 
+    AUTH_SECRET: Optional[str] = None
+    """Signing key for clinician tokens.
+
+    No default on purpose: a predictable key lets anyone mint a doctor token
+    and read every patient in the queue. Unset raises on first use rather than
+    silently signing with something guessable.
+    """
+
+    CLINICIAN_USERNAME: Optional[str] = None
+    CLINICIAN_PASSWORD: Optional[str] = None
+    """The one seeded demo account. Hashed at startup; the plaintext is never
+    stored, logged or returned."""
+
+    CLINICIAN_NAME: Optional[str] = None
+    CLINICIAN_ROLE: str = "doctor"
+    """doctor | triage | admin."""
+
     @property
     def database_url(self) -> str:
         """Effective DSN, with the SQLite fallback applied."""
