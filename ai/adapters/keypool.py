@@ -63,9 +63,32 @@ def is_quota_error(exc: Exception) -> bool:
     return (
         "resource_exhausted" in message
         or "resource exhausted" in message
-        or "429" in message
+        # Word-bounded: a bare "429" also appears inside session ids and
+        # timestamps, and a false positive here retires a key that was fine.
+        or re.search(r"\b429\b", message) is not None
         or "quota" in message
         or "rate limit" in message
+    )
+
+
+def is_auth_error(exc: Exception) -> bool:
+    """Whether this failure means "this key will never work".
+
+    A typo'd, revoked or wrong-project key fails with 400 API_KEY_INVALID or a
+    401/403, and it will fail that way every time. Treating it as a transient
+    error meant one bad key in slot 1 failed every request while four good keys
+    sat unused — indistinguishable, from the front of the room, from a total
+    outage. It is a different fault from a spent quota and is logged
+    differently, but the response is the same: retire it and move on.
+    """
+    message = str(exc).lower()
+    return (
+        "api_key_invalid" in message
+        or "api key not valid" in message
+        or "unauthenticated" in message
+        or "permission_denied" in message
+        # Word-bounded for the same reason as the 429 above.
+        or re.search(r"\b(401|403)\b", message) is not None
     )
 
 
@@ -104,13 +127,17 @@ def collect_models(env: dict) -> list[str]:
 class Combination:
     """One (key, model) pair. Identified in logs by index, never by key."""
 
-    __slots__ = ("key_index", "key", "model_name", "exhausted", "reason")
+    __slots__ = ("key_index", "key", "model_name", "exhausted", "reason", "state")
 
     def __init__(self, key_index: int, key: str, model_name: str):
         self.key_index = key_index  # 1-based, matches GEMINI_API_KEY_<n>
         self.key = key
         self.model_name = model_name
+        # `exhausted` means "retired, do not use again", whatever the cause.
+        # `state` says which cause, because a typo and a spent quota need
+        # different things done about them.
         self.exhausted = False
+        self.state = "ok"  # ok | exhausted | invalid
         self.reason = ""
 
     @property
@@ -123,6 +150,7 @@ class Combination:
             "key_label": f"key {self.key_index} of {total_keys}",
             "model": self.model_name,
             "exhausted": self.exhausted,
+            "state": self.state,
             "reason": self.reason or None,
         }
 
@@ -170,8 +198,15 @@ class GeminiKeyPool:
             "keys_configured": self.total_keys,
             "models": sorted({c.model_name for c in self._combinations}, key=self._model_order),
             "pools_total": len(self._combinations),
-            "pools_exhausted": sum(1 for c in self._combinations if c.exhausted),
+            "pools_exhausted": sum(1 for c in self._combinations if c.state == "exhausted"),
+            # Counted apart from exhausted: a spent quota is waited out, a bad
+            # key is edited in app/.env. Reading one as the other on a demo
+            # morning sends you looking in the wrong place.
+            "pools_invalid": sum(1 for c in self._combinations if c.state == "invalid"),
             "pools_remaining": sum(1 for c in self._combinations if not c.exhausted),
+            "keys_invalid": sorted(
+                {c.key_index for c in self._combinations if c.state == "invalid"}
+            ),
             "active": active.describe(self.total_keys) if active else None,
             "combinations": [c.describe(self.total_keys) for c in self._combinations],
         }
@@ -204,13 +239,20 @@ class GeminiKeyPool:
             try:
                 return call(self._model_for(combo))
             except Exception as exc:
-                if not is_quota_error(exc):
-                    # Not an allowance problem. The key is fine; let the caller
-                    # see the real failure rather than silently spending four
-                    # more keys on the same broken network.
+                if is_quota_error(exc):
+                    last_detail = _short(exc)
+                    self._retire(combo, last_detail, "exhausted")
+                elif is_auth_error(exc):
+                    last_detail = _short(exc)
+                    # A rejected key is rejected on every model, so retire the
+                    # whole key rather than discovering the same typo again on
+                    # the fallback model later.
+                    self._retire_key(combo, last_detail)
+                else:
+                    # Neither an allowance nor a credential problem. The key is
+                    # fine; let the caller see the real failure rather than
+                    # silently spending four more keys on the same bad network.
                     raise
-                last_detail = _short(exc)
-                self._retire(combo, last_detail)
 
     def _model_for(self, combo: Combination):
         cache_key = (combo.key_index, combo.model_name)
@@ -221,13 +263,44 @@ class GeminiKeyPool:
                 self._built[cache_key] = model
             return model
 
-    def _retire(self, combo: Combination, detail: str) -> None:
+    def _retire_key(self, combo: Combination, detail: str) -> None:
+        """Retire every combination using this key: the key itself is bad."""
+        index = combo.key_index
+        for other in self._combinations:
+            if other.key_index == index and not other.exhausted:
+                other.exhausted = True
+                other.state = "invalid"
+                other.reason = detail
+                self._built.pop((other.key_index, other.model_name), None)
+        self._advance()
+        nxt = self.active
+        if nxt is None:
+            log.error(
+                "key %d invalid, skipping; no usable key/model combinations remain",
+                index,
+            )
+        else:
+            # Deliberately NOT the same wording as an exhausted key: one is a
+            # typo to fix in app/.env, the other is a quota to wait out.
+            log.warning(
+                "key %d invalid, skipping to key %d (of %d) on %s",
+                index,
+                nxt.key_index,
+                self.total_keys,
+                nxt.model_name,
+            )
+
+    def _advance(self) -> None:
+        while self._cursor < len(self._combinations) and self._combinations[self._cursor].exhausted:
+            self._cursor += 1
+
+    def _retire(self, combo: Combination, detail: str, state: str = "exhausted") -> None:
         combo.exhausted = True
+        combo.state = state
         combo.reason = detail
         # Drop the built model: it holds a key we will not use again.
         self._built.pop((combo.key_index, combo.model_name), None)
-        while self._cursor < len(self._combinations) and self._combinations[self._cursor].exhausted:
-            self._cursor += 1
+        self._advance()
 
         nxt = self.active
         if nxt is None:
