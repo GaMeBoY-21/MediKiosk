@@ -2,15 +2,14 @@
 // Screen 4. Legally the most important screen, and it must work for someone
 // who cannot read a word of it.
 //
-// The explanation auto-plays the moment the screen loads (~20s). The same text
-// is on screen at 24px as the backup. Each toggle speaks itself when tapped.
-// "I do not agree" is the same size and weight as "I agree" — refusing is
-// never made harder than accepting.
+// The explanation is on screen at 24px, and the Listen button on the question
+// speaks it on demand — nothing here plays on its own. Each toggle speaks
+// itself when tapped. "I do not agree" is the same size and weight as
+// "I agree" — refusing is never made harder than accepting.
 
 import { useState } from 'react';
 import ScreenShell from '../components/ScreenShell.jsx';
 import BigButton from '../components/BigButton.jsx';
-import SpeakerButton from '../components/SpeakerButton.jsx';
 import Toggle from '../components/Toggle.jsx';
 import { useT } from '../i18n/useT.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
@@ -44,12 +43,6 @@ export default function Consent() {
       repeatAudio={explanation.audio}
     >
       <BilingualText as="p" className="consent__text">{explanation.label}</BilingualText>
-
-      <SpeakerButton
-        text={explanation.audio}
-        voice={voice}
-        label={tx('consent.playAgain').label}
-      />
 
       <div className="stack">
         <Toggle

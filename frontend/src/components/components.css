@@ -936,3 +936,246 @@
   width: 36px;
   height: 36px;
 }
+
+/* ------------------------------------ interview layout on a short landscape */
+/* The interview screen carries the most at once: question, Listen, option
+   tiles, mic, transcript, understanding panel and Next. Stacked in one column
+   on an 800px-tall panel the column runs past the bottom, and because the page
+   is (correctly) forbidden to scroll, the overflow showed up as Next sitting
+   on top of the transcript and the panel disappearing behind the fixed bar.
+ 
+   Landscape has ~560px of unused width. Two columns: what the patient acts on
+   down the left, what the kiosk is showing them down the right.
+ 
+   The ONLY flexible element is the understanding panel. The question, tiles,
+   mic, transcript and Next all keep their size; the panel gives up room and
+   scrolls inside itself, because it is the one thing here that is supplementary
+   rather than a control. */
+
+@media (min-width: 1100px) and (max-height: 900px) {
+  .shell__main:has(.interview__row) {
+    max-width: 1180px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    /* question | listen | body (takes the slack) | mic + Next */
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    column-gap: 32px;
+    row-gap: 12px;
+    align-content: start;
+    align-items: start;
+    min-height: 0;
+  }
+
+  .shell__main:has(.interview__row) > .shell__question {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .shell__main:has(.interview__row) > .listen--question {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  /* Left: what the patient touches. */
+  .shell__main:has(.interview__row) > .grid-2,
+  .shell__main:has(.interview__row) > .grid-3 {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: start;
+  }
+
+  /* Pinned to the bottom of the tile row rather than to a row of its own. A
+     row sized to the mic left 132px reserved in the right-hand column too,
+     where only Next sits — that dead space is what pushed the understanding
+     panel's last rows below the fold. */
+  .shell__main:has(.interview__row) > .mic-block {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: end;
+  }
+
+  /* Right: what the kiosk is showing back. */
+  .shell__main:has(.interview__row) > .interview__row {
+    grid-column: 2;
+    grid-row: 3;
+    flex-direction: column;
+    align-items: stretch;
+    /* stretch, not start: the grid gives this row a definite height, and
+       without stretching the box sizes to its content instead and spills into
+       the row below — which is what put Next on top of the transcript. */
+    align-self: stretch;
+    min-height: 0;
+    /* Children must not spill past the row, which is what put the panel
+       behind the bottom bar. */
+    overflow: hidden;
+  }
+
+  /* Next sits in its own row beneath the transcript, never beside or over it. */
+  .shell__main:has(.interview__row) > .btn--primary {
+    grid-column: 2;
+    grid-row: 4;
+    align-self: end;
+  }
+
+  /* The transcript keeps its size; the panel absorbs whatever is left. */
+  .shell__main:has(.interview__row) .transcript {
+    flex: 0 0 auto;
+  }
+
+  .shell__main:has(.interview__row) .understanding {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+}
+
+/* The chief-complaint screen has the same shape minus the understanding panel
+   (nine body-region tiles, mic, transcript, Next) and overflowed the same way.
+   :has(.interview__row) does not match it, so it needs its own placement. */
+@media (min-width: 1100px) and (max-height: 900px) {
+  .shell__main:has(.transcript):not(:has(.interview__row)) {
+    max-width: 1180px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    column-gap: 32px;
+    row-gap: 12px;
+    align-content: start;
+    min-height: 0;
+  }
+
+  .shell__main:has(.transcript):not(:has(.interview__row)) > .shell__question {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .shell__main:has(.transcript):not(:has(.interview__row)) > .listen--question {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .shell__main:has(.transcript):not(:has(.interview__row)) > .grid-2,
+  .shell__main:has(.transcript):not(:has(.interview__row)) > .grid-3 {
+    grid-column: 1;
+    grid-row: 3 / span 2;
+    align-self: start;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .shell__main:has(.transcript):not(:has(.interview__row)) > .mic-block {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: start;
+  }
+
+  .shell__main:has(.transcript):not(:has(.interview__row)) > .transcript {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: end;
+  }
+
+  .shell__main:has(.transcript):not(:has(.interview__row)) > .btn--primary {
+    grid-column: 2;
+    grid-row: 4;
+    align-self: end;
+  }
+}
+
+/* The name screen stacks a display, a mic and a 26-key A-Z keypad, which is
+   788px of content in a 704px band — Next ended up behind the bottom bar. The
+   keypad is the one wide element, so it takes its own column and the controls
+   sit beside it. Applies to the number keypads too, which were only just
+   fitting. */
+@media (min-width: 1100px) and (max-height: 900px) {
+  .shell__main:has(.keypad) {
+    max-width: 1180px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto;
+    column-gap: 32px;
+    row-gap: 12px;
+    align-content: start;
+    align-items: start;
+  }
+
+  .shell__main:has(.keypad) > .shell__question {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .shell__main:has(.keypad) > .listen--question {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .shell__main:has(.keypad) > .keypad__display {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .shell__main:has(.keypad) > .mic-block {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .shell__main:has(.keypad) > .btn--primary {
+    grid-column: 1;
+    grid-row: 5;
+  }
+
+  /* Spans the three control rows so the keypad keeps its full height whether
+     or not the mic is there — recognition being unavailable must not reflow
+     the keys under the patient's finger. */
+  .shell__main:has(.keypad) > .keypad {
+    grid-column: 2;
+    grid-row: 3 / span 3;
+  }
+}
+
+/* Consent stacked an explanation, three toggles and two buttons, and in every
+   language the Agree button sat entirely behind the bottom bar — the patient
+   could not consent at all, on the one screen that legally has to work. The
+   explanation takes its own column so the controls come up beside it. Kannada
+   sets the height here: its explanation runs 25px taller than Hindi's. */
+@media (min-width: 1100px) and (max-height: 900px) {
+  .shell__main:has(.consent__text) {
+    max-width: 1180px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    column-gap: 32px;
+    row-gap: 16px;
+    align-content: start;
+    align-items: start;
+  }
+
+  .shell__main:has(.consent__text) > .shell__question {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .shell__main:has(.consent__text) > .listen--question {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .shell__main:has(.consent__text) > .consent__text {
+    grid-column: 1;
+    grid-row: 3 / span 2;
+  }
+
+  .shell__main:has(.consent__text) > .stack {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .shell__main:has(.consent__text) > .consent__actions {
+    grid-column: 2;
+    grid-row: 4;
+  }
+}

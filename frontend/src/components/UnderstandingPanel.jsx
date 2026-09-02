@@ -24,14 +24,19 @@ const CONFIDENT = 0.7;
 // simply cut off at the viewport edge, and the patient had no way to know
 // anything was missing.
 //
-// Six, and a "+N more" line for the rest. Not an internal scrollbar: nothing
+// Four, and a "+N more" line for the rest. Not an internal scrollbar: nothing
 // else in this app scrolls, so a scrollbar here is a control the patient has to
 // discover, and the ones who need this panel most are the ones least likely to
 // find it. The count is what matters — it says the kiosk still holds the rest.
 //
-// The most RECENT six, because those are the ones the patient just said and is
+// Four rather than six because six is what the panel's column at 1280x800
+// cannot actually show: measured, the last two rows fell below the fold and
+// came back only by scrolling — the exact failure this cap exists to prevent.
+// The number has to match the space, not the intent.
+//
+// The most RECENT four, because those are the ones the patient just said and is
 // checking. The earlier ones they have already seen go right.
-const MAX_VISIBLE = 6;
+const MAX_VISIBLE = 4;
 
 function displayValue(value) {
   if (Array.isArray(value)) return value.join(', ');
