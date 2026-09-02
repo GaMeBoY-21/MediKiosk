@@ -97,6 +97,39 @@ class TestOnlyTheButtonSpeaks(unittest.TestCase):
             "deliberate exception was lost.",
         )
 
+    def test_the_waiting_screen_has_nothing_to_say(self):
+        """The kiosk must not be able to announce a wait.
+
+        This one slipped past the call-site audit above, and would again: the
+        wait was spoken through ListenButton, which is an ALLOWED call site.
+        A file-level check cannot see which text a screen hands it. So this
+        asserts the text instead — with no audio the shell renders no speaker
+        control on that screen at all, and there is nothing to press.
+        """
+        code = _code_only((FRONTEND / "screens/Interview.jsx").read_text(encoding="utf-8"))
+        thinking = code[code.index("if (thinking"):code.index("return (", code.index("if (thinking")) + 900]
+        self.assertIn(
+            'repeatAudio=""',
+            thinking,
+            "the waiting screen carries audio again; pressing Listen there makes "
+            "the kiosk say 'one moment'",
+        )
+
+    def test_audio_cannot_outlive_its_question(self):
+        """An utterance must stop when the question it belongs to is replaced.
+
+        `screen` stays SCREENS.INTERVIEW for every question in the interview,
+        so cancelling on screen change alone never fired between questions:
+        audio the patient asked for on one question ran on into the wait for
+        the next, which is indistinguishable from the kiosk talking by itself.
+        """
+        code = _code_only((FRONTEND / "components/ScreenShell.jsx").read_text(encoding="utf-8"))
+        self.assertIn(
+            "[cancel, screen, toRepeat]",
+            code,
+            "ScreenShell no longer cancels when the spoken text changes",
+        )
+
     def test_tapping_a_tile_is_silent(self):
         """The specific regression: tiles used to read themselves back."""
         for rel in ("components/IconTile.jsx", "components/Toggle.jsx"):

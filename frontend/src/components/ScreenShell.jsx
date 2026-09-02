@@ -79,7 +79,11 @@ export default function ScreenShell({
   // who cannot read still discovers that the button exists.
 
   // Never let one screen's audio bleed into the next.
-  useEffect(() => cancel, [cancel, screen]);
+  // Also keyed on the text: `screen` stays SCREENS.INTERVIEW for every
+  // question in the interview, so this only ever fired between screens and an
+  // utterance the patient asked for on one question carried on into the wait
+  // for the next one — which is what a kiosk talking to itself sounds like.
+  useEffect(() => cancel, [cancel, screen, toRepeat]);
 
   const handleBack = () => {
     cancel();

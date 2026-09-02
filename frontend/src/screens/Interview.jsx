@@ -20,7 +20,6 @@ import MicButton from '../components/MicButton.jsx';
 import TranscriptBox from '../components/TranscriptBox.jsx';
 import UnderstandingPanel from '../components/UnderstandingPanel.jsx';
 import { useT } from '../i18n/useT.js';
-import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSpeechRecognition } from '../speech/useSpeechRecognition.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
 import { recordKnownFields, submitAnswer } from '../api/client.js';
@@ -35,7 +34,6 @@ const OWN_SCREEN = {
 
 export default function Interview({ onError }) {
   const { tx, voice, lang } = useT();
-  const { speak } = useSpeech();
   const {
     sessionId,
     answers,
@@ -127,7 +125,7 @@ export default function Interview({ onError }) {
         onError?.(e);
       }
     },
-    [sessionId, lang, stop, speak, tx, voice, applyResponse, onError],
+    [sessionId, lang, stop, applyResponse, onError],
   );
 
   // Hand over what the earlier screens already collected, then send the chief
@@ -233,10 +231,14 @@ export default function Interview({ onError }) {
   };
 
   if (thinking || !node) {
+    // No audio on this screen at all. Not even behind the Listen button: with
+    // nothing to speak, ScreenShell renders no speaker control here, so there
+    // is no way to make the kiosk announce a wait. The wait is shown — the
+    // caption below and the phase label above.
     return (
       <ScreenShell
         prompt={{ label: tx('common.oneMoment').label, audio: '' }}
-        repeatAudio={tx('common.oneMoment').audio}
+        repeatAudio=""
         phase={node?.phase}
       >
         {/* Static text only. No spinner — nothing else in this app moves. */}
@@ -250,7 +252,6 @@ export default function Interview({ onError }) {
       prompt={{ label: node.question, audio: node.question }}
       repeatAudio={`${node.question} ${answerHint.audio}`}
       phase={node.phase}
-      speechKey={node.node_id}
       listening={listening}
       promptEnglish={node.question_en}
     >
