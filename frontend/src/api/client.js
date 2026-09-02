@@ -22,7 +22,28 @@ const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 //
 // The REPLAY badge (see Kiosk.jsx) is deliberately impossible to miss: replay
 // must never be mistaken for a live run.
-export const REPLAY = import.meta.env.VITE_REPLAY === 'true';
+// Runtime-switchable, not a build-time constant. It starts from the Vite flag
+// and can be turned on mid-session by the Ctrl+Shift+R handler (see
+// components/ReplaySwitch.jsx) with no reload and no restart — because the
+// moment you need it, restarting the stack means standing in front of judges
+// watching a terminal.
+//
+// One-way on purpose: there is no way back to live from here. Coming back
+// would mean a half-recorded, half-live session, and nobody could say which
+// screen was which afterwards.
+let replayActive = import.meta.env.VITE_REPLAY === 'true';
+const replayWatchers = new Set();
+
+/** Whether the app is serving the recording. Read it, never cache it. */
+export function isReplay() {
+  return replayActive;
+}
+
+/** Subscribe to the switch. Returns an unsubscribe function. */
+export function subscribeReplay(listener) {
+  replayWatchers.add(listener);
+  return () => replayWatchers.delete(listener);
+}
 
 // The /api suffix is required: app/main.py mounts every router under
 // API_PREFIX="/api" while the helpers below request bare paths such as
@@ -92,7 +113,7 @@ async function request(path, { method = 'GET', body, isForm = false, retry = tru
 /* -------------------------------------------------------------------- auth */
 
 export async function login(username, password) {
-  if (REPLAY) {
+  if (replayActive) {
     // Offline demo. The login form is still shown and still has to be filled,
     // so the flow demonstrates honestly, but there is no server to verify
     // against. Safe only because replay serves a recorded session and nothing
@@ -130,7 +151,7 @@ export async function login(username, password) {
 
 /** Exchange the refresh token for a new access token. Returns true on success. */
 export async function renewAccess() {
-  if (REPLAY) return true;
+  if (replayActive) return true;
   const refresh = refreshToken();
   if (!refresh) return false;
   try {
@@ -152,7 +173,7 @@ export async function renewAccess() {
 }
 
 export async function logout() {
-  if (REPLAY) {
+  if (replayActive) {
     clearSession();
     return;
   }
@@ -186,6 +207,28 @@ function loadReplay() {
 // How far through the recorded interview we are. Reset when a session starts.
 let replayCursor = 0;
 
+/**
+ * Turn on replay for the rest of this session. Idempotent.
+ *
+ * Resets the cursor and drops the cached fixture so the recording plays from
+ * its first turn, whatever the live session had already done.
+ */
+export function enableReplay() {
+  if (replayActive) return false;
+  replayActive = true;
+  replayCursor = 0;
+  replayPromise = null;
+  for (const listener of replayWatchers) {
+    try {
+      listener(true);
+    } catch (e) {
+      console.warn('[replay] listener failed:', e);
+    }
+  }
+  console.warn('[replay] switched to the recorded session at runtime');
+  return true;
+}
+
 /* ---------------------------------------------------------------- mock state */
 // Where the mocked interview has got to. Reset whenever a session starts.
 let mockCursor = 0;
@@ -212,7 +255,7 @@ function shapeNode(node, lang) {
 /* -------------------------------------------------------------------- session */
 
 export async function startSession(language = 'en') {
-  if (REPLAY) {
+  if (replayActive) {
     const d = await loadReplay();
     replayCursor = 0;
     return d.kiosk.session;
@@ -238,7 +281,7 @@ export async function startSession(language = 'en') {
  * Costs no model call: these values are already structured.
  */
 export async function recordKnownFields(sessionId, fields) {
-  if (REPLAY) {
+  if (replayActive) {
     const d = await loadReplay();
     return d.kiosk.fields;
   }
@@ -250,7 +293,7 @@ export async function recordKnownFields(sessionId, fields) {
 }
 
 export async function recordConsent(sessionId, consent) {
-  if (REPLAY) return { ok: true, consent };
+  if (replayActive) return { ok: true, consent };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true, consent };
@@ -259,7 +302,7 @@ export async function recordConsent(sessionId, consent) {
 }
 
 export async function endSession(sessionId) {
-  if (REPLAY) return { ok: true };
+  if (replayActive) return { ok: true };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true };
@@ -275,7 +318,7 @@ export async function endSession(sessionId) {
  * The Interview screen renders whatever comes back — it holds no clinical content.
  */
 export async function submitAnswer(sessionId, payload) {
-  if (REPLAY) {
+  if (replayActive) {
     const d = await loadReplay();
     const recorded = d.kiosk.answers;
     // Walk the recording in order. Whatever the patient says or taps, the
@@ -307,7 +350,7 @@ export async function submitAnswer(sessionId, payload) {
 /* ------------------------------------------------------------------ documents */
 
 export async function uploadDocument(sessionId, blob, filename = 'page.jpg') {
-  if (REPLAY) return { doc_id: 'replay-doc', document_id: 'replay-doc', status: 'queued' };
+  if (replayActive) return { doc_id: 'replay-doc', document_id: 'replay-doc', status: 'queued' };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { document_id: `mock-doc-${Math.random().toString(36).slice(2, 8)}`, status: 'received' };
@@ -320,7 +363,7 @@ export async function uploadDocument(sessionId, blob, filename = 'page.jpg') {
 /* -------------------------------------------------------------------- summary */
 
 export async function generateSummary(sessionId) {
-  if (REPLAY) {
+  if (replayActive) {
     const d = await loadReplay();
     return d.kiosk.summary;
   }
@@ -333,7 +376,7 @@ export async function generateSummary(sessionId) {
 }
 
 export async function fetchSummary(sessionId) {
-  if (REPLAY) {
+  if (replayActive) {
     const d = await loadReplay();
     return d.physician.summary;
   }
@@ -348,7 +391,7 @@ export async function fetchSummary(sessionId) {
 /* ------------------------------------------------------------------ physician */
 
 export async function fetchPatientList() {
-  if (REPLAY) {
+  if (replayActive) {
     const d = await loadReplay();
     return d.physician.queue;
   }
@@ -361,7 +404,7 @@ export async function fetchPatientList() {
 }
 
 export async function fetchCase(sessionId) {
-  if (REPLAY) {
+  if (replayActive) {
     const d = await loadReplay();
     return d.physician.case;
   }
@@ -375,7 +418,7 @@ export async function fetchCase(sessionId) {
 }
 
 export async function updateCase(sessionId, patch) {
-  if (REPLAY) return { ok: true, patch };
+  if (replayActive) return { ok: true, patch };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true, patch };
@@ -384,7 +427,7 @@ export async function updateCase(sessionId, patch) {
 }
 
 export async function confirmCase(sessionId) {
-  if (REPLAY) return { ok: true, status: 'verified' };
+  if (replayActive) return { ok: true, status: 'verified' };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true, status: 'confirmed' };
@@ -393,7 +436,7 @@ export async function confirmCase(sessionId) {
 }
 
 export async function rejectCase(sessionId, reason) {
-  if (REPLAY) return { ok: true, status: 'rejected', reason };
+  if (replayActive) return { ok: true, status: 'rejected', reason };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
     return { ok: true, status: 'rejected', reason };

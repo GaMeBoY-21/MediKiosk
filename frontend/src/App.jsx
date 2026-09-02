@@ -8,6 +8,7 @@ import Physician from './physician/Physician.jsx';
 import ProtectedRoute from './physician/ProtectedRoute.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import ReplayBadge from './components/ReplayBadge.jsx';
+import ReplaySwitch from './components/ReplaySwitch.jsx';
 import ErrorScreen from './screens/ErrorScreen.jsx';
 import { SessionProvider } from './state/SessionContext.jsx';
 import { SpeechProvider } from './speech/SpeechProvider.jsx';
@@ -45,6 +46,9 @@ export default function App() {
 
   return (
     <SessionProvider>
+      {/* Outside the ErrorBoundary on purpose: the switch has to work from
+          the error screen, which is where it will be reached for. */}
+      <ReplaySwitch />
       <ReplayBadge />
       <SpeechProvider>
         <ErrorBoundary

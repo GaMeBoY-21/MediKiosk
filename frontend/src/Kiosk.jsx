@@ -23,7 +23,7 @@ import Confirm from './screens/Confirm.jsx';
 import Done from './screens/Done.jsx';
 import Emergency from './screens/Emergency.jsx';
 
-import { startSession } from './api/client.js';
+import { startSession, subscribeReplay } from './api/client.js';
 
 export default function Kiosk() {
   const { screen, sessionId, setSessionId, language, languageChosen, reset } = useSession();
@@ -51,6 +51,12 @@ export default function Kiosk() {
     setFailed(false);
     reset();
   }, [reset]);
+
+  // The Ctrl+Shift+R failure switch. Clearing the session is not enough on its
+  // own: `failed` lives here, so without this the kiosk switched to the
+  // recording and carried on showing "Something went wrong" — which is the one
+  // screen you press the switch to get away from.
+  useEffect(() => subscribeReplay(() => wipe()), [wipe]);
 
   // The timeout is meaningless on Idle (nothing to protect) and on Done
   // (which runs its own 30s return).

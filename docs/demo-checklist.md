@@ -3,8 +3,9 @@
 Friday morning, in order. Each step says what you should see. If a step does
 not match, the fix is on the same line — do not improvise.
 
-Read the two boxes at the bottom BEFORE you start. They are the things that
-are not what you would guess.
+If it goes wrong on the day, the answer is section 7: **Ctrl+Shift+R**. Read
+that section and the last one before you start — they are the parts that are
+not what you would guess.
 
 ---
 
@@ -52,9 +53,9 @@ Expect one line per slot, all `WORKS`:
   ...
 ```
 
-- `API_KEY_INVALID` — that key is wrong. Replace it, or blank the line so the
-  pool skips it. **One bad key in slot 1 will fail every request**: an invalid
-  key is not a quota error, so the pool does not fail over past it.
+- `API_KEY_INVALID` — that key is wrong. The pool now skips it automatically
+  (one wasted call, then on to the next key), so it will not sink the demo —
+  but fix it anyway, because a skipped key is an allowance you are not using.
 - `429 quota` — that key is spent for the day. Blank it or leave it; the pool
   will step over it after one wasted call.
 
@@ -132,36 +133,50 @@ language.
 
 ## 7. If something goes wrong
 
-> ### There is no keyboard shortcut for replay.
->
-> `Ctrl+Shift+R` is a browser hard-reload. It reloads the same live build and
-> changes nothing — no replay, no recovery. Replay is chosen when the server
-> starts, not from the keyboard. Do not reach for it on the day.
+### Switch 1 — `Ctrl+Shift+R`, from anywhere
 
-### Switch 1 — the kiosk shows "Something went wrong"
+Quota gone, keys rejected, backend dead, screen frozen — this covers all of
+them, and you press it wherever you are standing. **It works from the error
+screen**, which is where you will be.
 
-Quota gone, keys rejected, or the backend died. One switch covers all three:
+Takes about **one second**. No reload, no restart, nothing to type. The red
+**REPLAY** badge appears immediately and the kiosk returns to the idle screen;
+start the walkthrough again from there.
+
+You are now serving a real recorded session — genuine model output, a genuine
+chest-pain red flag — with no network and no quota.
+
+**One screen in the recording needs typing.** Every other screen is tappable
+as usual. When you reach:
+
+> *When did this chest discomfort start?*
+
+there are no tiles: type anything (`2 days`) and press Next. It is the only
+one. If you forget, the symptom is that Next stays greyed out.
+
+The switch is one-way — there is no keystroke back to live. Pressing it again
+just restarts the recording from the beginning, which is what you want if you
+run the demo twice.
+
+### Switch 2 — restart into replay
+
+Only if the browser itself is wedged and the keystroke does nothing:
 
 ```
 Ctrl-C          # in the dev.sh terminal, both processes stop
 ./dev.sh --replay
 ```
 
-Up in about **2 seconds**. Then reload the browser tab.
+Up in about **2 seconds**, then reload the tab.
 
-You are now serving a real recorded session — genuine model output, a genuine
-chest-pain red flag — with no network and no quota. A red **REPLAY** badge sits
-on every screen, so nobody can mistake it for live. The full path works,
-including the red flag.
+### A key runs out, or one is wrong — do nothing
 
-In replay the interview questions are free-text: **type an answer** and press
-Next. Tapping alone will not advance it.
+The pool handles both by itself, on the next request, and the patient sees one
+slightly slow question. Watch it in the status tab from step 4:
 
-### Switch 2 — a key runs out mid-demo
-
-Do nothing. The pool moves to the next key on the next request, logs
-`key 2 exhausted, switching to key 3`, and the patient sees one slightly slow
-question. Watch it happen in the status tab from step 4.
+- `key 2 exhausted, switching to key 3` — that key's daily quota is spent.
+- `key 2 invalid, skipping to key 3` — that key is a typo. Fix it after the
+  demo; it is skipped on every model, so it costs one call and no more.
 
 Only if `pools_remaining` reaches `0` do you need Switch 1.
 
