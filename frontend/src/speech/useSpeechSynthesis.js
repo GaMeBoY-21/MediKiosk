@@ -1,12 +1,20 @@
 // Owner: Ranjith
-// Text-to-speech. Every screen speaks its instruction on mount, so this hook
-// must never be the reason a screen fails to appear.
+// Text-to-speech. The ONLY place in the app that touches the Web Speech API —
+// ai/test_audio_sources.py fails the build if a component reaches around it.
+// Sound plays on a press of the speaker button and nowhere else, with two
+// exceptions kept deliberately: the language screen, which is shown before a
+// language exists, and the emergency alert.
 //
 // Two hazards it handles:
 //   1. getVoices() is empty on the first call in Chrome — voices arrive later
 //      on the 'voiceschanged' event. We wait for it, with a timeout fallback.
-//   2. Many devices have no voice for kn/ta/te/mr/bn. We log and speak with the
-//      default voice rather than blocking. Text on screen is the backup.
+//   2. Many devices have no voice for kn/ta/te/mr/bn. We then say NOTHING and
+//      log it. This used to fall back to the device default, which meant an
+//      English voice reading out Marathi text — sounds that are not the
+//      language, to a patient who cannot read the screen either. Silence is
+//      the better failure: the text is still there, and staff can see the
+//      patient is stuck. Marathi has no voice on the demo machine, so this
+//      path is real, not theoretical.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -53,12 +61,22 @@ export function useSpeechSynthesis() {
       if (!supported || !text) return;
 
       const utter = () => {
+        // No voice for this language: stay silent rather than read the
+        // patient's language aloud in somebody else's.
+        const voice = pickVoice(lang);
+        if (!voice) {
+          console.warn(
+            `[speech] no voice installed for ${lang}; staying silent rather ` +
+              `than speaking ${lang} text with another language's voice`,
+          );
+          setSpeaking(false);
+          return;
+        }
+
         const u = new SpeechSynthesisUtterance(text);
         u.lang = lang;
         u.rate = RATE;
-        const voice = pickVoice(lang);
-        if (voice) u.voice = voice;
-        else console.info(`[speech] no voice installed for ${lang}; using device default`);
+        u.voice = voice;
 
         u.onstart = () => setSpeaking(true);
         u.onend = () => setSpeaking(false);
@@ -73,6 +91,9 @@ export function useSpeechSynthesis() {
       };
 
       window.speechSynthesis.cancel();
+      // Explicit: a refused utterance never fires onend, so without this the
+      // button would stay stuck showing "Stop" for a language it cannot speak.
+      setSpeaking(false);
 
       if (voicesRef.current.length || window.speechSynthesis.getVoices().length) {
         // Chrome drops an utterance queued in the same tick as cancel().
