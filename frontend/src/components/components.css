@@ -706,7 +706,11 @@
 /* Paired with the compact tokens in theme/tokens.css. Everything here exists
    so that a 1280x800 panel needs no scrolling at all on the ordinary screens;
    see .shell__main's overflow-y for the genuine last resort. */
-@media (max-height: 900px) {
+/* The compact scale. Also applied to every window wide enough for the
+   two-column layout, not just short ones: on a tall window everything stayed
+   full size, the column came out ~37px over, and Next was pushed onto the
+   understanding panel. The layout and the scale belong to the same decision. */
+@media (max-height: 900px), (min-width: 1000px) {
   .mic {
     width: 96px;
     height: 96px;
@@ -926,13 +930,17 @@
    scrolls inside itself, because it is the one thing here that is supplementary
    rather than a control. */
 
-@media (min-width: 1100px) and (max-height: 900px) {
+@media (min-width: 1000px) {
   .shell__main:has(.interview__row) {
     max-width: 1180px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     /* question | listen | body (takes the slack) | mic + Next */
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    /* question | listen | tiles | mic | next.
+       Content-sized, not 1fr for the tile row: 1fr is whatever is left over,
+       and five tiles carrying their English are taller than the leftover, so
+       the grid drew them straight through the mic below. */
+    grid-template-rows: auto auto auto auto auto;
     column-gap: 32px;
     row-gap: 12px;
     align-content: start;
@@ -958,20 +966,23 @@
     align-self: start;
   }
 
-  /* Pinned to the bottom of the tile row rather than to a row of its own. A
-     row sized to the mic left 132px reserved in the right-hand column too,
-     where only Next sits — that dead space is what pushed the understanding
-     panel's last rows below the fold. */
+  /* Its own row. Sharing the tile row and being pinned to its bottom worked
+     only while the tiles stayed under about 200px; five tiles with their
+     English underneath are 236px, and the mic was then drawn through them.
+     The panel keeps the space anyway by spanning both rows in column 2, which
+     is what the sharing was for. */
   .shell__main:has(.interview__row) > .mic-block {
     grid-column: 1;
-    grid-row: 3;
-    align-self: end;
+    grid-row: 4;
   }
 
   /* Right: what the kiosk is showing back. */
   .shell__main:has(.interview__row) > .interview__row {
     grid-column: 2;
-    grid-row: 3;
+    /* Spans the tile row AND the mic row: only the transcript and the panel
+       live in this column, so it takes the full height instead of leaving the
+       mic's row empty beside it. */
+    grid-row: 3 / span 2;
     flex-direction: column;
     align-items: stretch;
     /* stretch, not start: the grid gives this row a definite height, and
@@ -987,7 +998,7 @@
   /* Next sits in its own row beneath the transcript, never beside or over it. */
   .shell__main:has(.interview__row) > .btn--primary {
     grid-column: 2;
-    grid-row: 4;
+    grid-row: 5;
     align-self: end;
   }
 
@@ -1007,7 +1018,7 @@
 /* The chief-complaint screen has the same shape minus the understanding panel
    (nine body-region tiles, mic, transcript, Next) and overflowed the same way.
    :has(.interview__row) does not match it, so it needs its own placement. */
-@media (min-width: 1100px) and (max-height: 900px) {
+@media (min-width: 1000px) {
   .shell__main:has(.transcript):not(:has(.interview__row)) {
     max-width: 1180px;
     display: grid;
@@ -1063,7 +1074,7 @@
    keypad is the one wide element, so it takes its own column and the controls
    sit beside it. Applies to the number keypads too, which were only just
    fitting. */
-@media (min-width: 1100px) and (max-height: 900px) {
+@media (min-width: 1000px) {
   .shell__main:has(.keypad) {
     max-width: 1180px;
     display: grid;
@@ -1115,7 +1126,7 @@
    could not consent at all, on the one screen that legally has to work. The
    explanation takes its own column so the controls come up beside it. Kannada
    sets the height here: its explanation runs 25px taller than Hindi's. */
-@media (min-width: 1100px) and (max-height: 900px) {
+@media (min-width: 1000px) {
   .shell__main:has(.consent__text) {
     max-width: 1180px;
     display: grid;
@@ -1168,7 +1179,7 @@
    space, capped and scrollable. The patient chose to speak; the tiles are the
    path they did not take, and they stay reachable by scrolling rather than
    being removed. The transcript never shrinks. */
-@media (max-width: 1099px) {
+@media (max-width: 999px) {
   .shell__main--listening > .grid-2,
   .shell__main--listening > .grid-3 {
     flex: 0 1 auto;
