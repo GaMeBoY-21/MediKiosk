@@ -2,9 +2,10 @@
 """Gemini implementation of LLMAdapter and VisionAdapter."""
 
 import json
+import logging
 import os
 import re
-import time
+import threading
 
 import google.generativeai as genai
 
@@ -12,16 +13,13 @@ from ai.adapters.base import (
     LLMAdapter,
     MalformedOutputError,
     MissingConfigError,
-    RateLimitError,
     VisionAdapter,
 )
+from ai.adapters.keypool import GeminiKeyPool, collect_keys, collect_models
+
+log = logging.getLogger(__name__)
 
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE | re.MULTILINE)
-
-_MAX_ATTEMPTS = 2
-# Longest server-requested wait we will actually sit through inside a request.
-# Beyond this, failing fast beats making a patient watch a frozen kiosk.
-_MAX_RETRY_WAIT_SECONDS = 20.0
 
 # There is deliberately NO default model. Google retires model names without
 # warning — gemini-1.5-flash, the previous default here, started returning 404
@@ -32,7 +30,10 @@ _MODEL_HINT = (
     "is deliberately not defaulted — run ListModels to see what your key can "
     "currently reach."
 )
-_API_KEY_HINT = "Set GEMINI_API_KEY in app/.env."
+_API_KEY_HINT = (
+    "Set GEMINI_API_KEY, or GEMINI_API_KEY_1..GEMINI_API_KEY_5 for the key "
+    "pool, in app/.env."
+)
 
 
 def _strip_markdown_fences(text: str) -> str:
@@ -48,56 +49,6 @@ def _parse_json(text: str) -> dict:
         raise MalformedOutputError(f"could not parse Gemini output as JSON: {exc}") from exc
 
 
-def _is_rate_limit_error(exc: Exception) -> bool:
-    message = str(exc).lower()
-    return "429" in message or "rate limit" in message or "quota" in message or "resource exhausted" in message
-
-
-def _retry_after_seconds(exc: Exception) -> float | None:
-    """The server's own requested wait, if it sent one.
-
-    google-api-core puts a retry_delay on the exception; it also appears in the
-    message text as `retry_delay { seconds: N }`. Prefer this over guessing:
-    our old fixed 1+2+4 backoff gave up after 7s while the server was asking
-    for 16.8s, so every retry was wasted and the call failed anyway.
-    """
-    delay = getattr(exc, "retry_delay", None)
-    seconds = getattr(delay, "seconds", None)
-    if isinstance(seconds, (int, float)) and seconds > 0:
-        return float(seconds)
-    match = re.search(r"retry_delay\s*{\s*seconds:\s*(\d+)", str(exc))
-    return float(match.group(1)) if match else None
-
-
-def _call_with_retry(fn):
-    """Call fn(), retrying only on rate-limit errors.
-
-    Two attempts, not four. The binding limit is a per-DAY quota, so sitting
-    in a backoff loop is pure dead time on a request a patient is waiting on:
-    if the daily allowance is gone, no amount of retrying inside one request
-    will get it back. The single retry exists for a genuine per-minute burst,
-    and it waits exactly as long as the server asked.
-    """
-    last_exc: Exception | None = None
-    for attempt in range(_MAX_ATTEMPTS):
-        try:
-            return fn()
-        except Exception as exc:  # the provider SDK raises its own exception types
-            if not _is_rate_limit_error(exc):
-                raise
-            last_exc = exc
-            if attempt < _MAX_ATTEMPTS - 1:
-                wait = _retry_after_seconds(exc)
-                if wait is None or wait > _MAX_RETRY_WAIT_SECONDS:
-                    # No hint, or a wait far longer than a patient will stand
-                    # at a kiosk: fail now and surface it.
-                    break
-                time.sleep(wait)
-    raise RateLimitError(
-        f"Gemini rate limit exceeded after {_MAX_ATTEMPTS} attempts: {last_exc}"
-    ) from last_exc
-
-
 def _resolve(value: str | None, env_var: str, hint: str) -> str:
     """Take an explicit value, else the environment, else fail by name.
 
@@ -110,34 +61,119 @@ def _resolve(value: str | None, env_var: str, hint: str) -> str:
     return resolved
 
 
-def _build_model(model_name: str | None, api_key: str | None):
-    """Configure the SDK and construct a model, or fail naming what is missing."""
-    genai.configure(api_key=_resolve(api_key, "GEMINI_API_KEY", _API_KEY_HINT))
-    return genai.GenerativeModel(_resolve(model_name, "GEMINI_MODEL", _MODEL_HINT))
+# google.generativeai keeps the API key in module-level global state, so the
+# key in force is whatever was configured LAST — not whatever was configured
+# when a model object was built. Switching keys therefore has to happen
+# immediately before the call, and two calls with different keys must not
+# interleave. One lock around configure-and-call is enough for a kiosk, where
+# there is one patient at a time, and is the only version of this that is
+# certainly correct.
+_SDK_LOCK = threading.Lock()
+
+
+class _KeyedModel:
+    """One (key, model) pair, applied at call time rather than at build time."""
+
+    def __init__(self, api_key: str, model_name: str):
+        self._key = api_key
+        self._name = model_name
+
+    def generate_content(self, payload):
+        with _SDK_LOCK:
+            genai.configure(api_key=self._key)
+            return genai.GenerativeModel(self._name).generate_content(payload)
+
+
+def _model_factory(api_key: str, model_name: str) -> _KeyedModel:
+    return _KeyedModel(api_key, model_name)
+
+
+_pool_singleton: GeminiKeyPool | None = None
+_pool_lock = threading.Lock()
+
+
+def get_pool(env: dict | None = None, model_factory=None) -> GeminiKeyPool:
+    """The process-wide key pool. Built once, then shared.
+
+    Shared between the text and vision adapters on purpose: they draw on the
+    same allowance, so a key spent by one is spent for the other, and finding
+    that out twice costs two wasted calls.
+    """
+    global _pool_singleton
+    if env is None and model_factory is None:
+        with _pool_lock:
+            if _pool_singleton is None:
+                _pool_singleton = _build_pool(os.environ, _model_factory)
+            return _pool_singleton
+    # Explicit env/factory: a caller building its own pool (tests).
+    return _build_pool(env if env is not None else os.environ, model_factory or _model_factory)
+
+
+def _build_pool(env, model_factory) -> GeminiKeyPool:
+    keys = collect_keys(env)
+    if not keys:
+        raise MissingConfigError("GEMINI_API_KEY", _API_KEY_HINT)
+    models = collect_models(env)
+    if not models:
+        raise MissingConfigError("GEMINI_MODEL", _MODEL_HINT)
+    log.info(
+        "Gemini key pool: %d key(s) x %d model(s) = %d quota pool(s) [%s]",
+        len(keys),
+        len(models),
+        len(keys) * len(models),
+        ", ".join(models),
+    )
+    return GeminiKeyPool(keys, models, model_factory)
+
+
+def reset_pool() -> None:
+    """Drop the singleton. For tests and for a config reload."""
+    global _pool_singleton
+    with _pool_lock:
+        _pool_singleton = None
 
 
 class GeminiLLMAdapter(LLMAdapter):
-    """Gemini-backed text generation adapter."""
+    """Gemini-backed text generation adapter, backed by the key pool."""
 
-    def __init__(self, model_name: str | None = None, api_key: str | None = None):
-        self._model = _build_model(model_name, api_key)
+    def __init__(self, model_name: str | None = None, api_key: str | None = None, pool=None):
+        # An explicit key or model still works and pins a single-combination
+        # pool, so existing callers and one-off scripts behave as before.
+        if pool is not None:
+            self._pool = pool
+        elif api_key or model_name:
+            keys = [_resolve(api_key, "GEMINI_API_KEY", _API_KEY_HINT)]
+            models = [_resolve(model_name, "GEMINI_MODEL", _MODEL_HINT)]
+            self._pool = GeminiKeyPool(keys, models, _model_factory)
+        else:
+            self._pool = get_pool()
+
+    @property
+    def pool(self) -> GeminiKeyPool:
+        return self._pool
 
     def complete(self, prompt: str) -> str:
-        response = _call_with_retry(lambda: self._model.generate_content(prompt))
-        return response.text
+        return self._pool.execute(lambda m: m.generate_content(prompt)).text
 
     def complete_json(self, prompt: str) -> dict:
-        response = _call_with_retry(lambda: self._model.generate_content(prompt))
+        response = self._pool.execute(lambda m: m.generate_content(prompt))
         return _parse_json(response.text)
 
 
 class GeminiVisionAdapter(VisionAdapter):
-    """Gemini-backed vision extraction adapter."""
+    """Gemini-backed vision extraction adapter, backed by the same key pool."""
 
-    def __init__(self, model_name: str | None = None, api_key: str | None = None):
-        self._model = _build_model(model_name, api_key)
+    def __init__(self, model_name: str | None = None, api_key: str | None = None, pool=None):
+        if pool is not None:
+            self._pool = pool
+        elif api_key or model_name:
+            keys = [_resolve(api_key, "GEMINI_API_KEY", _API_KEY_HINT)]
+            models = [_resolve(model_name, "GEMINI_MODEL", _MODEL_HINT)]
+            self._pool = GeminiKeyPool(keys, models, _model_factory)
+        else:
+            self._pool = get_pool()
 
     def extract_from_image(self, image_bytes: bytes, prompt: str) -> dict:
         image_part = {"mime_type": "image/jpeg", "data": image_bytes}
-        response = _call_with_retry(lambda: self._model.generate_content([prompt, image_part]))
+        response = self._pool.execute(lambda m: m.generate_content([prompt, image_part]))
         return _parse_json(response.text)

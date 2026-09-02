@@ -39,7 +39,23 @@ class Settings(BaseSettings):
     """Postgres DSN. Unset falls back to SQLite so the demo runs anywhere."""
 
     GEMINI_API_KEY: Optional[str] = None
-    """Key for the AI layer. Unset now fails loudly on first use by name."""
+    """Single key for the AI layer. Still honoured as key 1 of the pool.
+
+    Unset AND no numbered keys fails loudly on first use, by name.
+    """
+
+    GEMINI_API_KEY_1: Optional[str] = None
+    GEMINI_API_KEY_2: Optional[str] = None
+    GEMINI_API_KEY_3: Optional[str] = None
+    GEMINI_API_KEY_4: Optional[str] = None
+    GEMINI_API_KEY_5: Optional[str] = None
+    """The key pool. Each key MUST come from a different Google account.
+
+    The free-tier quota is metered per Google Cloud project, so five keys from
+    one account share one allowance and buy nothing. Blank slots are skipped
+    silently — filling three of the five is a normal state. See
+    ai/adapters/keypool.py for the failover order.
+    """
 
     GEMINI_MODEL: Optional[str] = None
     """Gemini model id, e.g. gemini-3.5-flash-lite.
@@ -47,6 +63,12 @@ class Settings(BaseSettings):
     Deliberately no default: Google retires model names without notice, and a
     stale default here took the whole app down with 404s. Unset raises
     MissingConfigError naming this variable.
+    """
+
+    GEMINI_MODEL_FALLBACK: Optional[str] = None
+    """A SECOND model id. Quota is per model as well as per project, so this
+    doubles the pool: every key is tried on the primary model first, then
+    every key again on this one. Optional — unset just means a smaller pool.
     """
 
     APP_ENV: str = "development"

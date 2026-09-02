@@ -20,6 +20,24 @@ class RateLimitError(LLMAdapterError):
     """Raised when a provider is still rate-limiting us after retries are exhausted."""
 
 
+class AllProvidersExhausted(LLMAdapterError):
+    """Every (key, model) combination in the pool has hit its quota.
+
+    Deliberately NOT a RateLimitError. RateLimitError means "this provider is
+    busy, the request failed" — something a caller might sensibly retry.
+    This means there is nothing left to retry with until a quota window rolls
+    over, which for the daily limit is tomorrow. The two need different
+    handling and, at a kiosk, different words on the screen.
+    """
+
+    def __init__(self, tried: int, detail: str = ""):
+        self.tried = tried
+        message = f"all {tried} Gemini key/model combinations are exhausted"
+        if detail:
+            message = f"{message}: {detail}"
+        super().__init__(message)
+
+
 class MissingConfigError(LLMAdapterError):
     """Raised when a required setting is absent.
 
