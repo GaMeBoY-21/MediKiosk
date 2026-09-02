@@ -1,24 +1,18 @@
 // Owner: Ranjith
-// A large icon paired with a text label. Tapping speaks the label back as
+// A large icon paired with a text label. Tapping is SILENT: it speaks
 // confirmation — a patient who cannot read needs to hear what they just chose.
 
-import { useSpeech } from '../speech/SpeechProvider.jsx';
 
 import BilingualText from './BilingualText.jsx';
 
 export default function IconTile({
   icon: Icon,
   label,
-  audio,
   onSelect,
   selected = false,
-  voice,
   variant = '',
 }) {
-  const { speak } = useSpeech();
-
   const handleClick = () => {
-    if (audio) speak(audio, voice);
     onSelect?.();
   };
 

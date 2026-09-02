@@ -229,7 +229,6 @@ export default function Interview({ onError }) {
     const label = node?.options?.find((o) => o.value === value)?.label;
     if (label) {
       setAnswer(label);
-      speak(label, voice);
     }
   };
 

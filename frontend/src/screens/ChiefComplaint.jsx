@@ -64,8 +64,6 @@ export default function ChiefComplaint() {
             key={area}
             icon={ICONS[area]}
             label={tx(`complaint.${area}`).label}
-            audio={tx(`complaint.${area}`).audio}
-            voice={voice}
             onSelect={() => commit(area, tx(`complaint.${area}`).label)}
           />
         ))}

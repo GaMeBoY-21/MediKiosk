@@ -3,7 +3,7 @@
 // nothing else. No flags (a script is not a country), no English subtitle
 // (English is what we are trying to get away from).
 //
-// Tapping speaks a greeting in that language as confirmation, then advances.
+// Tapping is silent: it sets the language and advances.
 // Everything after this screen is in the chosen language.
 
 import { useEffect, useRef, useState } from 'react';
@@ -34,10 +34,9 @@ export default function Language() {
   }, [hasSpoken, markSpoken, speak, greeting]);
 
   const choose = (code) => {
-    if (picked) return; // ignore double taps while the greeting plays
+    if (picked) return; // ignore double taps while the screen advances
     setPicked(code);
     setLanguage(code);
-    speak(t(code, 'language.greeting').audio, bcp47(code));
     timer.current = setTimeout(() => go(SCREENS.IDENTIFY), ADVANCE_MS);
   };
 

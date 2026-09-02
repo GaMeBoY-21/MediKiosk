@@ -310,32 +310,6 @@
   color: var(--ink-soft);
 }
 
-/* ----------------------------------------------------------- SpeakerButton */
-
-.speaker {
-  min-height: var(--touch-min);
-  padding: 16px 24px;
-  display: inline-flex;
-  align-items: center;
-  gap: 16px;
-  border: 2px solid var(--ink);
-  border-radius: var(--radius);
-  font-size: var(--fs-button);
-  font-weight: 600;
-  background: var(--bg);
-  align-self: flex-start;
-}
-
-.speaker svg {
-  width: 40px;
-  height: 40px;
-  flex: none;
-}
-
-.speaker:active {
-  background: var(--surface);
-}
-
 /* ------------------------------------------------------------ TranscriptBox */
 
 .transcript {

@@ -15,7 +15,7 @@ const OPTIONS = [
 ];
 
 export default function SexEntry() {
-  const { tx, voice } = useT();
+  const { tx } = useT();
   const { setPatient, go } = useSession();
 
   const choose = (value) => {
@@ -31,8 +31,6 @@ export default function SexEntry() {
             key={o.value}
             icon={o.icon}
             label={tx(o.key).label}
-            audio={tx(o.key).audio}
-            voice={voice}
             onSelect={() => choose(o.value)}
           />
         ))}

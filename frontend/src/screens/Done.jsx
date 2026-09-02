@@ -6,15 +6,13 @@
 
 import { useEffect } from 'react';
 import { useT } from '../i18n/useT.js';
-import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSession } from '../state/SessionContext.jsx';
 import { endSession } from '../api/client.js';
 
 const RETURN_MS = 30000;
 
 export default function Done() {
-  const { tx, voice } = useT();
-  const { speak } = useSpeech();
+  const { tx } = useT();
   const { sessionId, summary, reset } = useSession();
 
   const token = summary?.token ?? '—';

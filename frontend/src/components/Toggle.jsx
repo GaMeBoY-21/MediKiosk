@@ -3,15 +3,10 @@
 // cannot read still hears exactly what they just agreed to.
 
 import { Check } from './Icons.jsx';
-import { useSpeech } from '../speech/SpeechProvider.jsx';
 
-export default function Toggle({ checked, onChange, label, audio, voice }) {
-  const { speak } = useSpeech();
-
+export default function Toggle({ checked, onChange, label }) {
   const handleClick = () => {
-    const next = !checked;
-    onChange(next);
-    if (audio) speak(audio, voice);
+    onChange(!checked);
   };
 
   return (

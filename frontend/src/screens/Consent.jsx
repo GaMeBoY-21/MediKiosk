@@ -49,22 +49,16 @@ export default function Consent() {
           checked={opts.history}
           onChange={set('history')}
           label={tx('consent.optHistory').label}
-          audio={tx('consent.optHistory').audio}
-          voice={voice}
         />
         <Toggle
           checked={opts.documents}
           onChange={set('documents')}
           label={tx('consent.optDocuments').label}
-          audio={tx('consent.optDocuments').audio}
-          voice={voice}
         />
         <Toggle
           checked={opts.abha}
           onChange={set('abha')}
           label={tx('consent.optAbha').label}
-          audio={tx('consent.optAbha').audio}
-          voice={voice}
         />
       </div>
 
