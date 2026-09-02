@@ -11,7 +11,7 @@
 // cumulative for the whole session — so fields accumulate across questions and
 // never reset per turn.
 
-import { fieldLabel } from '../i18n/fieldNames.js';
+import { fieldLabel, valueLabel } from '../i18n/fieldNames.js';
 import { useT } from '../i18n/useT.js';
 
 // Below this, the model was not sure enough to state the value plainly.
@@ -38,10 +38,32 @@ const CONFIDENT = 0.7;
 // checking. The earlier ones they have already seen go right.
 const MAX_VISIBLE = 4;
 
-function displayValue(value) {
-  if (Array.isArray(value)) return value.join(', ');
-  if (typeof value === 'boolean') return value ? '✓' : '—';
-  return String(value ?? '');
+// What to SHOW for a value, in the patient's language. Three sources, best
+// first — and none of them is the raw value, which is a canonical English
+// token and was being rendered straight onto the screen: "1_day", "male".
+//
+//   1. the kiosk's own screens, for the closed set it collected itself
+//      (sex, consent, body region) — it rendered those tiles and holds the
+//      translation already
+//   2. `display` from the API: the label of the option the patient tapped,
+//      written in their language when the question was generated
+//   3. the value opened out by the API as a last resort ("1 day"), which is
+//      English but never a token
+function shownValue(field, lang) {
+  const own = valueLabel(field.name, field.value, lang);
+  if (own) return own;
+  if (field.display) return field.display;
+  // Nothing from the API at all: an older payload, or a field added since.
+  // Open it out here rather than let an underscore reach the screen.
+  const v = field.value;
+  if (Array.isArray(v)) return v.map((x) => String(x).replace(/_/g, ' ')).join(', ');
+  if (typeof v === 'boolean') return v ? '✓' : '—';
+  return String(v ?? '').replace(/_/g, ' ');
+}
+
+function hasValue(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  return value !== null && value !== undefined && value !== '';
 }
 
 export default function UnderstandingPanel({ extracted }) {
@@ -51,7 +73,7 @@ export default function UnderstandingPanel({ extracted }) {
   // promise the patient something is happening when it is not.
   if (!Array.isArray(extracted) || extracted.length === 0) return null;
 
-  const items = extracted.filter((f) => f && f.name && displayValue(f.value) !== '');
+  const items = extracted.filter((f) => f && f.name && hasValue(f.value));
   if (items.length === 0) return null;
 
   const hidden = Math.max(0, items.length - MAX_VISIBLE);
@@ -70,7 +92,7 @@ export default function UnderstandingPanel({ extracted }) {
             >
               <span className="understanding__key">{fieldLabel(f.name, lang)}</span>
               <span className="understanding__value">
-                {displayValue(f.value)}
+                {shownValue(f, lang)}
                 {/* An uncertain field must never look like a confident one.
                     Lighter weight alone would not survive a projector or a
                     colour-blind viewer, so it carries a mark as well. */}

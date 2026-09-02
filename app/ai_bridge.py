@@ -276,6 +276,26 @@ def _coerce_fields(fields: List[ExtractedField]) -> List[ExtractedField]:
     return out
 
 
+def _attach_display(fields: List[ExtractedField], options=None) -> None:
+    """Give every field a patient-readable display string, in place.
+
+    Only a GENUINE label is set here — one written in the patient's language
+    for an option that was actually on screen. A field with nothing better
+    keeps display=None and the fallback happens in one place
+    (clinical_state.understanding), which can also see what the other fields
+    were labelled and let a derived field borrow from the answer it came from.
+
+    Only `display` is touched. `value` is what every rule reads and is left
+    exactly as it arrived.
+    """
+    from ai.interview.display import label_for
+
+    for f in fields:
+        if f.display:
+            continue
+        f.display = label_for(f.value, options)
+
+
 def _render(
     node_id: str,
     question: str,
@@ -338,6 +358,7 @@ def answer_turn(
     follow_up_counts: Dict[str, int],
     language: str,
     field_ask_counts: Optional[Dict[str, int]] = None,
+    asked_options: Optional[List[Dict[str, Any]]] = None,
 ) -> tuple[List[ExtractedField], Optional[Dict[str, Any]]]:
     """Extract this answer AND get the next question, normally in ONE call.
 
@@ -355,6 +376,7 @@ def answer_turn(
     Returns (extracted fields, rendered next question or None when finished).
     """
     from ai.interview import followup
+    from ai.interview.display import label_for
     from ai.interview.nodes import InterviewNode, get_node
     from ai.interview.state_machine import (
         next_node as sm_next_node,
@@ -398,6 +420,10 @@ def answer_turn(
                         value=value,
                         confidence=1.0,
                         source=FieldSource.touch,
+                        # The patient's own language, already written: this is
+                        # the label on the tile they touched. Losing it here is
+                        # what left the panel showing "1_day".
+                        display=label_for(value, asked_options),
                     )
                 ]
             )
@@ -436,6 +462,7 @@ def answer_turn(
     )
 
     coerced = _coerce_fields(result.fields)
+    _attach_display(coerced, asked_options)
     merged = dict(fields)
     merged.update({f.name: f.value for f in coerced})
 

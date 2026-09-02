@@ -97,7 +97,13 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
     # Which field the question we asked was trying to fill. Recorded when the
     # question was generated; a tapped option is filed straight into it
     # without a model call.
-    target_field = (state.rendered_nodes.get(payload.node_id) or {}).get("target_field")
+    rendered = state.rendered_nodes.get(payload.node_id) or {}
+    target_field = rendered.get("target_field")
+    # The options exactly as they were put on screen, carrying the labels in
+    # the patient's language. They are the only place those strings exist —
+    # the next question regenerates them — so the answer has to borrow its
+    # display label here, while the question that produced it is still known.
+    asked_options = rendered.get("options") or []
 
     # Extraction and the next question come back from ONE model call. They
     # used to be two serial calls, so every tap paid both latencies and spent
@@ -112,6 +118,7 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
         state.follow_up_counts,
         payload.language.value,
         state.field_ask_counts,
+        asked_options=asked_options,
     )
     extracted = {f.name: f.value for f in extracted_fields}
     if extracted:
@@ -119,6 +126,8 @@ def submit_answer(session_id: str, payload: AnswerRequest, db: DbSession = Depen
         for f in extracted_fields:
             state.field_confidence[f.name] = f.confidence
             state.field_source[f.name] = f.source.value
+            if f.display:
+                state.field_display[f.name] = f.display
         clinical_state.persist_extracted_fields(db, session_id, extracted)
     store.save(state)
 

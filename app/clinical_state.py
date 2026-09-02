@@ -29,10 +29,21 @@ def understanding(state) -> List[ExtractedField]:
     words and must never leave the server in this payload — the whole point of
     keeping them in memory is that they are not distributed.
     """
+    from ai.interview.display import humanise, inherited_label
+
     return [
         ExtractedField(
             name=name,
             value=value,
+            # Best to worst: the label of the option the patient tapped, kept
+            # when the answer was filed; the label of another field holding
+            # the same answer, for the ones reconcile.py derives; and last the
+            # value opened out, so the panel is never handed a raw token.
+            display=(
+                state.field_display.get(name)
+                or inherited_label(name, value, state.extracted, state.field_display)
+                or humanise(value)
+            ),
             # A real float. The panel hedges anything below 0.7, which it
             # cannot do from a boolean. Defaults to 1.0 only for values that
             # predate confidence tracking.

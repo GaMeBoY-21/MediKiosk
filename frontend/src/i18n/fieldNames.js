@@ -14,6 +14,8 @@
 // use common everyday terms but have not been reviewed by a native speaker —
 // worth a pass before the judged demo.
 
+import { t } from './strings.js';
+
 const FIELD_NAMES = {
   patient_name: {
     en: 'Name', hi: 'नाम', kn: 'ಹೆಸರು', ta: 'பெயர்', te: 'పేరు', mr: 'नाव', bn: 'নাম',
@@ -107,4 +109,42 @@ export function fieldLabel(name, lang) {
   const entry = FIELD_NAMES[name];
   if (!entry) return fallback(name);
   return entry[lang] ?? entry.en ?? fallback(name);
+}
+
+/* ------------------------------------------------------- values, not names */
+
+// The kiosk fills a handful of fields on its own screens — sex, consent, the
+// body region — and posts the canonical value with no option list attached, so
+// the API can only hand back the value opened out ("Male"). The translated
+// string does exist: it is the label that was on the tile the patient tapped.
+// This maps those canonical values back to it.
+//
+// Deliberately a closed set. Everything else the patient answers goes through
+// the interview, where the API returns the label it generated in their
+// language, and guessing at values beyond this list would mean inventing
+// translations for clinical content that the model already writes correctly.
+const VALUE_KEYS = {
+  sex: { male: 'identify.male', female: 'identify.female', other: 'identify.otherSex' },
+  consent_given: { true: 'common.yes', false: 'common.no', yes: 'common.yes', no: 'common.no' },
+  chief_complaint: Object.fromEntries(
+    ['head', 'chest', 'stomach', 'back', 'joints', 'skin', 'fever', 'breathing', 'other'].map(
+      (a) => [a, `complaint.${a}`],
+    ),
+  ),
+};
+// The body region is derived from the same tiles, so it reads the same labels.
+VALUE_KEYS.symptom_site = VALUE_KEYS.chief_complaint;
+
+/**
+ * Patient-language label for a canonical value, or undefined when this is not
+ * one of the values the kiosk itself collected.
+ *
+ * @param {string} name   field name, e.g. 'sex'
+ * @param {*} value       canonical value, e.g. 'male'
+ * @param {string} lang   language code
+ */
+export function valueLabel(name, value, lang) {
+  if (value === null || value === undefined || Array.isArray(value)) return undefined;
+  const path = VALUE_KEYS[name]?.[String(value)];
+  return path ? t(lang, path).label : undefined;
 }

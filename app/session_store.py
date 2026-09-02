@@ -57,6 +57,13 @@ class SessionState:
     # twice inside a stage that allows eight follow-ups; this one is what
     # actually breaks a re-ask loop. See state_machine.MAX_FIELD_ASKS.
     field_ask_counts: Dict[str, int] = field(default_factory=dict)
+    # How each field's value should be SHOWN to the patient: the label of the
+    # option they tapped, in their language. Display only — `extracted` above
+    # keeps the canonical value, which is what every rule reads. Kept beside
+    # the value rather than derived at render time because the label exists
+    # only at the moment the answer is filed; the options are regenerated for
+    # the next question and the string is gone.
+    field_display: Dict[str, str] = field(default_factory=dict)
     # The exact question dict last rendered for each node, so a past question
     # can be re-shown verbatim (Confirm screen's edit pencil) instead of
     # asking ai.interview.followup to generate a fresh — and possibly

@@ -230,6 +230,17 @@ class ExtractedField(BaseModel):
 
     name: str = Field(..., description="Field name, e.g. 'onset' or 'hba1c'.")
     value: Any = Field(..., description="Extracted value. Typed loosely — ai/ decides.")
+    display: Optional[str] = Field(
+        None,
+        description=(
+            "The value as the patient should SEE it, in their language — the "
+            "label of the option they tapped. Display only. Every rule, the "
+            "summary, the FHIR builder and storage read `value`, never this: "
+            "the canonical token is what makes red flags fire identically in "
+            "all seven languages. Absent when nothing better than the value "
+            "itself is known."
+        ),
+    )
     confidence: float = Field(
         ..., ge=0.0, le=1.0, description="Model confidence 0-1. Low values are shown to the doctor."
     )
