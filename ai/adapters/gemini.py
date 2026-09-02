@@ -15,7 +15,13 @@ from ai.adapters.base import (
     MissingConfigError,
     VisionAdapter,
 )
-from ai.adapters.keypool import GeminiKeyPool, collect_keys, collect_models
+from ai.adapters.keypool import (
+    LEGACY_KEY_VAR,
+    NUMBERED_KEY_VARS,
+    GeminiKeyPool,
+    collect_keys,
+    collect_models,
+)
 
 log = logging.getLogger(__name__)
 
@@ -88,6 +94,31 @@ def _model_factory(api_key: str, model_name: str) -> _KeyedModel:
     return _KeyedModel(api_key, model_name)
 
 
+# The keys live in app/.env, which pydantic-settings loads into `settings` --
+# it does NOT put them into os.environ. Reading the process environment alone
+# therefore found nothing and reported an unconfigured pool on a machine that
+# was working perfectly. Settings first, real environment second, so an env
+# var can still override for a one-off run.
+_POOL_VARS = (
+    *NUMBERED_KEY_VARS,
+    LEGACY_KEY_VAR,
+    "GEMINI_MODEL",
+    "GEMINI_MODEL_FALLBACK",
+)
+
+
+def _env_mapping() -> dict:
+    env = {}
+    try:
+        from app.config import settings
+    except Exception:  # ai/ must still work with no app/ importable
+        settings = None
+    for name in _POOL_VARS:
+        value = getattr(settings, name, None) if settings is not None else None
+        env[name] = value or os.environ.get(name)
+    return env
+
+
 _pool_singleton: GeminiKeyPool | None = None
 _pool_lock = threading.Lock()
 
@@ -103,10 +134,10 @@ def get_pool(env: dict | None = None, model_factory=None) -> GeminiKeyPool:
     if env is None and model_factory is None:
         with _pool_lock:
             if _pool_singleton is None:
-                _pool_singleton = _build_pool(os.environ, _model_factory)
+                _pool_singleton = _build_pool(_env_mapping(), _model_factory)
             return _pool_singleton
     # Explicit env/factory: a caller building its own pool (tests).
-    return _build_pool(env if env is not None else os.environ, model_factory or _model_factory)
+    return _build_pool(env if env is not None else _env_mapping(), model_factory or _model_factory)
 
 
 def _build_pool(env, model_factory) -> GeminiKeyPool:

@@ -74,3 +74,31 @@ def health() -> dict:
 def health_api() -> dict:
     """Same probe under /api, so a frontend pointed at the prefix can reach it."""
     return {"status": "ok"}
+
+
+@app.get(f"{API_PREFIX}/health/providers", tags=["health"])
+def health_providers() -> dict:
+    """Which model/key combinations exist, which are spent, which is in use.
+
+    For watching the pool during a demo: how much headroom is left, and which
+    combination answered the question just now. Contains NO key material —
+    combinations are identified by index ("key 3 of 5"), because this is the
+    kind of endpoint someone opens on a projector.
+    """
+    from ai.adapters.base import MissingConfigError
+    from ai.adapters.gemini import get_pool
+
+    try:
+        return {"configured": True, **get_pool().status()}
+    except MissingConfigError as exc:
+        # Not an error state worth a 500: it is the answer to the question.
+        return {
+            "configured": False,
+            "detail": str(exc),
+            "keys_configured": 0,
+            "pools_total": 0,
+            "pools_exhausted": 0,
+            "pools_remaining": 0,
+            "active": None,
+            "combinations": [],
+        }

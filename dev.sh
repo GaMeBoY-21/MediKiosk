@@ -172,17 +172,30 @@ preflight() {
            "    cp .env.example app/.env" \
            "then fill in GEMINI_API_KEY and GEMINI_MODEL."
 
-  local key model
+  # Count the key pool. Values are never printed -- only how many there are.
+  # Quota is metered per Google Cloud project, so these have to come from
+  # different accounts to be worth anything; .env.example says so.
+  local key model fallback n found=0 models=1
+  for n in 1 2 3 4 5; do
+    [ -n "$(env_value "GEMINI_API_KEY_$n" "$ENV_FILE")" ] && found=$((found + 1))
+  done
   key="$(env_value GEMINI_API_KEY "$ENV_FILE")"
-  [ -n "$key" ] \
-    || die "GEMINI_API_KEY is empty in app/.env" \
-           "Set it to a working key:" \
+  if [ "$found" -eq 0 ] && [ -n "$key" ]; then
+    found=1
+  fi
+  [ "$found" -gt 0 ] \
+    || die "no Gemini API key in app/.env" \
+           "Set at least one of:" \
            "    GEMINI_API_KEY=..." \
-           "Get one at https://aistudio.google.com/apikey" \
+           "    GEMINI_API_KEY_1=...   (through GEMINI_API_KEY_5)" \
+           "Get keys at https://aistudio.google.com/apikey" \
+           "Each numbered key must come from a DIFFERENT Google account:" \
+           "quota is per project, so five keys from one account share one" \
+           "allowance and buy nothing." \
            "" \
            "Or demo without any API at all:" \
            "    ./dev.sh --replay"
-  ok "GEMINI_API_KEY present in app/.env (${#key} chars, not shown)"
+  ok "Gemini keys: $found configured in app/.env (values not shown)"
 
   model="$(env_value GEMINI_MODEL "$ENV_FILE")"
   [ -n "$model" ] \
@@ -193,6 +206,22 @@ preflight() {
            "    GEMINI_MODEL=gemini-3.5-flash-lite"
   ok "GEMINI_MODEL = $model"
   MODEL="$model"
+
+  fallback="$(env_value GEMINI_MODEL_FALLBACK "$ENV_FILE")"
+  if [ -n "$fallback" ]; then
+    models=2
+    MODEL_FALLBACK="$fallback"
+    ok "GEMINI_MODEL_FALLBACK = $fallback"
+  else
+    MODEL_FALLBACK=""
+    ok "GEMINI_MODEL_FALLBACK unset (single-model pool)"
+  fi
+
+  # The number that matters on the day: how many independent daily quotas.
+  KEY_COUNT="$found"
+  MODEL_COUNT="$models"
+  POOL_COUNT=$((found * models))
+  ok "Gemini: $found keys x $models models = $POOL_COUNT pools"
 
   # --- node + frontend deps
   command -v node >/dev/null 2>&1 \
@@ -386,7 +415,9 @@ ${BOLD}MediKiosk is up${RESET}
   Kiosk     http://localhost:${WEB_PORT}
   Console   http://localhost:${WEB_PORT}/physician
   Mode      ${MODE}
-  Model     ${MODEL}
+  Model     ${MODEL}${MODEL_FALLBACK:+  (fallback: ${MODEL_FALLBACK})}
+  Gemini    ${KEY_COUNT} keys x ${MODEL_COUNT} models = ${POOL_COUNT} pools
+            status at http://localhost:${API_PORT}/api/health/providers
   Database  ${DB_MODE}
   Login     ${USERNAME}  (password in app/.demo-credentials)
 
