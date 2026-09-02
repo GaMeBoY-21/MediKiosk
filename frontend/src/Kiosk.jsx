@@ -26,22 +26,25 @@ import Emergency from './screens/Emergency.jsx';
 import { startSession } from './api/client.js';
 
 export default function Kiosk() {
-  const { screen, sessionId, setSessionId, language, reset } = useSession();
+  const { screen, sessionId, setSessionId, language, languageChosen, reset } = useSession();
   const [failed, setFailed] = useState(false);
 
-  // Open a session as soon as the patient leaves the idle screen.
-  // The ref guards against StrictMode's double effect invocation in dev.
+  // Open the session once the patient has CHOSEN a language, not merely left
+  // the idle screen. Starting it on the language screen itself meant the
+  // session was created before a language existed, so the backend stored
+  // English and generated its opening question in English.
   const starting = useRef(false);
   useEffect(() => {
-    if (screen === SCREENS.IDLE || sessionId || starting.current) return;
+    if (screen === SCREENS.IDLE || screen === SCREENS.LANGUAGE) return;
+    if (!languageChosen || sessionId || starting.current) return;
     starting.current = true;
-    startSession()
+    startSession(language)
       .then((s) => setSessionId(s.session_id))
       .catch((e) => {
         console.error('[kiosk] could not start session:', e);
         setFailed(true);
       });
-  }, [screen, sessionId, setSessionId]);
+  }, [screen, sessionId, setSessionId, language, languageChosen]);
 
   const wipe = useCallback(() => {
     starting.current = false;

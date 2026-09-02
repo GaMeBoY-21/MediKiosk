@@ -211,7 +211,7 @@ function shapeNode(node, lang) {
 
 /* -------------------------------------------------------------------- session */
 
-export async function startSession() {
+export async function startSession(language = 'en') {
   if (REPLAY) {
     const d = await loadReplay();
     replayCursor = 0;
@@ -223,7 +223,10 @@ export async function startSession() {
     mockCursor = 0;
     return { ...data.session };
   }
-  return request('/session/start', { method: 'POST' });
+  // The language MUST go with this call. Without it the session is created as
+  // English, and the opening question the backend generates and stores comes
+  // back in English no matter what the patient picked afterwards.
+  return request('/session/start', { method: 'POST', body: { language } });
 }
 
 /**
