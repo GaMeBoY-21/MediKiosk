@@ -52,15 +52,19 @@ _llm_singleton = None  # type: ignore[var-annotated]
 
 
 def _llm():
-    """Lazy singleton so a missing GEMINI_API_KEY fails on first real use,
-    not at import time, and so we don't re-configure the SDK per request."""
+    """Lazy singleton so a missing key fails on first real use, not at import.
+
+    Deliberately constructed with NO explicit key or model: passing them pins
+    the adapter to that single pair and bypasses the failover pool entirely,
+    which is how the pool came to exist and then never be used. Unset, the
+    adapter draws on the shared pool built from GEMINI_API_KEY_1..5 (or the
+    single GEMINI_API_KEY) and GEMINI_MODEL / GEMINI_MODEL_FALLBACK.
+    """
     global _llm_singleton
     if _llm_singleton is None:
         from ai.adapters.gemini import GeminiLLMAdapter
 
-        _llm_singleton = GeminiLLMAdapter(
-            model_name=settings.GEMINI_MODEL, api_key=settings.GEMINI_API_KEY
-        )
+        _llm_singleton = GeminiLLMAdapter()
     return _llm_singleton
 
 
@@ -74,9 +78,9 @@ def _vision():
     if _vision_singleton is None:
         from ai.adapters.gemini import GeminiVisionAdapter
 
-        _vision_singleton = GeminiVisionAdapter(
-            model_name=settings.GEMINI_MODEL, api_key=settings.GEMINI_API_KEY
-        )
+        # Same reasoning as _llm(): no explicit key or model, so both adapters
+        # share one pool and a key spent by one is known to be spent by the other.
+        _vision_singleton = GeminiVisionAdapter()
     return _vision_singleton
 
 
