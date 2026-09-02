@@ -57,6 +57,7 @@ export default function ChiefComplaint() {
     <ScreenShell
       prompt={tx('complaint.title')}
       repeatAudio={`${tx('complaint.title').audio} ${answerHint.audio}`}
+      listening={listening}
     >
       <div className="grid-3">
         {AREAS.map((area) => (

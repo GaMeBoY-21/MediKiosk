@@ -1153,3 +1153,32 @@
     grid-row: 4;
   }
 }
+
+/* ------------------------------------------- transcript while the mic is on */
+
+/* Below 1100px the landscape grid above does not apply and the screen falls
+   back to a single column: question, tiles, mic, transcript, Next. With nine
+   body-region tiles that pushed the transcript to 770px on a 768px-tall
+   window — behind the bottom bar, off the screen, while the mic said
+   "Listening". The patient talks and sees nothing come back, which is the one
+   thing the transcript exists to prevent: it is how they catch a misheard
+   word before it becomes clinical history.
+   
+   So while the mic is live the option tiles are the element that gives up
+   space, capped and scrollable. The patient chose to speak; the tiles are the
+   path they did not take, and they stay reachable by scrolling rather than
+   being removed. The transcript never shrinks. */
+@media (max-width: 1099px) {
+  .shell__main--listening > .grid-2,
+  .shell__main--listening > .grid-3 {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 26vh;
+    overflow-y: auto;
+  }
+
+  .shell__main--listening > .transcript,
+  .shell__main--listening > .interview__row {
+    flex: 0 0 auto;
+  }
+}

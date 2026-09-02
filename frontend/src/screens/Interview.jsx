@@ -251,6 +251,7 @@ export default function Interview({ onError }) {
       repeatAudio={`${node.question} ${answerHint.audio}`}
       phase={node.phase}
       speechKey={node.node_id}
+      listening={listening}
       promptEnglish={node.question_en}
     >
       {node.options?.length ? (

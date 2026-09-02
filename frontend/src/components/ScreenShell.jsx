@@ -40,6 +40,9 @@ export default function ScreenShell({
    *  For the language screen, which is shown before a language exists — and
    *  which must still be English when the patient navigates BACK to it. */
   englishOnly = false,
+  /** the mic is active. The transcript must stay on screen while it is, so
+   *  the layout lets the option tiles give up their space instead. */
+  listening = false,
   children,
   onBack,
   footer,
@@ -97,7 +100,7 @@ export default function ScreenShell({
         ) : null}
       </div>
 
-      <main className="shell__main">
+      <main className={`shell__main${listening ? ' shell__main--listening' : ''}`}>
         {heading && !hideHeading ? (
           <BilingualText
             as="h1"
