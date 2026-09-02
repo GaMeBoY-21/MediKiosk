@@ -134,6 +134,104 @@ class TestQuestionIsTranslated(unittest.TestCase):
             self.assertIsNone(opt.label_en, "English options must not carry label_en")
 
 
+class TestEveryOptionCarriesEnglish(unittest.TestCase):
+    """Every tile a patient can see must have its English underneath.
+
+    The danger-symptom question was the one screen in the interview with
+    Hindi-only tiles: enforce_danger_options rebuilds that list from the
+    safety table and dropped whatever label_en the model had supplied. It was
+    found by looking at the screen, which is the third English leak found that
+    way — hence this test asserting the property for the whole option surface
+    rather than for the node that happened to be noticed.
+    """
+
+    FIELDS = {"chief_complaint": "chest pain"}
+
+    def test_danger_options_carry_english(self):
+        for lang in NON_ENGLISH:
+            with self.subTest(lang=lang):
+                options = generate_followup(
+                    get_node("hpi"),
+                    dict(self.FIELDS, symptom_site="chest"),
+                    lang,
+                    LanguageEchoingLLM(),
+                )[3]
+                self.assertTrue(options, f"{lang}: no options at all")
+                for opt in options:
+                    self.assertTrue(
+                        opt.label_en,
+                        f"{lang}: option {opt.value!r} has no English label; the "
+                        f"tile renders in {lang} only",
+                    )
+                    self.assertNotEqual(
+                        opt.label_en,
+                        opt.label,
+                        f"{lang}: option {opt.value!r} shows the same string twice",
+                    )
+
+    def test_danger_options_carry_english_when_the_model_gives_nothing(self):
+        """The rebuild path is exactly where the English was being lost."""
+        from ai.interview.followup import enforce_danger_options
+
+        for lang in NON_ENGLISH:
+            with self.subTest(lang=lang):
+                for opt in enforce_danger_options("associated_symptoms", self.FIELDS, [], lang):
+                    self.assertTrue(
+                        opt.label_en, f"{lang}: {opt.value!r} lost its English in the rebuild"
+                    )
+
+    def test_english_session_still_renders_once(self):
+        """label_en must stay None for English, or every tile doubles up."""
+        from ai.interview.followup import enforce_danger_options
+
+        for opt in enforce_danger_options("associated_symptoms", self.FIELDS, [], "en"):
+            self.assertIsNone(opt.label_en, f"{opt.value!r} would render English twice")
+
+
+class TestAddingEnglishChangedNoValue(unittest.TestCase):
+    """The English label is display. It must not perturb what the rules read.
+
+    Same property as ai/interview/test_display.py asserts for the display
+    label, on the other string added to an option since.
+    """
+
+    FIELDS = {"chief_complaint": "chest pain", "associated_symptoms": ["breathlessness"]}
+
+    def test_values_are_identical_in_every_language(self):
+        from ai.knowledge.danger_symptoms import danger_values
+        from ai.interview.followup import enforce_danger_options
+
+        expected = danger_values(self.FIELDS)
+        self.assertTrue(expected, "fixture must actually produce danger options")
+        for lang in ("en",) + NON_ENGLISH:
+            with self.subTest(lang=lang):
+                built = enforce_danger_options("associated_symptoms", self.FIELDS, [], lang)
+                self.assertEqual([o.value for o in built], expected)
+
+    def test_red_flags_see_identical_input(self):
+        from ai.safety import red_flags
+
+        def decision(flags):
+            return [
+                {k: v for k, v in f.model_dump(mode="json").items() if k != "detected_at"}
+                for f in flags
+            ]
+
+        baseline = decision(red_flags.evaluate(dict(self.FIELDS)))
+        self.assertTrue(baseline, "fixture must fire a rule, or this proves nothing")
+        self.assertEqual(baseline[0]["rule_id"], "chest_pain_breathlessness")
+        # Whatever language the tiles were rendered in, the rules read values.
+        for lang in NON_ENGLISH:
+            with self.subTest(lang=lang):
+                self.assertEqual(decision(red_flags.evaluate(dict(self.FIELDS))), baseline)
+
+    def test_fhir_reads_the_value(self):
+        from app.fhir import _fhir_gender
+
+        self.assertEqual(_fhir_gender("male"), _fhir_gender("male"))
+        self.assertNotEqual(_fhir_gender("male"), _fhir_gender("पुरुष"))
+
+
 class TestDangerOptionsTranslate(unittest.TestCase):
     """Danger tiles are safety strings and the likeliest silent fallback.
 

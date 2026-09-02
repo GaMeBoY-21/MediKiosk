@@ -16,7 +16,11 @@ from app.schemas import QuestionOption
 
 from ai.adapters.base import LLMAdapter, MalformedOutputError
 from ai.interview.nodes import InterviewNode
-from ai.knowledge.danger_symptoms import danger_options, describe_danger_options
+from ai.knowledge.danger_symptoms import (
+    danger_options,
+    describe_danger_options,
+    english_danger_options,
+)
 
 log = logging.getLogger(__name__)
 
@@ -94,12 +98,21 @@ def enforce_danger_options(
     own translation table, in the patient's language — the fallback is used
     exactly when the model misbehaved, and handing a Hindi-only patient a list
     of danger signs in English is the same as not offering them at all.
+
+    The English label is carried through as well. Rebuilding the list here
+    discarded whatever `label_en` the model had supplied, which made this the
+    one question in the whole interview with no English under its tiles — on
+    the screen where a relative or a nurse reading over the patient's shoulder
+    is most likely to be the one who spots the warning sign.
     """
     if target_field != DANGER_FIELD:
         return model_options
 
     translated = {o.value: o.label for o in model_options}
     required = danger_options(filled_fields, language)
+    # value -> English label, straight from the table. Not the model's: these
+    # are safety strings and the English is ours to state.
+    english = dict(english_danger_options(filled_fields))
 
     invented = sorted(set(translated) - {value for value, _ in required})
     if invented:
@@ -115,10 +128,20 @@ def enforce_danger_options(
             missing,
         )
 
-    return [
-        QuestionOption(value=value, label=translated.get(value) or fallback)
-        for value, fallback in required
-    ]
+    out = []
+    for value, fallback in required:
+        label = translated.get(value) or fallback
+        label_en = english.get(value)
+        out.append(
+            QuestionOption(
+                value=value,
+                label=label,
+                # Same rule as every other option: nothing to show twice when
+                # the label already IS the English.
+                label_en=None if label_en == label else label_en,
+            )
+        )
+    return out
 
 
 def _bare(target_field: str, node: InterviewNode, filled_fields: dict, language: str):
