@@ -8,14 +8,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import ScreenShell from '../components/ScreenShell.jsx';
-import { LANGUAGES, bcp47, t } from '../i18n/strings.js';
+import { DEFAULT_LANG, LANGUAGES, bcp47, t } from '../i18n/strings.js';
 import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
 
 const ADVANCE_MS = 1000;
 
 export default function Language() {
-  const { language, setLanguage, go } = useSession();
+  const { setLanguage, go } = useSession();
   const { speak } = useSpeech();
   const [picked, setPicked] = useState(null);
   const timer = useRef(null);
@@ -31,7 +31,10 @@ export default function Language() {
   };
 
   return (
-    <ScreenShell prompt={t(language, 'language.title')}>
+    // English, always. Reading the session language here meant that coming
+    // BACK to this screen rendered it in whatever had been chosen — the one
+    // screen that cannot be translated, because it is where the choice is made.
+    <ScreenShell prompt={t(DEFAULT_LANG, 'language.title')} englishOnly>
       <div className="language__grid">
         {LANGUAGES.map((l) => (
           <button

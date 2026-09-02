@@ -16,6 +16,7 @@ import { ArrowLeft, Speaker } from './Icons.jsx';
 import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSession } from '../state/SessionContext.jsx';
 import { useT } from '../i18n/useT.js';
+import { DEFAULT_LANG, bcp47, t } from '../i18n/strings.js';
 
 export default function ScreenShell({
   /** { label, audio } — spoken the first time this node is reached */
@@ -34,12 +35,20 @@ export default function ScreenShell({
   promptEnglish,
   /** identifies what is being spoken, so it is spoken exactly once */
   speechKey,
+  /** Render this screen in English only, ignoring session language entirely.
+   *  For the language screen, which is shown before a language exists — and
+   *  which must still be English when the patient navigates BACK to it. */
+  englishOnly = false,
   children,
   onBack,
   footer,
 }) {
   const { screen, back, hasSpoken, markSpoken } = useSession();
-  const { voice, label } = useT();
+  const { voice: sessionVoice, label: sessionLabel } = useT();
+  // On an English-only screen the chrome and the audio ignore session state
+  // too, otherwise Back would bring a chosen language back with it.
+  const label = englishOnly ? (key) => t(DEFAULT_LANG, key).label : sessionLabel;
+  const voice = englishOnly ? bcp47(DEFAULT_LANG) : sessionVoice;
   const { speak, cancel } = useSpeech();
 
   const spoken = prompt?.audio || prompt?.label || '';
@@ -86,6 +95,7 @@ export default function ScreenShell({
             as="h1"
             className="shell__question"
             always={alwaysBilingual}
+            englishOnly={englishOnly}
             english={promptEnglish}
           >
             {prompt.label}
@@ -103,11 +113,15 @@ export default function ScreenShell({
           onClick={() => speak(toRepeat, voice)}
         >
           <Speaker />
-          <BilingualText always={alwaysBilingual}>{label('common.repeat')}</BilingualText>
+          <BilingualText always={alwaysBilingual} englishOnly={englishOnly}>
+            {label('common.repeat')}
+          </BilingualText>
         </button>
         <button type="button" className="shell__bar-btn" onClick={handleBack}>
           <ArrowLeft />
-          <BilingualText always={alwaysBilingual}>{label('common.back')}</BilingualText>
+          <BilingualText always={alwaysBilingual} englishOnly={englishOnly}>
+            {label('common.back')}
+          </BilingualText>
         </button>
       </nav>
     </div>

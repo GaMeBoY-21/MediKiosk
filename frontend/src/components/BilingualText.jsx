@@ -23,6 +23,10 @@ export default function BilingualText({
    *  screens set this: the person reading them is usually staff, who may not
    *  share the patient's language. */
   always = false,
+  /** Render English once, never bilingually, whatever is in session state.
+   *  The language screen sets this: it is shown before a language exists, so
+   *  there is nothing to translate into and nothing to put underneath. */
+  englishOnly = false,
   /** The English line, supplied explicitly. Clinical content — the interview
    *  question and its option tiles — is generated per patient, so it has no
    *  entry in strings.js to look up. The API returns its English alongside it
@@ -36,7 +40,7 @@ export default function BilingualText({
   // renders outside SessionProvider. No session simply means no chosen
   // language, which already means English only.
   const session = useOptionalSession();
-  const chosen = Boolean(session?.languageChosen);
+  const chosen = !englishOnly && Boolean(session?.languageChosen);
   const lang = chosen ? session.language : 'en';
 
   const text = typeof children === 'string' ? children : null;
@@ -45,7 +49,7 @@ export default function BilingualText({
   const looked = text && (chosen || always) && lang !== 'en' ? englishFor(text, lang) : undefined;
   const candidate = englishProp ?? looked;
   // Never render the same sentence twice.
-  const secondary = candidate && candidate !== text ? candidate : undefined;
+  const secondary = englishOnly ? undefined : (candidate && candidate !== text ? candidate : undefined);
 
   if (!secondary) {
     // One language: English is the choice, nothing is chosen yet, or this
