@@ -15,6 +15,13 @@
 //      the better failure: the text is still there, and staff can see the
 //      patient is stuck. Marathi has no voice on the demo machine, so this
 //      path is real, not theoretical.
+//
+//      ONE caller opts out: the emergency alert passes a `fallback`, because
+//      an alert nobody hears is worse than an alert in the wrong language.
+//      Nothing else may. The decision is made HERE rather than by the caller
+//      because the voice list loads asynchronously — a component checking
+//      "is there a Telugu voice?" on mount can be told no simply because the
+//      list has not arrived yet, and would then wrongly speak English.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -57,13 +64,38 @@ export function useSpeechSynthesis() {
   }, [supported]);
 
   const speak = useCallback(
-    (text, lang = 'en-IN') => {
+    /**
+     * @param {string} text     what to say, in the patient's language
+     * @param {string} lang     BCP-47 tag for that language
+     * @param {{text: string, lang: string}} [fallback]
+     *   Say THIS instead if the device has no voice for `lang`. Reserved for
+     *   the emergency alert. Everywhere else the absence of a voice must mean
+     *   silence, not a substitution the patient cannot understand.
+     */
+    (text, lang = 'en-IN', fallback = null) => {
       if (!supported || !text) return;
 
       const utter = () => {
-        // No voice for this language: stay silent rather than read the
-        // patient's language aloud in somebody else's.
-        const voice = pickVoice(lang);
+        // Resolved here, not by the caller: by this point the voice list has
+        // finished loading, so "no voice" means no voice rather than "not yet".
+        let voice = pickVoice(lang);
+        let sayText = text;
+        let sayLang = lang;
+
+        if (!voice && fallback?.text) {
+          const alt = pickVoice(fallback.lang);
+          if (alt) {
+            console.warn(
+              `[speech] no voice installed for ${lang}; speaking this one in ` +
+                `${fallback.lang} instead because it is an alert — being heard ` +
+                `matters more here than being understood`,
+            );
+            voice = alt;
+            sayText = fallback.text;
+            sayLang = fallback.lang;
+          }
+        }
+
         if (!voice) {
           console.warn(
             `[speech] no voice installed for ${lang}; staying silent rather ` +
@@ -73,8 +105,8 @@ export function useSpeechSynthesis() {
           return;
         }
 
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = lang;
+        const u = new SpeechSynthesisUtterance(sayText);
+        u.lang = sayLang;
         u.rate = RATE;
         u.voice = voice;
 

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import BilingualText from '../components/BilingualText.jsx';
 import { Warning } from '../components/Icons.jsx';
 import { useT } from '../i18n/useT.js';
+import { DEFAULT_LANG, bcp47, t } from '../i18n/strings.js';
 import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
 
@@ -26,11 +27,21 @@ export default function Emergency() {
   const timer = useRef(null);
 
   const patient = tx('emergency.patient');
+  // The ONLY place in the app that will speak a language the patient did not
+  // choose. Marathi has no installed voice on the demo machine, and the rule
+  // everywhere else — no voice means silence — turned the alert into a screen
+  // that lights up red and says nothing. A patient in distress who cannot read
+  // is exactly who this screen is for. So: their language if it can be spoken,
+  // English if it cannot, never nothing.
+  const englishAlert = t(DEFAULT_LANG, 'emergency.patient');
 
   useEffect(() => {
-    speak(patient.audio, voice);
+    speak(patient.audio, voice, {
+      text: englishAlert.audio || englishAlert.label,
+      lang: bcp47(DEFAULT_LANG),
+    });
     return () => clearInterval(timer.current);
-  }, [patient.audio, voice, speak]);
+  }, [patient.audio, voice, speak, englishAlert.audio, englishAlert.label]);
 
   const startHold = () => {
     clearInterval(timer.current);
