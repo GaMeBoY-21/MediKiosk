@@ -13,6 +13,7 @@ language reach the prompt, and does the answer survive back to the caller),
 not the model's translation quality.
 """
 
+import pathlib
 import re
 import unittest
 
@@ -162,6 +163,96 @@ class TestDangerOptionsTranslate(unittest.TestCase):
                     f"{lang}: danger tiles {same} fell back to English — a "
                     f"touch-only patient cannot report a warning sign they "
                     f"cannot read",
+                )
+
+
+class TestPhaseLabelsTranslate(unittest.TestCase):
+    """The stage label above every question must translate too.
+
+    Same assertion as the question and the option tiles, on the one field that
+    was missed: it rendered "Tell me more about this problem." above a Telugu
+    question because the label was English prose held on the node.
+
+    The labels now live in the kiosk's string table, so this reads that file.
+    Parsing JS from Python is ugly, but the alternative is no check at all on
+    the field that has now leaked English three times, and the shape being
+    parsed is the one this repo generates.
+    """
+
+    STRINGS = pathlib.Path(__file__).resolve().parents[2] / "frontend/src/i18n/strings.js"
+
+    @classmethod
+    def setUpClass(cls):
+        source = cls.STRINGS.read_text(encoding="utf-8")
+        cls.phases = {}
+        for lang in ("en",) + NON_ENGLISH:
+            start = source.index(f"\n  {lang}: {{\n")
+            block = source.index("    phase: {", start)
+            end = source.index("\n    },", block)
+            cls.phases[lang] = dict(
+                re.findall(r"^      (\w+): \{ label: '(.*)', audio:", source[block:end], re.M)
+            )
+
+    def test_every_node_has_a_label_in_every_language(self):
+        """A node added without a string would render its bare key."""
+        from ai.interview.nodes import NODES
+
+        for node in NODES.values():
+            for lang in ("en",) + NON_ENGLISH:
+                with self.subTest(node=node.id, lang=lang):
+                    self.assertIn(
+                        node.phase_key,
+                        self.phases[lang],
+                        f"node {node.id!r} has no {lang} phase label; the kiosk "
+                        f"would render the raw key {node.phase_key!r}",
+                    )
+
+    def test_phase_label_is_not_english(self):
+        """The label must not be byte-identical to its English counterpart."""
+        for lang in NON_ENGLISH:
+            for key, english in self.phases["en"].items():
+                with self.subTest(lang=lang, key=key):
+                    self.assertNotEqual(
+                        self.phases[lang].get(key),
+                        english,
+                        f"{lang}: phase label {key!r} came back byte-identical "
+                        f"to English",
+                    )
+
+
+class TestBareFallbackIsNotEnglish(unittest.TestCase):
+    """The model-failure path must not put English prose on the screen.
+
+    _bare used to return the node's English phase_label as the question text,
+    so a model failure in a Telugu session rendered an English sentence as the
+    question. It now returns nothing and the kiosk falls back to the stage
+    label, which it holds translated.
+    """
+
+    def test_bare_question_is_empty_not_english(self):
+        from ai.adapters.base import LLMAdapter
+
+        class DeadLLM(LLMAdapter):
+            def complete(self, prompt):  # pragma: no cover - unused
+                return ""
+
+            def complete_json(self, prompt):
+                return {}
+
+        node = get_node("hpi")
+        for lang in NON_ENGLISH:
+            with self.subTest(lang=lang):
+                _, question, _, _ = generate_followup(
+                    node, {"chief_complaint": "chest pain"}, lang, DeadLLM()
+                )
+                self.assertEqual(
+                    question,
+                    "",
+                    f"{lang}: the fallback question is {question!r}, which the "
+                    f"kiosk renders verbatim",
+                )
+                self.assertNotEqual(
+                    question, node.phase_label, f"{lang}: leaked the English stage label"
                 )
 
 

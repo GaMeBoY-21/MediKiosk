@@ -12,7 +12,17 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class InterviewNode:
     id: str
-    phase_label: str  # patient-facing string Tharun sends to the frontend
+    # The key the kiosk resolves against i18n/strings.js to render the stage
+    # label in the patient's language. NOT a sentence: a phase label is static
+    # UI chrome, so it belongs with the other static strings rather than in a
+    # clinical file, and shipping English prose from here is what put
+    # "Tell me more about this problem." above a Telugu question.
+    phase_key: str
+    # English, and deliberately so — this one is never shown to a patient. It
+    # goes into the follow-up prompt as context for the model, which reads
+    # English. Keep the two apart: translating this would degrade the prompt,
+    # and rendering it would leak English onto the screen.
+    phase_label: str
     required_fields: tuple[str, ...]  # must all be filled for the node to end
     optional_fields: tuple[str, ...] = ()  # may be filled but don't gate progress
     repeats: bool = False  # e.g. ROS loops over several sub-systems
@@ -24,24 +34,28 @@ class InterviewNode:
 NODES: dict[str, InterviewNode] = {
     "identity": InterviewNode(
         id="identity",
+        phase_key="identity",
         phase_label="Let's start with a few basic details.",
         required_fields=("patient_name", "age", "sex"),
         max_follow_ups=4,
     ),
     "consent": InterviewNode(
         id="consent",
+        phase_key="consent",
         phase_label="Before we begin, we need your consent.",
         required_fields=("consent_given",),
         max_follow_ups=2,
     ),
     "chief_complaint": InterviewNode(
         id="chief_complaint",
+        phase_key="chief_complaint",
         phase_label="What brings you in today?",
         required_fields=("chief_complaint", "symptom_duration"),
         max_follow_ups=3,
     ),
     "hpi": InterviewNode(
         id="hpi",
+        phase_key="hpi",
         phase_label="Tell me more about this problem.",
         required_fields=(
             "symptom_site",
@@ -67,6 +81,7 @@ NODES: dict[str, InterviewNode] = {
     ),
     "ros": InterviewNode(
         id="ros",
+        phase_key="ros",
         phase_label="One quick question about how you've been feeling overall.",
         # ONE screening question, asked once. A full system-by-system review is
         # twenty questions nobody standing in an OPD queue will sit through,
@@ -83,24 +98,28 @@ NODES: dict[str, InterviewNode] = {
     ),
     "past_medical": InterviewNode(
         id="past_medical",
+        phase_key="past_medical",
         phase_label="Do you have any ongoing health conditions or past surgeries?",
         required_fields=("past_medical_conditions", "past_surgeries"),
         max_follow_ups=4,
     ),
     "drug_allergy": InterviewNode(
         id="drug_allergy",
+        phase_key="drug_allergy",
         phase_label="Are you taking any medicines, and do you have any allergies?",
         required_fields=("current_medications", "known_allergies"),
         max_follow_ups=3,
     ),
     "family": InterviewNode(
         id="family",
+        phase_key="family",
         phase_label="Does anyone in your immediate family have a serious illness?",
         required_fields=("family_history",),
         max_follow_ups=3,
     ),
     "personal": InterviewNode(
         id="personal",
+        phase_key="personal",
         phase_label="A few lifestyle questions.",
         required_fields=("smoking_status", "alcohol_use"),
         optional_fields=("diet", "occupation", "sleep_pattern"),
@@ -108,6 +127,7 @@ NODES: dict[str, InterviewNode] = {
     ),
     "documents": InterviewNode(
         id="documents",
+        phase_key="documents",
         phase_label="Do you have any prior prescriptions or lab reports to show us?",
         # Also had no required fields, so this stage was skipped too and the
         # patient was never asked whether they brought anything. Asking is the
@@ -118,6 +138,7 @@ NODES: dict[str, InterviewNode] = {
     ),
     "confirm": InterviewNode(
         id="confirm",
+        phase_key="confirm",
         phase_label="Please review your answers before we finish.",
         required_fields=("patient_confirmed",),
         max_follow_ups=1,

@@ -124,20 +124,21 @@ def enforce_danger_options(
 def _bare(target_field: str, node: InterviewNode, filled_fields: dict, language: str):
     """Fallback when the model gave us nothing usable.
 
-    The question falls back to the stage label, but the danger tiles do NOT
-    fall back to nothing: they come from the table either way, so a model
-    failure on this one question cannot leave a touch-only patient with no way
-    to report a warning sign.
+    The question comes back empty and the kiosk falls back to the stage label,
+    which it already renders in the patient's language. Returning the stage
+    label from here instead would put English prose on the screen: the label
+    held on the node is English on purpose, for the model's prompt.
 
-    No English second line: the stage label is already a static string from
-    i18n/strings.js, which the kiosk renders bilingually on its own.
+    The danger tiles do NOT fall back to nothing: they come from the table
+    either way, so a model failure on this one question cannot leave a
+    touch-only patient with no way to report a warning sign.
 
     EVERY early return in generate_followup goes through here, precisely so
     that none of them can skip enforce_danger_options.
     """
     return (
         target_field,
-        node.phase_label,
+        "",
         None,
         enforce_danger_options(target_field, filled_fields, [], language),
     )

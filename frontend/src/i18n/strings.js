@@ -26,6 +26,22 @@ export function bcp47(code) {
 
 export const strings = {
   en: {
+    // Stage labels. The API sends only the key (e.g. 'hpi'); these are static
+    // UI chrome, so they belong here with the other static strings rather than
+    // as English prose inside a clinical file.
+    phase: {
+      identity: { label: 'Let\'s start with a few basic details.', audio: '' },
+      consent: { label: 'Before we begin, we need your consent.', audio: '' },
+      chief_complaint: { label: 'What brings you in today?', audio: '' },
+      hpi: { label: 'Tell me more about this problem.', audio: '' },
+      ros: { label: 'One quick question about how you\'ve been feeling overall.', audio: '' },
+      past_medical: { label: 'Do you have any ongoing health conditions or past surgeries?', audio: '' },
+      drug_allergy: { label: 'Are you taking any medicines, and do you have any allergies?', audio: '' },
+      family: { label: 'Does anyone in your immediate family have a serious illness?', audio: '' },
+      personal: { label: 'A few lifestyle questions.', audio: '' },
+      documents: { label: 'Do you have any prior prescriptions or lab reports to show us?', audio: '' },
+      confirm: { label: 'Please review your answers before we finish.', audio: '' },
+    },
     common: {
       repeat: { label: 'Repeat', audio: 'Listen to that again.' },
       listen: { label: 'Listen', audio: '' },
@@ -154,6 +170,19 @@ export const strings = {
   },
 
   hi: {
+    phase: {
+      identity: { label: 'आइए कुछ बुनियादी जानकारी से शुरू करें।', audio: '' },
+      consent: { label: 'शुरू करने से पहले हमें आपकी सहमति चाहिए।', audio: '' },
+      chief_complaint: { label: 'आज आप किस समस्या के लिए आए हैं?', audio: '' },
+      hpi: { label: 'इस समस्या के बारे में और बताइए।', audio: '' },
+      ros: { label: 'आपकी कुल सेहत के बारे में एक छोटा सवाल।', audio: '' },
+      past_medical: { label: 'क्या आपको कोई पुरानी बीमारी है या कोई ऑपरेशन हुआ है?', audio: '' },
+      drug_allergy: { label: 'क्या आप कोई दवा लेते हैं, और क्या कोई एलर्जी है?', audio: '' },
+      family: { label: 'क्या आपके परिवार में किसी को गंभीर बीमारी है?', audio: '' },
+      personal: { label: 'जीवनशैली से जुड़े कुछ सवाल।', audio: '' },
+      documents: { label: 'क्या आपके पास पुराने पर्चे या जाँच रिपोर्ट हैं?', audio: '' },
+      confirm: { label: 'खत्म करने से पहले अपने जवाब देख लीजिए।', audio: '' },
+    },
     common: {
       repeat: { label: 'फिर से सुनें', audio: 'इसे फिर से सुनिए।' },
       listen: { label: 'सुनें', audio: '' },
@@ -282,6 +311,19 @@ export const strings = {
   },
 
   kn: {
+    phase: {
+      identity: { label: 'ಕೆಲವು ಮೂಲ ವಿವರಗಳಿಂದ ಆರಂಭಿಸೋಣ.', audio: '' },
+      consent: { label: 'ಆರಂಭಿಸುವ ಮೊದಲು ನಿಮ್ಮ ಒಪ್ಪಿಗೆ ಬೇಕು.', audio: '' },
+      chief_complaint: { label: 'ಇಂದು ನಿಮಗೆ ಏನು ತೊಂದರೆ?', audio: '' },
+      hpi: { label: 'ಈ ಸಮಸ್ಯೆಯ ಬಗ್ಗೆ ಇನ್ನಷ್ಟು ಹೇಳಿ.', audio: '' },
+      ros: { label: 'ನಿಮ್ಮ ಒಟ್ಟಾರೆ ಆರೋಗ್ಯದ ಬಗ್ಗೆ ಒಂದು ಸಣ್ಣ ಪ್ರಶ್ನೆ.', audio: '' },
+      past_medical: { label: 'ನಿಮಗೆ ದೀರ್ಘಕಾಲದ ಕಾಯಿಲೆ ಅಥವಾ ಹಿಂದೆ ಶಸ್ತ್ರಚಿಕಿತ್ಸೆ ಆಗಿದೆಯೆ?', audio: '' },
+      drug_allergy: { label: 'ನೀವು ಯಾವುದೇ ಔಷಧಿ ತೆಗೆದುಕೊಳ್ಳುತ್ತೀರಾ, ಅಲರ್ಜಿ ಇದೆಯೆ?', audio: '' },
+      family: { label: 'ನಿಮ್ಮ ಕುಟುಂಬದಲ್ಲಿ ಯಾರಿಗಾದರೂ ಗಂಭೀರ ಕಾಯಿಲೆ ಇದೆಯೆ?', audio: '' },
+      personal: { label: 'ಜೀವನಶೈಲಿಯ ಕೆಲವು ಪ್ರಶ್ನೆಗಳು.', audio: '' },
+      documents: { label: 'ನಿಮ್ಮ ಬಳಿ ಹಳೆಯ ಚೀಟಿ ಅಥವಾ ಪರೀಕ್ಷಾ ವರದಿ ಇದೆಯೆ?', audio: '' },
+      confirm: { label: 'ಮುಗಿಸುವ ಮೊದಲು ನಿಮ್ಮ ಉತ್ತರಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.', audio: '' },
+    },
     common: {
       repeat: { label: 'ಮತ್ತೆ ಕೇಳಿ', audio: 'ಇದನ್ನು ಮತ್ತೆ ಕೇಳಿ.' },
       listen: { label: 'ಕೇಳಿ', audio: '' },
@@ -410,6 +452,19 @@ export const strings = {
   },
 
   ta: {
+    phase: {
+      identity: { label: 'சில அடிப்படை விவரங்களுடன் தொடங்குவோம்.', audio: '' },
+      consent: { label: 'தொடங்கும் முன் உங்கள் சம்மதம் தேவை.', audio: '' },
+      chief_complaint: { label: 'இன்று உங்களுக்கு என்ன பிரச்சினை?', audio: '' },
+      hpi: { label: 'இந்தப் பிரச்சினை பற்றி மேலும் சொல்லுங்கள்.', audio: '' },
+      ros: { label: 'உங்கள் ஒட்டுமொத்த உடல்நிலை பற்றி ஒரு சிறிய கேள்வி.', audio: '' },
+      past_medical: { label: 'உங்களுக்கு நீடித்த நோய் அல்லது முன்பு அறுவை சிகிச்சை உண்டா?', audio: '' },
+      drug_allergy: { label: 'நீங்கள் ஏதேனும் மருந்து எடுக்கிறீர்களா, ஒவ்வாமை உண்டா?', audio: '' },
+      family: { label: 'உங்கள் குடும்பத்தில் யாருக்கேனும் கடுமையான நோய் உண்டா?', audio: '' },
+      personal: { label: 'வாழ்க்கை முறை பற்றிய சில கேள்விகள்.', audio: '' },
+      documents: { label: 'உங்களிடம் பழைய சீட்டு அல்லது பரிசோதனை அறிக்கை உள்ளதா?', audio: '' },
+      confirm: { label: 'முடிக்கும் முன் உங்கள் பதில்களைப் பாருங்கள்.', audio: '' },
+    },
     common: {
       repeat: { label: 'மீண்டும் கேட்க', audio: 'இதை மீண்டும் கேளுங்கள்.' },
       listen: { label: 'கேளுங்கள்', audio: '' },
@@ -538,6 +593,19 @@ export const strings = {
   },
 
   te: {
+    phase: {
+      identity: { label: 'కొన్ని ప్రాథమిక వివరాలతో మొదలుపెడదాం.', audio: '' },
+      consent: { label: 'మొదలుపెట్టే ముందు మీ సమ్మతి కావాలి.', audio: '' },
+      chief_complaint: { label: 'ఈ రోజు మీకు ఏమి ఇబ్బంది?', audio: '' },
+      hpi: { label: 'ఈ సమస్య గురించి ఇంకా చెప్పండి.', audio: '' },
+      ros: { label: 'మీ మొత్తం ఆరోగ్యం గురించి ఒక చిన్న ప్రశ్న.', audio: '' },
+      past_medical: { label: 'మీకు దీర్ఘకాలిక వ్యాధి లేదా గతంలో ఆపరేషన్ ఉందా?', audio: '' },
+      drug_allergy: { label: 'మీరు ఏదైనా మందు వాడుతున్నారా, అలర్జీ ఉందా?', audio: '' },
+      family: { label: 'మీ కుటుంబంలో ఎవరికైనా తీవ్రమైన వ్యాధి ఉందా?', audio: '' },
+      personal: { label: 'జీవనశైలికి సంబంధించిన కొన్ని ప్రశ్నలు.', audio: '' },
+      documents: { label: 'మీ దగ్గర పాత చీటీలు లేదా పరీక్ష నివేదికలు ఉన్నాయా?', audio: '' },
+      confirm: { label: 'ముగించే ముందు మీ సమాధానాలు చూసుకోండి.', audio: '' },
+    },
     common: {
       repeat: { label: 'మళ్లీ వినండి', audio: 'దీన్ని మళ్లీ వినండి.' },
       listen: { label: 'వినండి', audio: '' },
@@ -666,6 +734,19 @@ export const strings = {
   },
 
   mr: {
+    phase: {
+      identity: { label: 'काही मूलभूत माहितीने सुरुवात करूया.', audio: '' },
+      consent: { label: 'सुरू करण्यापूर्वी तुमची संमती हवी.', audio: '' },
+      chief_complaint: { label: 'आज तुम्हाला काय त्रास होतो आहे?', audio: '' },
+      hpi: { label: 'या त्रासाबद्दल आणखी सांगा.', audio: '' },
+      ros: { label: 'तुमच्या एकूण तब्येतीबद्दल एक छोटा प्रश्न.', audio: '' },
+      past_medical: { label: 'तुम्हाला दीर्घकालीन आजार आहे का किंवा शस्त्रक्रिया झाली आहे का?', audio: '' },
+      drug_allergy: { label: 'तुम्ही कोणते औषध घेता का, आणि काही ॲलर्जी आहे का?', audio: '' },
+      family: { label: 'तुमच्या कुटुंबात कोणाला गंभीर आजार आहे का?', audio: '' },
+      personal: { label: 'जीवनशैलीबद्दल काही प्रश्न.', audio: '' },
+      documents: { label: 'तुमच्याकडे जुनी चिठ्ठी किंवा तपासणी अहवाल आहेत का?', audio: '' },
+      confirm: { label: 'संपवण्यापूर्वी तुमची उत्तरे पाहून घ्या.', audio: '' },
+    },
     common: {
       repeat: { label: 'पुन्हा ऐका', audio: 'हे पुन्हा ऐका.' },
       listen: { label: 'ऐका', audio: '' },
@@ -794,6 +875,19 @@ export const strings = {
   },
 
   bn: {
+    phase: {
+      identity: { label: 'কয়েকটি প্রাথমিক তথ্য দিয়ে শুরু করি।', audio: '' },
+      consent: { label: 'শুরু করার আগে আপনার সম্মতি দরকার।', audio: '' },
+      chief_complaint: { label: 'আজ আপনার কী সমস্যা?', audio: '' },
+      hpi: { label: 'এই সমস্যা সম্পর্কে আরও বলুন।', audio: '' },
+      ros: { label: 'আপনার সার্বিক শরীর নিয়ে একটি ছোট প্রশ্ন।', audio: '' },
+      past_medical: { label: 'আপনার দীর্ঘমেয়াদি রোগ বা আগে কোনো অস্ত্রোপচার হয়েছে?', audio: '' },
+      drug_allergy: { label: 'আপনি কোনো ওষুধ খান কি, আর কোনো অ্যালার্জি আছে?', audio: '' },
+      family: { label: 'আপনার পরিবারে কারও গুরুতর অসুখ আছে?', audio: '' },
+      personal: { label: 'জীবনযাত্রা নিয়ে কয়েকটি প্রশ্ন।', audio: '' },
+      documents: { label: 'আপনার কাছে পুরনো ব্যবস্থাপত্র বা পরীক্ষার রিপোর্ট আছে?', audio: '' },
+      confirm: { label: 'শেষ করার আগে আপনার উত্তরগুলো দেখে নিন।', audio: '' },
+    },
     common: {
       repeat: { label: 'আবার শুনুন', audio: 'এটি আবার শুনুন।' },
       listen: { label: 'শুনুন', audio: '' },

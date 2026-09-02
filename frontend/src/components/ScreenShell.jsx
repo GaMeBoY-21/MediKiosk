@@ -17,7 +17,7 @@ import { ArrowLeft } from './Icons.jsx';
 import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSession } from '../state/SessionContext.jsx';
 import { useT } from '../i18n/useT.js';
-import { DEFAULT_LANG, bcp47, t } from '../i18n/strings.js';
+import { DEFAULT_LANG, bcp47, t, strings } from '../i18n/strings.js';
 
 export default function ScreenShell({
   /** { label, audio } — spoken the first time this node is reached */
@@ -52,6 +52,18 @@ export default function ScreenShell({
   const voice = englishOnly ? bcp47(DEFAULT_LANG) : sessionVoice;
   const { cancel } = useSpeech();
 
+  // The API sends a phase KEY ('hpi'), not a sentence, so the label resolves
+  // here in the patient's language. Recordings made before that change still
+  // carry the English sentence: anything that is not a known key falls through
+  // and renders as it arrived, rather than disappearing off the screen.
+  const isPhaseKey = Boolean(phase && strings[DEFAULT_LANG]?.phase?.[phase]);
+  const phaseLabel = isPhaseKey ? label(`phase.${phase}`) : phase;
+
+  // When the model gives us nothing usable the question comes back empty and
+  // the stage label stands in as the heading. It is already translated, which
+  // the stage label held on the node is not.
+  const heading = prompt?.label || (isPhaseKey ? phaseLabel : '');
+
   const spoken = prompt?.audio || prompt?.label || '';
   const toRepeat = repeatAudio ?? spoken;
 
@@ -78,11 +90,15 @@ export default function ScreenShell({
           visibly desyncs. Nothing renders when the API sends no phase; there
           is deliberately no fallback to a count. */}
       <div className="shell__top">
-        {phase ? <p className="shell__phase">{phase}</p> : null}
+        {phaseLabel ? (
+          <BilingualText as="p" className="shell__phase" always={alwaysBilingual}>
+            {phaseLabel}
+          </BilingualText>
+        ) : null}
       </div>
 
       <main className="shell__main">
-        {prompt && !hideHeading ? (
+        {heading && !hideHeading ? (
           <BilingualText
             as="h1"
             className="shell__question"
@@ -90,7 +106,7 @@ export default function ScreenShell({
             englishOnly={englishOnly}
             english={promptEnglish}
           >
-            {prompt.label}
+            {heading}
           </BilingualText>
         ) : null}
 

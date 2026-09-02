@@ -137,7 +137,7 @@ def next_node(
         options,
         target_field,
         _is_multi(node, target_field),
-        node.phase_label,
+        node.phase_key,
         question_en,
     )
 
@@ -367,7 +367,11 @@ def answer_turn(
         node = get_node(node_id)
     except KeyError:
         node = InterviewNode(
-            id=node_id, phase_label=node_id, required_fields=(), optional_fields=(node_id,)
+            id=node_id,
+            phase_key=node_id,
+            phase_label=node_id,
+            required_fields=(),
+            optional_fields=(node_id,),
         )
 
     # The patient tapped a tile instead of speaking. The tapped value is
@@ -463,7 +467,7 @@ def answer_turn(
             result.options,
             result.target_field,
             _is_multi(actual, result.target_field),
-            actual.phase_label,
+            actual.phase_key,
             result.question_en,
         )
 
@@ -485,7 +489,7 @@ def answer_turn(
         options,
         target_field,
         _is_multi(actual, target_field),
-        actual.phase_label,
+        actual.phase_key,
         question_en,
     )
 
@@ -515,7 +519,13 @@ def extract_fields(node_id: str, transcript: str) -> List[ExtractedField]:
         # Not one of ai.interview.nodes' own ids (e.g. a node from an older
         # session, or a caller passing something ad hoc). Scope extraction to
         # a single field named after the node itself rather than refusing.
-        node = InterviewNode(id=node_id, phase_label=node_id, required_fields=(), optional_fields=(node_id,))
+        node = InterviewNode(
+            id=node_id,
+            phase_key=node_id,
+            phase_label=node_id,
+            required_fields=(),
+            optional_fields=(node_id,),
+        )
 
     return extraction.extract_fields(transcript, node, _llm())
 

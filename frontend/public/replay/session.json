@@ -14,7 +14,7 @@
         "options": [],
         "allow_free_text": true,
         "node_type": "free_text",
-        "phase": "Let's start with a few basic details."
+        "phase": "identity"
       }
     },
     "fields": {
@@ -60,7 +60,7 @@
             "answered": 1,
             "total": 11
           },
-          "phase": "What brings you in today?",
+          "phase": "chief_complaint",
           "extracted": [
             {
               "name": "patient_name",
@@ -125,7 +125,7 @@
             "answered": 2,
             "total": 11
           },
-          "phase": "What brings you in today?",
+          "phase": "chief_complaint",
           "extracted": [
             {
               "name": "patient_name",
@@ -192,7 +192,7 @@
             "answered": 3,
             "total": 11
           },
-          "phase": "Tell me more about this problem.",
+          "phase": "hpi",
           "extracted": [
             {
               "name": "patient_name",
@@ -248,7 +248,7 @@
             "answered": 4,
             "total": 11
           },
-          "phase": "Tell me more about this problem.",
+          "phase": "hpi",
           "extracted": [
             {
               "name": "patient_name",
@@ -327,7 +327,7 @@
             "answered": 5,
             "total": 11
           },
-          "phase": "Tell me more about this problem.",
+          "phase": "hpi",
           "extracted": [
             {
               "name": "patient_name",
@@ -414,7 +414,7 @@
             "answered": 6,
             "total": 11
           },
-          "phase": "Tell me more about this problem.",
+          "phase": "hpi",
           "extracted": [
             {
               "name": "patient_name",
@@ -503,7 +503,7 @@
             "answered": 7,
             "total": 11
           },
-          "phase": "Tell me more about this problem.",
+          "phase": "hpi",
           "extracted": [
             {
               "name": "patient_name",
