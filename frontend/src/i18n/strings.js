@@ -28,6 +28,8 @@ export const strings = {
   en: {
     common: {
       repeat: { label: 'Repeat', audio: 'Listen to that again.' },
+      listen: { label: 'Listen', audio: '' },
+      stop: { label: 'Stop', audio: '' },
       back: { label: 'Back', audio: 'Going back.' },
       next: { label: 'Next', audio: 'Next question.' },
       yes: { label: 'Yes', audio: 'Yes.' },
@@ -154,6 +156,8 @@ export const strings = {
   hi: {
     common: {
       repeat: { label: 'फिर से सुनें', audio: 'इसे फिर से सुनिए।' },
+      listen: { label: 'सुनें', audio: '' },
+      stop: { label: 'रोकें', audio: '' },
       back: { label: 'पीछे', audio: 'पीछे जा रहे हैं।' },
       next: { label: 'आगे', audio: 'अगला सवाल।' },
       yes: { label: 'हाँ', audio: 'हाँ।' },
@@ -280,6 +284,8 @@ export const strings = {
   kn: {
     common: {
       repeat: { label: 'ಮತ್ತೆ ಕೇಳಿ', audio: 'ಇದನ್ನು ಮತ್ತೆ ಕೇಳಿ.' },
+      listen: { label: 'ಕೇಳಿ', audio: '' },
+      stop: { label: 'ನಿಲ್ಲಿಸಿ', audio: '' },
       back: { label: 'ಹಿಂದೆ', audio: 'ಹಿಂದೆ ಹೋಗುತ್ತಿದ್ದೇವೆ.' },
       next: { label: 'ಮುಂದೆ', audio: 'ಮುಂದಿನ ಪ್ರಶ್ನೆ.' },
       yes: { label: 'ಹೌದು', audio: 'ಹೌದು.' },
@@ -406,6 +412,8 @@ export const strings = {
   ta: {
     common: {
       repeat: { label: 'மீண்டும் கேட்க', audio: 'இதை மீண்டும் கேளுங்கள்.' },
+      listen: { label: 'கேளுங்கள்', audio: '' },
+      stop: { label: 'நிறுத்து', audio: '' },
       back: { label: 'பின்', audio: 'பின்னால் செல்கிறோம்.' },
       next: { label: 'அடுத்து', audio: 'அடுத்த கேள்வி.' },
       yes: { label: 'ஆம்', audio: 'ஆம்.' },
@@ -532,6 +540,8 @@ export const strings = {
   te: {
     common: {
       repeat: { label: 'మళ్లీ వినండి', audio: 'దీన్ని మళ్లీ వినండి.' },
+      listen: { label: 'వినండి', audio: '' },
+      stop: { label: 'ఆపండి', audio: '' },
       back: { label: 'వెనుకకు', audio: 'వెనుకకు వెళ్తున్నాము.' },
       next: { label: 'తరువాత', audio: 'తదుపరి ప్రశ్న.' },
       yes: { label: 'అవును', audio: 'అవును.' },
@@ -658,6 +668,8 @@ export const strings = {
   mr: {
     common: {
       repeat: { label: 'पुन्हा ऐका', audio: 'हे पुन्हा ऐका.' },
+      listen: { label: 'ऐका', audio: '' },
+      stop: { label: 'थांबवा', audio: '' },
       back: { label: 'मागे', audio: 'मागे जात आहोत.' },
       next: { label: 'पुढे', audio: 'पुढील प्रश्न.' },
       yes: { label: 'होय', audio: 'होय.' },
@@ -784,6 +796,8 @@ export const strings = {
   bn: {
     common: {
       repeat: { label: 'আবার শুনুন', audio: 'এটি আবার শুনুন।' },
+      listen: { label: 'শুনুন', audio: '' },
+      stop: { label: 'থামান', audio: '' },
       back: { label: 'পিছনে', audio: 'পিছনে যাচ্ছি।' },
       next: { label: 'পরবর্তী', audio: 'পরবর্তী প্রশ্ন।' },
       yes: { label: 'হ্যাঁ', audio: 'হ্যাঁ।' },

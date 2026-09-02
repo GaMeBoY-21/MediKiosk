@@ -22,7 +22,6 @@ export default function Done() {
   const wait = tx('done.wait');
 
   useEffect(() => {
-    speak(`${tx('done.title').audio} ${wait.audio}`, voice);
     endSession(sessionId).catch((e) => console.warn('[done] endSession failed:', e));
     const id = setTimeout(reset, RETURN_MS);
     return () => clearTimeout(id);

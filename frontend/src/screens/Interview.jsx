@@ -117,8 +117,8 @@ export default function Interview({ onError }) {
     async (payload) => {
       setThinking(true);
       stop();
-      // A spinner means nothing to this audience. Say the wait out loud.
-      speak(tx('common.oneMoment').audio, voice);
+      // The wait is shown, not spoken. Audio is press-only now, and this
+      // fired on every single submit.
       try {
         const res = await submitAnswer(sessionId, { ...payload, lang });
         applyResponse(res);

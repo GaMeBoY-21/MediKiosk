@@ -14,7 +14,6 @@ export default function ErrorScreen({ lang = DEFAULT_LANG, onRestart }) {
   const title = t(lang, 'error.title');
 
   useEffect(() => {
-    speak(title.audio, bcp47(lang));
   }, [title.audio, lang, speak]);
 
   return (

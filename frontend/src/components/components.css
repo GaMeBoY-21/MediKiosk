@@ -866,3 +866,73 @@
 .shell__bar-btn .bilingual__english {
   font-size: 0.55em;
 }
+
+/* ------------------------------------------------------------ ListenButton */
+/* The only control that produces audio. Lives on the question, because the
+   bottom bar is chrome a patient learns to skip past, and a patient who cannot
+   read needs to find this. Icon AND text: the icon alone is not a word. */
+
+.listen {
+  /* 80px flat, not var(--touch-min). The compact scale drops that to 64px on
+     a short screen, and this is the one control a patient who cannot read has
+     to be able to hit. It keeps its full size everywhere. */
+  min-height: 80px;
+  min-width: 200px;
+  padding: 16px 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--primary);
+  font-size: var(--fs-button);
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.listen svg {
+  width: 40px;
+  height: 40px;
+  flex: none;
+}
+
+.listen:active {
+  background: var(--surface);
+}
+
+/* Speaking and silent must be tellable apart without colour: the icon becomes
+   a stop square and the label becomes "Stop". */
+.listen--speaking {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.listen:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+}
+
+/* Same component in the fixed bottom bar: inherit the bar's own geometry so
+   the two buttons there stay identical in size and position. */
+.shell__bar-btn.listen {
+  min-width: 0;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--ink);
+  align-self: stretch;
+}
+
+.shell__bar-btn.listen--speaking {
+  background: var(--surface);
+  color: var(--primary);
+}
+
+.shell__bar-btn.listen svg {
+  width: 36px;
+  height: 36px;
+}

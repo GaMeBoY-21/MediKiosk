@@ -12,7 +12,8 @@
 
 import { useEffect } from 'react';
 import BilingualText from './BilingualText.jsx';
-import { ArrowLeft, Speaker } from './Icons.jsx';
+import ListenButton from './ListenButton.jsx';
+import { ArrowLeft } from './Icons.jsx';
 import { useSpeech } from '../speech/SpeechProvider.jsx';
 import { useSession } from '../state/SessionContext.jsx';
 import { useT } from '../i18n/useT.js';
@@ -43,33 +44,24 @@ export default function ScreenShell({
   onBack,
   footer,
 }) {
-  const { screen, back, hasSpoken, markSpoken } = useSession();
+  const { screen, back } = useSession();
   const { voice: sessionVoice, label: sessionLabel } = useT();
   // On an English-only screen the chrome and the audio ignore session state
   // too, otherwise Back would bring a chosen language back with it.
   const label = englishOnly ? (key) => t(DEFAULT_LANG, key).label : sessionLabel;
   const voice = englishOnly ? bcp47(DEFAULT_LANG) : sessionVoice;
-  const { speak, cancel } = useSpeech();
+  const { cancel } = useSpeech();
 
   const spoken = prompt?.audio || prompt?.label || '';
   const toRepeat = repeatAudio ?? spoken;
 
-  // Speak each question exactly once, the first time the patient reaches it.
+  // NO auto-speak. Audio plays only when the patient presses Listen.
   //
-  // Keyed on node id (via speechKey), tracked in SessionContext. The previous
-  // version compared the sentence text against a ref, which re-spoke on
-  // back-navigation, re-spoke after any remount because the ref reset, and
-  // stayed silent when two nodes shared wording. A ref cannot survive
-  // navigation; session state can.
-  //
-  // Auto-speak stays. A patient who cannot read cannot find a Repeat button he
-  // cannot read — Repeat is for asking again, not for hearing it the first time.
-  const speakId = speechKey ?? `screen:${screen}`;
-  useEffect(() => {
-    if (!spoken || hasSpoken(speakId)) return;
-    markSpoken(speakId);
-    speak(spoken, voice);
-  }, [spoken, speakId, voice, speak, hasSpoken, markSpoken]);
+  // Every screen used to speak itself on arrival. In a shared OPD hall that is
+  // a machine talking over the person using it, and it read a patient's own
+  // answers back out loud within earshot of the queue. The language screen is
+  // the single exception and speaks its own prompt there, so that a patient
+  // who cannot read still discovers that the button exists.
 
   // Never let one screen's audio bleed into the next.
   useEffect(() => cancel, [cancel, screen]);
@@ -101,22 +93,28 @@ export default function ScreenShell({
             {prompt.label}
           </BilingualText>
         ) : null}
+
+        {/* Attached to the question, not buried in the bottom bar. */}
+        <ListenButton
+          className="listen--question"
+          text={toRepeat}
+          voice={voice}
+          label={label('common.listen')}
+          stopLabel={label('common.stop')}
+        />
         {children}
       </main>
 
       {footer}
 
       <nav className="shell__bar">
-        <button
-          type="button"
+        <ListenButton
           className="shell__bar-btn"
-          onClick={() => speak(toRepeat, voice)}
-        >
-          <Speaker />
-          <BilingualText always={alwaysBilingual} englishOnly={englishOnly}>
-            {label('common.repeat')}
-          </BilingualText>
-        </button>
+          text={toRepeat}
+          voice={voice}
+          label={label('common.repeat')}
+          stopLabel={label('common.stop')}
+        />
         <button type="button" className="shell__bar-btn" onClick={handleBack}>
           <ArrowLeft />
           <BilingualText always={alwaysBilingual} englishOnly={englishOnly}>

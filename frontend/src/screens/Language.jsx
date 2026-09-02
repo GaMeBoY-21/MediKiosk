@@ -22,6 +22,17 @@ export default function Language() {
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
+  // The only screen in the app that speaks on its own, and only once.
+  // A patient who cannot read has no way to discover the Listen button unless
+  // something speaks first; from here on every sound is a button press.
+  const { hasSpoken, markSpoken } = useSession();
+  const greeting = t(DEFAULT_LANG, 'language.title');
+  useEffect(() => {
+    if (hasSpoken('screen:language')) return;
+    markSpoken('screen:language');
+    speak(greeting.audio || greeting.label, bcp47(DEFAULT_LANG));
+  }, [hasSpoken, markSpoken, speak, greeting]);
+
   const choose = (code) => {
     if (picked) return; // ignore double taps while the greeting plays
     setPicked(code);
