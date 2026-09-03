@@ -31,6 +31,17 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/session", tags=["session"])
 
 
+def _next_token(db: DbSession) -> str:
+    """Allocate a readable queue token using the existing sessions table."""
+    used = {token for (token,) in db.query(models.Session.token).all() if token}
+    number = 42
+    while True:
+        token = f"A-{number}"
+        if token not in used:
+            return token
+        number += 1
+
+
 def load_session(db: DbSession, session_id: str) -> models.Session:
     """Fetch a session row or 404. Shared by every router."""
     row = db.get(models.Session, session_id)
@@ -63,7 +74,7 @@ def start_session(payload: SessionStartRequest | None = None, db: DbSession = De
         language=body.language.value,
         status=SessionStatus.in_progress.value,
         current_node=node["node_id"] if node else None,
-        token=fixtures.DEMO_TOKEN,
+        token=_next_token(db),
         room=fixtures.DEMO_ROOM,
     )
     db.add(row)

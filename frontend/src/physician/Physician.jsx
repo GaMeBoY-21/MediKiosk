@@ -10,6 +10,7 @@ import EditableField from './EditableField.jsx';
 import {
   confirmCase,
   fetchCase,
+  fetchCaseByToken,
   fetchPatientList,
   rejectCase,
   updateCase,
@@ -81,6 +82,9 @@ export default function Physician({ auth, onSignOut }) {
   const [status, setStatus] = useState('draft'); // draft | accepted | rejected
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
+  const [tokenQuery, setTokenQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
   // Poll the queue. A doctor leaves this open; a patient who finishes intake
   // while they are reading a case must appear without a manual refresh, and a
@@ -113,12 +117,40 @@ export default function Physician({ auth, onSignOut }) {
     if (!activeId) return;
     setStatus('draft');
     setNote('');
+    setSearchError('');
     fetchCase(activeId)
       .then(setRecord)
       .catch((e) => {
         if (e?.name !== 'Unauthorized') console.error('[physician] case failed:', e);
       });
   }, [activeId]);
+
+  // Open a patient by the token printed on their Done screen. The queue is
+  // the normal path; this is for the patient standing at the desk saying "A-47"
+  // when the queue is long enough that finding their row takes longer than
+  // typing it.
+  const searchToken = async (e) => {
+    e.preventDefault();
+    const token = tokenQuery.trim().toUpperCase();
+    if (!token) {
+      setSearchError('Enter a patient token.');
+      return;
+    }
+    setSearching(true);
+    setSearchError('');
+    setNote('');
+    try {
+      const found = await fetchCaseByToken(token);
+      setRecord(found);
+      setActiveId(found.session_id);
+      setStatus('draft');
+      setNote(`Opened patient ${token}`);
+    } catch (err) {
+      setSearchError(err.message || `No patient found for ${token}.`);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const editField = useCallback(
     (key, value) => {
@@ -169,6 +201,7 @@ export default function Physician({ auth, onSignOut }) {
       .filter(Boolean),
   );
   const mocked = new Set(record?.mocked_fields ?? []);
+  const activeToken = record?.token ?? queue.find((p) => p.session_id === activeId)?.token;
 
   return (
     <div className="physician">
@@ -197,6 +230,22 @@ export default function Physician({ auth, onSignOut }) {
       <div className="physician__layout">
         <aside className="queue">
           <div className="queue__head">Waiting ({queue.length})</div>
+          <form className="token-search" onSubmit={searchToken}>
+            <label htmlFor="token-search">Find patient</label>
+            <div className="token-search__row">
+              <input
+                id="token-search"
+                value={tokenQuery}
+                onChange={(e) => setTokenQuery(e.target.value.toUpperCase())}
+                placeholder="Enter patient token"
+                autoComplete="off"
+              />
+              <button type="submit" disabled={searching}>
+                {searching ? 'Searching' : 'Search'}
+              </button>
+            </div>
+            {searchError ? <p className="token-search__error">{searchError}</p> : null}
+          </form>
           {queue.map((p) => (
             <button
               key={p.session_id}
@@ -207,7 +256,8 @@ export default function Physician({ auth, onSignOut }) {
               onClick={() => setActiveId(p.session_id)}
             >
               <div className="queue__name">
-                {p.token} · {p.name}
+                <span className="queue__token">{p.token}</span>
+                <span>{p.name || 'Unnamed patient'}</span>
               </div>
               <div className="queue__meta">
                 {p.age}/{p.sex} · {p.complaint}
@@ -235,7 +285,7 @@ export default function Physician({ auth, onSignOut }) {
               <span className="case__name">{record.patient.name}</span>
               <span className="case__meta">
                 {record.patient.age}/{record.patient.sex} · ABHA {record.patient.abha ?? '—'} ·
-                session {record.session_id}
+                token {activeToken ?? '—'} · session {record.session_id}
               </span>
               {/* Say so on screen. Demographics are not collected for real yet,
                   and demo values must never be presented as patient data. */}

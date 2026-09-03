@@ -754,6 +754,8 @@ class PhysicianCaseResponse(BaseModel):
     """GET /api/physician/{id} — everything the console renders for one patient."""
 
     session_id: str = Field(..., description="Session being reviewed.")
+    token: Optional[str] = Field(None, description="Queue token shown on the kiosk's Done screen.")
+    room: Optional[str] = Field(None, description="Consulting room number shown to the patient.")
     patient: PhysicianPatient = Field(..., description="Patient header.")
     summary: FlatSummary = Field(..., description="Flattened clinical sections.")
     documents: List[DocumentRecord] = Field(

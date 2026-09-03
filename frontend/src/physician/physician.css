@@ -50,6 +50,73 @@
   background: var(--surface);
 }
 
+/* ------------------------------------------------------- find by token */
+
+/* The queue is the normal way in. This is for the patient at the desk who
+   says "A-47" while the queue is long enough that scanning it takes longer
+   than typing it. */
+.token-search {
+  padding: 12px 16px;
+  border-bottom: var(--border-w) solid var(--border);
+}
+
+.token-search label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.token-search__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.token-search__row input {
+  min-width: 0;
+  padding: 8px 10px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+}
+
+.token-search__row button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.token-search__row button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.token-search__error {
+  margin: 8px 0 0;
+  color: var(--alert);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+/* The token is what the patient is holding, so it reads first in the row. */
+.queue__token {
+  padding: 3px 7px;
+  margin-right: 6px;
+  border-radius: 5px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .queue__row {
   width: 100%;
   text-align: left;

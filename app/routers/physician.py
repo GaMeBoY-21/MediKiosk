@@ -12,7 +12,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DbSession
 
 from app import fixtures, models
@@ -112,6 +112,40 @@ def _load_summary(db: DbSession, row: models.Session) -> ClinicalSummary:
     return _build_summary(row, db)
 
 
+def _case_response(db: DbSession, row: models.Session) -> PhysicianCaseResponse:
+    summary = _load_summary(db, row)
+
+    mocked: List[str] = []
+    if not row.patient_name:
+        mocked.append("name")
+    if row.age is None:
+        mocked.append("age")
+    if not row.sex:
+        mocked.append("sex")
+    if not row.abha_id:
+        mocked.append("abha")
+
+    return PhysicianCaseResponse(
+        session_id=row.session_id,
+        token=row.token,
+        room=row.room,
+        patient=PhysicianPatient(
+            name=row.patient_name or fixtures.DEMO_PATIENT["name"],
+            age=row.age or fixtures.DEMO_PATIENT["age"],
+            sex=row.sex or fixtures.DEMO_PATIENT["sex"],
+            abha=row.abha_id or fixtures.DEMO_PATIENT["abha"],
+        ),
+        summary=_flatten(summary),
+        documents=summary.document_timeline,
+        red_flags=current_red_flags(db, row.session_id),
+        low_confidence_fields=summary.low_confidence_fields,
+        mocked_fields=mocked,
+        fhir=_bundle_for(db, row, summary),
+        verified_by=summary.verified_by,
+        verified_at=summary.verified_at,
+    )
+
+
 # /queue must be declared before /{session_id}, or "queue" is captured as an id.
 @router.get("/queue", response_model=List[PhysicianQueueItem])
 def physician_queue(db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)):
@@ -167,52 +201,37 @@ def physician_queue(db: DbSession = Depends(get_db), claims: dict = Depends(requ
     return items
 
 
+@router.get("/token/{token}", response_model=PhysicianCaseResponse)
+def fetch_case_by_token(token: str, db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)):
+    """Open one patient by the token printed on the kiosk Done screen."""
+    wanted = token.strip().upper()
+    rows = (
+        db.query(models.Session)
+        .filter(models.Session.token == wanted, models.Session.status != SessionStatus.rejected.value)
+        .order_by(models.Session.created_at.desc())
+        .all()
+    )
+    if not rows:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"unknown patient token {wanted}")
+    if len(rows) > 1:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"patient token {wanted} is not unique; select from the queue",
+        )
+    row = rows[0]
+    models.write_audit(db, action="physician.read_by_token", actor=claims.get("sub", "physician"), session_id=row.session_id)
+    db.commit()
+    return _case_response(db, row)
+
+
 @router.get("/{session_id}", response_model=PhysicianCaseResponse)
 def fetch_case(session_id: str, db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)):
     """Everything the console renders for one patient, FHIR bundle included."""
     row = load_session(db, session_id)
-    summary = _load_summary(db, row)
 
     models.write_audit(db, action="physician.read", actor=claims.get("sub", "physician"), session_id=session_id)
     db.commit()
-
-    # Demographics are not collected for real yet, so they fall back to demo
-    # values. Every substituted field is named in `mocked_fields` below so the
-    # console can label it and nobody presents invented demographics as real.
-    mocked: List[str] = []
-    if not row.patient_name:
-        mocked.append("name")
-    if row.age is None:
-        mocked.append("age")
-    if not row.sex:
-        mocked.append("sex")
-    if not row.abha_id:
-        mocked.append("abha")
-
-    return PhysicianCaseResponse(
-        session_id=session_id,
-        patient=PhysicianPatient(
-            name=row.patient_name or fixtures.DEMO_PATIENT["name"],
-            age=row.age or fixtures.DEMO_PATIENT["age"],
-            sex=row.sex or fixtures.DEMO_PATIENT["sex"],
-            abha=row.abha_id or fixtures.DEMO_PATIENT["abha"],
-        ),
-        summary=_flatten(summary),
-        documents=summary.document_timeline,
-        # LIVE, from the clinical record — never summary.red_flags.
-        #
-        # This is the highest-severity bug found on this project. The stored
-        # summary is a snapshot taken when it was generated; a flag raised
-        # after that appeared in the queue (which always read live) but NOT
-        # here. The two screens disagreed, and a doctor would have trusted this
-        # one, because it is the one showing the whole case.
-        red_flags=current_red_flags(db, session_id),
-        low_confidence_fields=summary.low_confidence_fields,
-        mocked_fields=mocked,
-        fhir=_bundle_for(db, row, summary),
-        verified_by=summary.verified_by,
-        verified_at=summary.verified_at,
-    )
+    return _case_response(db, row)
 
 
 @router.post("/{session_id}/verify", response_model=VerifyResponse)
