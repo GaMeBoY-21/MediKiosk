@@ -6,6 +6,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { DEFAULT_LANG } from '../i18n/strings.js';
+import { startSession } from '../api/client.js';
 
 export const SCREENS = {
   IDLE: 'idle',
@@ -26,6 +27,21 @@ export const SCREENS = {
   EMERGENCY: 'emergency',
 };
 
+/** Where session creation has got to.
+ *
+ *  POST /api/session/start generates the opening question through the model,
+ *  so it takes anywhere from one to fifteen seconds. Everything downstream of
+ *  it — consent, seeding, the interview, the summary, ending the session —
+ *  addresses the session by id, so the kiosk has to be able to say "not yet"
+ *  rather than send `null` down the wire. `idle` is not "no session": it is
+ *  "nobody has asked for one yet". */
+export const SESSION_STATUS = {
+  IDLE: 'idle',
+  STARTING: 'starting',
+  READY: 'ready',
+  FAILED: 'failed',
+};
+
 const INITIAL = {
   language: DEFAULT_LANG,
   // Whether the patient has actually PICKED a language, as opposed to us
@@ -34,6 +50,7 @@ const INITIAL = {
   // pre-selection screens rendered in whatever happened to be in state.
   languageChosen: false,
   sessionId: null,
+  sessionStatus: SESSION_STATUS.IDLE,
   patient: { name: '', age: '', sex: '', idKind: null, idMasked: null },
   consentGiven: null, // null = not asked, false = refused
   consentOptions: { history: true, documents: true, abha: false },
@@ -74,8 +91,15 @@ export function SessionProvider({ children }) {
     setHistory((h) => (h.length <= 1 ? [SCREENS.IDLE] : h.slice(0, -1)));
   }, []);
 
+  // In flight already? A ref rather than reading sessionStatus, because two
+  // callers in the same tick would both still see `idle` in state and open two
+  // sessions — the patient's answers would then be split across two rows and
+  // the doctor would get half an interview.
+  const starting = useRef(false);
+
   // Wipe everything. Patient data must never sit on screen for the next person.
   const reset = useCallback(() => {
+    starting.current = false;
     setState(INITIAL);
     setHistory([SCREENS.IDLE]);
   }, []);
@@ -88,7 +112,34 @@ export function SessionProvider({ children }) {
     (language) => patch({ language, languageChosen: true }),
     [patch],
   );
-  const setSessionId = useCallback((sessionId) => patch({ sessionId }), [patch]);
+  /** Open the patient's session and hold the id. The ONLY way sessionId is
+   *  ever set — there is deliberately no public setter beside it.
+   *
+   *  It used to be a fire-and-forget effect in Kiosk.jsx that no screen waited
+   *  on, so consent, the seeding call and the first interview answer all went
+   *  out addressed to `null` whenever the model took more than a few seconds
+   *  to produce the opening question. Resolving with the id (rather than only
+   *  writing it to state) lets a caller sequence off it directly; the status
+   *  is what the screens gate on. */
+  const beginSession = useCallback(async (language) => {
+    if (starting.current) return null;
+    starting.current = true;
+    setState((s) => ({ ...s, sessionStatus: SESSION_STATUS.STARTING }));
+    try {
+      const opened = await startSession(language);
+      const sessionId = opened?.session_id ?? null;
+      // A 200 with no id is still a failed start. Treating it as success is
+      // what put the string "null" into every URL that followed.
+      if (!sessionId) throw new Error('/session/start returned no session_id');
+      setState((s) => ({ ...s, sessionId, sessionStatus: SESSION_STATUS.READY }));
+      return sessionId;
+    } catch (e) {
+      // Left `true`: a retry belongs to reset(), not to the next render.
+      setState((s) => ({ ...s, sessionStatus: SESSION_STATUS.FAILED }));
+      throw e;
+    }
+  }, []);
+
   const setSummary = useCallback((summary) => patch({ summary }), [patch]);
   const setCurrentNode = useCallback((currentNode) => patch({ currentNode }), [patch]);
 
@@ -201,7 +252,7 @@ export function SessionProvider({ children }) {
       back,
       reset,
       setLanguage,
-      setSessionId,
+      beginSession,
       setPatient,
       setConsent,
       setCurrentNode,
@@ -224,7 +275,7 @@ export function SessionProvider({ children }) {
       back,
       reset,
       setLanguage,
-      setSessionId,
+      beginSession,
       setPatient,
       setConsent,
       setCurrentNode,

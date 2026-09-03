@@ -75,6 +75,48 @@
   color: var(--ink-soft);
 }
 
+.starting {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: var(--page-pad);
+  background: var(--bg);
+  text-align: center;
+}
+
+.starting__brand {
+  position: absolute;
+  top: var(--page-pad);
+  left: var(--page-pad);
+  font-size: var(--fs-caption);
+  color: var(--ink-soft);
+}
+
+.starting__hospital {
+  position: absolute;
+  top: calc(var(--page-pad) + 1.4em);
+  left: var(--page-pad);
+  font-size: var(--fs-caption);
+  color: var(--ink-soft);
+}
+
+.starting__wait {
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  margin: 0;
+}
+
+.starting__english {
+  font-size: var(--fs-caption);
+  color: var(--ink-soft);
+  margin: 0;
+}
+
 /* ---------------------------------------------------------------- Language */
 
 .language__grid {

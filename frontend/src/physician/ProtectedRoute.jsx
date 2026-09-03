@@ -18,7 +18,7 @@ import { snapshot, subscribe } from './authStore.js';
 const IDLE_MS = 10 * 60 * 1000;
 const ACTIVITY = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
 
-export default function ProtectedRoute({ children }) {
+export default function ProtectedRoute({ children, onAuthenticated }) {
   const [auth, setAuth] = useState(snapshot);
   const [timedOut, setTimedOut] = useState(false);
   const timer = useRef(null);
@@ -55,7 +55,12 @@ export default function ProtectedRoute({ children }) {
             Signed out after 10 minutes of inactivity.
           </p>
         ) : null}
-        <Login onSignedIn={() => setTimedOut(false)} />
+        <Login
+          onSignedIn={() => {
+            setTimedOut(false);
+            onAuthenticated?.();
+          }}
+        />
       </>
     );
   }

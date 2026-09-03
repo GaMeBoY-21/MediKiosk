@@ -252,6 +252,19 @@ function shapeNode(node, lang) {
   };
 }
 
+/** Refuse to build a URL around a session id that does not exist yet.
+ *
+ *  Every path below interpolates the id, so a null one produced a real request
+ *  to /api/session/null/consent and a 404 that read like a backend fault. The
+ *  screens are gated on a live id now (see NEEDS_SESSION in Kiosk.jsx); this is
+ *  the backstop that keeps the invariant enforceable rather than remembered.
+ *  It throws rather than resolving quietly — a caller that has lost track of
+ *  the session must fail visibly, not silently skip the write. */
+function requireSession(sessionId, what) {
+  if (sessionId) return sessionId;
+  throw new Error(`${what} called with no session id — the session is not open yet`);
+}
+
 /* -------------------------------------------------------------------- session */
 
 export async function startSession(language = 'en') {
@@ -281,6 +294,7 @@ export async function startSession(language = 'en') {
  * Costs no model call: these values are already structured.
  */
 export async function recordKnownFields(sessionId, fields) {
+  requireSession(sessionId, 'recordKnownFields');
   if (replayActive) {
     const d = await loadReplay();
     return d.kiosk.fields;
@@ -293,6 +307,7 @@ export async function recordKnownFields(sessionId, fields) {
 }
 
 export async function recordConsent(sessionId, consent) {
+  requireSession(sessionId, 'recordConsent');
   if (replayActive) return { ok: true, consent };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
@@ -302,6 +317,7 @@ export async function recordConsent(sessionId, consent) {
 }
 
 export async function endSession(sessionId) {
+  requireSession(sessionId, 'endSession');
   if (replayActive) return { ok: true };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
@@ -318,6 +334,7 @@ export async function endSession(sessionId) {
  * The Interview screen renders whatever comes back — it holds no clinical content.
  */
 export async function submitAnswer(sessionId, payload) {
+  requireSession(sessionId, 'submitAnswer');
   if (replayActive) {
     const d = await loadReplay();
     const recorded = d.kiosk.answers;
@@ -350,6 +367,7 @@ export async function submitAnswer(sessionId, payload) {
 /* ------------------------------------------------------------------ documents */
 
 export async function uploadDocument(sessionId, blob, filename = 'page.jpg') {
+  requireSession(sessionId, 'uploadDocument');
   if (replayActive) return { doc_id: 'replay-doc', document_id: 'replay-doc', status: 'queued' };
   if (USE_MOCKS) {
     await wait(MOCK_DELAY);
@@ -363,6 +381,7 @@ export async function uploadDocument(sessionId, blob, filename = 'page.jpg') {
 /* -------------------------------------------------------------------- summary */
 
 export async function generateSummary(sessionId) {
+  requireSession(sessionId, 'generateSummary');
   if (replayActive) {
     const d = await loadReplay();
     return d.kiosk.summary;
@@ -376,6 +395,7 @@ export async function generateSummary(sessionId) {
 }
 
 export async function fetchSummary(sessionId) {
+  requireSession(sessionId, 'fetchSummary');
   if (replayActive) {
     const d = await loadReplay();
     return d.physician.summary;
@@ -415,6 +435,26 @@ export async function fetchCase(sessionId) {
     return found ?? data.physician.cases[Object.keys(data.physician.cases)[0]];
   }
   return request(`/physician/${sessionId}`);
+}
+
+export async function fetchCaseByToken(token) {
+  const normalized = String(token || '').trim().toUpperCase();
+  if (!normalized) throw new Error('Enter a patient token.');
+  if (replayActive) {
+    const d = await loadReplay();
+    const match = d.physician.queue.find((p) => p.token?.toUpperCase() === normalized);
+    if (!match) throw new Error(`No patient found for ${normalized}.`);
+    return d.physician.case;
+  }
+  if (USE_MOCKS) {
+    await wait(MOCK_DELAY);
+    const data = await loadMocks();
+    const match = data.physician.patients.find((p) => p.token?.toUpperCase() === normalized);
+    if (!match) throw new Error(`No patient found for ${normalized}.`);
+    const found = data.physician.cases[match.session_id];
+    return found ?? data.physician.cases[Object.keys(data.physician.cases)[0]];
+  }
+  return request(`/physician/token/${encodeURIComponent(normalized)}`);
 }
 
 export async function updateCase(sessionId, patch) {
