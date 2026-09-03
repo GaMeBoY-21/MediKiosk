@@ -11,11 +11,19 @@ import { useSession, SCREENS } from '../state/SessionContext.jsx';
 
 export default function AgeEntry() {
   const { tx } = useT();
-  const { setPatient, go } = useSession();
+  const { setPatient, addAnswer, go } = useSession();
   const [age, setAge] = useState('');
 
   const submit = () => {
     setPatient({ age });
+    addAnswer({
+      key: 'identity:age',
+      node_id: 'identity',
+      screen: SCREENS.AGE,
+      question: tx('identify.ageTitle').label,
+      text: String(age),
+      fields: ['age'],
+    });
     go(SCREENS.SEX);
   };
 

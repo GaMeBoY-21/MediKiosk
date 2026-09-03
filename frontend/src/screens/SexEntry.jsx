@@ -16,10 +16,19 @@ const OPTIONS = [
 
 export default function SexEntry() {
   const { tx } = useT();
-  const { setPatient, go } = useSession();
+  const { setPatient, addAnswer, go } = useSession();
 
   const choose = (value) => {
     setPatient({ sex: value });
+    const chosen = OPTIONS.find((o) => o.value === value);
+    addAnswer({
+      key: 'identity:sex',
+      node_id: 'identity',
+      screen: SCREENS.SEX,
+      question: tx('identify.sexTitle').label,
+      text: chosen ? tx(chosen.key).label : value,
+      fields: ['sex'],
+    });
     go(SCREENS.CONSENT);
   };
 

@@ -40,6 +40,9 @@ export default function Interview({ onError }) {
     currentNode,
     setCurrentNode,
     addAnswer,
+    noteAnswerFields,
+    extracted: understood,
+    setExtracted: setUnderstood,
     raiseRedFlag,
     go,
     patient,
@@ -47,10 +50,11 @@ export default function Interview({ onError }) {
   } = useSession();
 
   const [node, setNode] = useState(currentNode);
-  // Cumulative from the API. Held separately from `node` so it survives the
-  // holding screen between questions instead of flickering empty.
-  const [understood, setUnderstood] = useState([]);
   const [thinking, setThinking] = useState(!currentNode);
+  // The answer waiting to be told which fields it filled, plus the fields
+  // already known when it was sent. A ref, not state: it is bookkeeping
+  // between a request and its reply, and must not cause a render.
+  const pending = useRef(null);
   const [selected, setSelected] = useState(null);
   // What is actually in the answer box. Speech writes into it, the patient
   // can type into it, and either one alone is a complete answer. Held here
@@ -78,6 +82,16 @@ export default function Interview({ onError }) {
     (res) => {
       if (Array.isArray(res?.extracted) && res.extracted.length) {
         setUnderstood(res.extracted);
+        // Everything new since the answer went out belongs to that answer —
+        // including fields reconcile.py derived rather than asked for.
+        const p = pending.current;
+        if (p) {
+          noteAnswerFields(
+            p.key,
+            res.extracted.map((f) => f.name).filter((n) => !p.before.has(n)),
+          );
+          pending.current = null;
+        }
       }
       if (res?.red_flag) {
         raiseRedFlag(res.red_flag);
@@ -108,7 +122,7 @@ export default function Interview({ onError }) {
       reset();
       setThinking(false);
     },
-    [raiseRedFlag, setCurrentNode, go, reset],
+    [raiseRedFlag, setCurrentNode, go, reset, setUnderstood, noteAnswerFields],
   );
 
   const ask = useCallback(
@@ -159,6 +173,16 @@ export default function Interview({ onError }) {
     // site the same way saying "back pain" does.
     if (previous?.node_id === 'chief_complaint' && previous?.value) {
       known.chief_complaint = previous.value;
+    }
+
+    // The opening exchange fills the seeded fields — the complaint itself and
+    // anything reconcile.py derives from it, such as the body site. They belong
+    // to the complaint the patient tapped, not to the first follow-up.
+    if (previous) {
+      pending.current = {
+        key: previous.key || `${previous.node_id}:${previous.question}`,
+        before: new Set(),
+      };
     }
 
     const firstAsk = () =>
@@ -213,12 +237,20 @@ export default function Interview({ onError }) {
     // extraction path instead, spending a request and a round trip to
     // re-derive what we already knew.
     const text = selected ? '' : typed;
+    const key = `${node.node_id}:${node.question}`;
     addAnswer({
+      key,
       node_id: node.node_id,
       question: node.question,
+      // Confirm renders both lines; without this the readback is the one place
+      // in the app where a question loses its English.
+      question_en: node.question_en,
       value: selected,
       text: selected ? label : typed,
+      text_en: selected ? node.options?.find((o) => o.value === selected)?.label_en : null,
     });
+    // Which fields this answer fills is only known once the backend answers.
+    pending.current = { key, before: new Set(understood.map((f) => f.name)) };
     ask({ node_id: node.node_id, value: selected, text });
   };
 

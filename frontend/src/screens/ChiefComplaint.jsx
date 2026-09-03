@@ -47,7 +47,14 @@ export default function ChiefComplaint() {
 
   const commit = (value, text) => {
     stop();
-    addAnswer({ node_id: 'chief_complaint', question: tx('complaint.title').label, value, text });
+    addAnswer({
+      node_id: 'chief_complaint',
+      screen: SCREENS.COMPLAINT,
+      question: tx('complaint.title').label,
+      value,
+      text,
+      fields: ['chief_complaint'],
+    });
     go(SCREENS.INTERVIEW);
   };
 

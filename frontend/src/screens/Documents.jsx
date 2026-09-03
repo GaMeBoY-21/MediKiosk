@@ -17,7 +17,8 @@ const JPEG_QUALITY = 0.85;
 
 export default function Documents() {
   const { tx, lang } = useT();
-  const { sessionId, documents, addDocument, updateDocument, removeDocument, go } = useSession();
+  const { sessionId, documents, addDocument, updateDocument, removeDocument, addAnswer, go } =
+    useSession();
 
   const [capturing, setCapturing] = useState(false);
   const [cameraError, setCameraError] = useState(false);
@@ -36,6 +37,16 @@ export default function Documents() {
   // Fire and forget, like consent: the patient must never wait on the network
   // between themselves and the doctor.
   const answerNode = (value) => {
+    // Documents is one of the kiosk's own screens, so like the identity ones
+    // it has to record its own answer or the readback silently loses it.
+    addAnswer({
+      key: 'documents:documents_offered',
+      node_id: 'documents',
+      screen: SCREENS.DOCUMENTS,
+      question: tx('documents.title').label,
+      text: tx(value === 'yes' ? 'common.yes' : 'common.no').label,
+      fields: ['documents_offered'],
+    });
     submitAnswer(sessionId, { node_id: 'documents', value, text: '', lang })
       .catch((e) => console.warn('[documents] answer not recorded:', e));
   };

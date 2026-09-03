@@ -18,7 +18,7 @@ import BilingualText from '../components/BilingualText.jsx';
 
 export default function Consent() {
   const { tx, voice } = useT();
-  const { sessionId, consentOptions, setConsent, go } = useSession();
+  const { sessionId, consentOptions, setConsent, addAnswer, go } = useSession();
   const [opts, setOpts] = useState(consentOptions);
 
   const explanation = tx('consent.explanation');
@@ -27,6 +27,14 @@ export default function Consent() {
 
   const agree = () => {
     setConsent(true, opts);
+    addAnswer({
+      key: 'identity:consent_given',
+      node_id: 'consent',
+      screen: SCREENS.CONSENT,
+      question: tx('consent.title').label,
+      text: tx('common.yes').label,
+      fields: ['consent_given'],
+    });
     // Fire and forget: the patient should never wait on the network here.
     recordConsent(sessionId, opts).catch((e) => console.warn('[consent] not saved:', e));
     go(SCREENS.COMPLAINT);

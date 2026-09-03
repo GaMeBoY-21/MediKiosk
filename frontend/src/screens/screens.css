@@ -160,6 +160,21 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* A full interview is ten-plus rows and cannot fit at 1280x800. This is the
+     one list in the kiosk that scrolls, and it earns it: the alternative is
+     either hiding answers — which is the bug this screen just had — or letting
+     the rows run under the bottom bar. Next stays put outside it. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Fields an answer filled besides the one it was asked for. Quieter than the
+   answer itself: it is context, not something the patient said. */
+.readback__derived {
+  margin: 6px 0 0;
+  font-size: 0.7em;
+  color: var(--ink-soft);
 }
 
 .readback__item {

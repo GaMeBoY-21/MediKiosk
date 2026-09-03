@@ -15,7 +15,7 @@ import { useSession, SCREENS } from '../state/SessionContext.jsx';
 
 export default function NameEntry() {
   const { tx, voice } = useT();
-  const { setPatient, go } = useSession();
+  const { setPatient, addAnswer, go } = useSession();
   const [typed, setTyped] = useState('');
   const { start, stop, transcript, listening, isSupported, error } =
     useSpeechRecognition(voice);
@@ -40,6 +40,14 @@ export default function NameEntry() {
   const submit = () => {
     stop();
     setPatient({ name });
+    addAnswer({
+      key: 'identity:patient_name',
+      node_id: 'identity',
+      screen: SCREENS.NAME,
+      question: tx('identify.nameTitle').label,
+      text: name,
+      fields: ['patient_name'],
+    });
     go(SCREENS.AGE);
   };
 

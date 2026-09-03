@@ -39,6 +39,11 @@ const INITIAL = {
   consentOptions: { history: true, documents: true, abha: false },
   currentNode: null,
   answers: [],
+  // Every field the backend has understood so far, cumulative. Held here
+  // rather than inside the Interview screen because the Confirm screen has to
+  // read it too: it is what tells Confirm about fields nobody was asked for
+  // directly, like the ones reconcile.py derives.
+  extracted: [],
   documents: [],
   summary: null,
   redFlag: null,
@@ -100,14 +105,54 @@ export function SessionProvider({ children }) {
   }, []);
 
   /** Record an answer, replacing any earlier answer to the same node. */
+  // One row per QUESTION, not per node. Deduplicating by node_id silently
+  // overwrote: every follow-up in the history-of-present-illness stage carries
+  // node_id "hpi", so seven answers collapsed into one and the Confirm screen
+  // showed two rows for a ten-question interview. The key still has to
+  // deduplicate, though, or the edit pencil would append a second row instead
+  // of correcting the first.
+  const answerKey = (a) => a.key || `${a.node_id}:${a.question}`;
+
   const addAnswer = useCallback((answer) => {
     setState((s) => {
-      const existing = s.answers.findIndex((a) => a.node_id === answer.node_id);
+      const key = answerKey(answer);
+      const existing = s.answers.findIndex((a) => answerKey(a) === key);
       if (existing === -1) return { ...s, answers: [...s.answers, answer] };
       const answers = [...s.answers];
-      answers[existing] = answer;
+      // Keep any fields already attributed to this row: re-answering a
+      // question does not un-derive what it derived.
+      answers[existing] = { ...answers[existing], ...answer };
       return { ...s, answers };
     });
+  }, []);
+
+  /** Record which clinical fields an answer turned out to fill.
+   *
+   * Attribution happens after the fact because the fields are only known once
+   * the backend has replied. It is what lets Confirm show a derived field
+   * beside the answer it came from rather than as a row of its own that the
+   * patient was never asked. */
+  const noteAnswerFields = useCallback((key, fields) => {
+    if (!key || !fields?.length) return;
+    setState((s) => {
+      const i = s.answers.findIndex((a) => answerKey(a) === key);
+      if (i === -1) return s;
+      const answers = [...s.answers];
+      // First claimer wins. The seeded batch that opens the interview carries
+      // the identity fields too, and those rows already account for them —
+      // counting them twice would hide a genuinely dropped field behind a
+      // total that still looked right.
+      const claimed = new Set(answers.flatMap((a, j) => (j === i ? [] : a.fields || [])));
+      const merged = [
+        ...new Set([...(answers[i].fields || []), ...fields.filter((f) => !claimed.has(f))]),
+      ];
+      answers[i] = { ...answers[i], fields: merged };
+      return { ...s, answers };
+    });
+  }, []);
+
+  const setExtracted = useCallback((extracted) => {
+    setState((s) => (Array.isArray(extracted) ? { ...s, extracted } : s));
   }, []);
 
   const addDocument = useCallback((doc) => {
@@ -161,6 +206,8 @@ export function SessionProvider({ children }) {
       setConsent,
       setCurrentNode,
       addAnswer,
+      noteAnswerFields,
+      setExtracted,
       addDocument,
       updateDocument,
       removeDocument,
@@ -182,6 +229,8 @@ export function SessionProvider({ children }) {
       setConsent,
       setCurrentNode,
       addAnswer,
+      noteAnswerFields,
+      setExtracted,
       addDocument,
       updateDocument,
       removeDocument,
