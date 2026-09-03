@@ -128,6 +128,13 @@ async function run(size, langName) {
   console.log(`\n=== ${size}  ${langName} ===`);
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
+  // The landing page now stands in front of the kiosk: choose Patient to get
+  // to Idle, which is where the flow proper still begins.
+  const patientCard = page.locator('.role-card').first();
+  if (await patientCard.count()) {
+    await patientCard.click();
+    await page.waitForTimeout(600);
+  }
   await page.locator('button').first().click();
   await page.waitForTimeout(1800);
   await page.locator('button', { hasText: langName }).first().click();
