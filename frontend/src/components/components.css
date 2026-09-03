@@ -818,6 +818,19 @@
   line-height: 1.25;
 }
 
+/* On a filled surface the secondary line must switch to a light colour. This
+   is scoped by the filled classes rather than set on BilingualText, because
+   the component has no idea what it is sitting on. Every filled surface in the
+   app that can contain bilingual text is listed here; e2e/layout.mjs measures
+   the real rendered contrast so a new one cannot be added and forgotten. */
+.btn--primary .bilingual__english,
+.btn--alert .bilingual__english,
+.tile--selected .bilingual__english,
+.shutter .bilingual__english,
+.emergency .bilingual__english {
+  color: var(--ink-on-fill);
+}
+
 .bilingual__english {
   font-size: 0.6em;
   line-height: 1.25;

@@ -8,6 +8,13 @@
   --surface: #F1F3F2;
   --ink: #1A1A1A;
   --ink-soft: #5A625E;
+  /* The secondary English line when it sits on a FILLED surface. --ink-soft is
+     a dark grey and scores 1.04:1 on the primary green — invisible, and a
+     WCAG failure on the most important button on the screen. This clears
+     4.5:1 on --primary (5.6), --primary-d (8.7) and --alert (4.9) while
+     staying softer than the white primary line, so the two lines still read
+     as a hierarchy rather than as one block. */
+  --ink-on-fill: #E8F0EC;
   --primary: #0B6B4F;
   --primary-d: #084B38;
   --border: #C4CBC8;

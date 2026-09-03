@@ -72,9 +72,40 @@ function inspect(tracked) {
   const behindBar = boxes
     .filter((x) => bar && x.sel !== '.shell__bar' && x.b > bar.top + 1)
     .map((x) => `${x.sel} reaches ${x.b}, bar starts ${Math.round(bar.top)}`);
+  // Contrast of the bilingual English line against whatever it actually sits
+  // on. It was set to --ink-soft regardless of background, which scored
+  // 1.04:1 on the filled primary button — the most important control on the
+  // screen, effectively invisible. Measured rather than assumed, because the
+  // fix is a list of filled classes and a new one can be added and forgotten.
+  const lum = (c) => {
+    const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  };
+  const parse = (v) => (v.match(/[\d.]+/g) || []).map(Number);
+  const backdrop = (el) => {
+    for (let n = el; n; n = n.parentElement) {
+      const c = parse(getComputedStyle(n).backgroundColor);
+      if (c.length >= 3 && (c[3] === undefined || c[3] > 0.5)) return c.slice(0, 3);
+    }
+    return [255, 255, 255];
+  };
+  const lowContrast = [];
+  for (const el of document.querySelectorAll('.bilingual__english')) {
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    const fg = parse(getComputedStyle(el).color).slice(0, 3);
+    const bg = backdrop(el);
+    const a = lum(fg), b = lum(bg);
+    const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    if (ratio < 4.5) {
+      const owner = el.closest('[class]')?.className || '?';
+      lowContrast.push(`${ratio.toFixed(2)}:1 "${(el.textContent || '').trim().slice(0, 20)}" in .${String(owner).split(/\s+/)[0]}`);
+    }
+  }
+
   const panel = document.querySelector('.understanding');
   return {
-    overlaps, behindBar,
+    overlaps, behindBar, lowContrast,
     pageScrolls: document.documentElement.scrollHeight > window.innerHeight,
     // The panel may scroll internally by design; the transcript may not.
     transcriptClipped: (() => {
@@ -119,7 +150,9 @@ async function run(size, langName) {
     if (!heading) break;
 
     const r = await page.evaluate(inspect, TRACKED);
-    const bad = r.overlaps.length || r.behindBar.length || r.pageScrolls || r.transcriptClipped;
+    const bad =
+      r.overlaps.length || r.behindBar.length || r.pageScrolls || r.transcriptClipped
+      || r.lowContrast.length;
     const name = `step ${step} "${heading.split('\n')[0].slice(0, 22)}" tiles=${r.tiles} panelRows=${r.panelRows}`;
 
     // The case the whole layout has to survive: tiles, mic, transcript,
@@ -143,6 +176,7 @@ async function run(size, langName) {
       r.behindBar.forEach((o) => console.log(`        BEHIND BAR: ${o}`));
       if (r.pageScrolls) console.log('        PAGE SCROLLS');
       if (r.transcriptClipped) console.log('        TRANSCRIPT CLIPPED (it must never be the thing that shrinks)');
+      r.lowContrast.forEach((c) => console.log(`        CONTRAST below 4.5:1 — ${c}`));
     } else {
       console.log(`  ok    ${name}`);
     }
