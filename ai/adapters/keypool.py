@@ -38,6 +38,7 @@ identified by index only — "key 3 of 5".
 import logging
 import re
 import threading
+import time
 
 from ai.adapters.base import AllProvidersExhausted
 
@@ -109,6 +110,34 @@ def is_timeout_error(exc: Exception) -> bool:
         or re.search(r"\b504\b", message) is not None
         or isinstance(exc, TimeoutError)
     )
+
+
+def is_unavailable_error(exc: Exception) -> bool:
+    """Whether the model is temporarily refusing work.
+
+    Google answers an overloaded model with 503 UNAVAILABLE — "This model is
+    currently experiencing high demand" — which is neither a spent quota nor a
+    bad key. Before this it matched no classifier at all and went straight up
+    to the patient's error screen, while the very next key or the fallback
+    model would often have answered immediately. Observed live on
+    gemini-3.5-flash-lite, so this is a path the demo actually takes.
+    """
+    message = str(exc).lower()
+    return (
+        "unavailable" in message
+        or "high demand" in message
+        or "overloaded" in message
+        or re.search(r"\b503\b", message) is not None
+    )
+
+
+def is_transient_error(exc: Exception) -> bool:
+    """Skip this combination for now, but spend nothing.
+
+    Both a timeout and a 503 say something about this MOMENT, not about the
+    key. Retiring on either would destroy the pool over one bad minute.
+    """
+    return is_timeout_error(exc) or is_unavailable_error(exc)
 
 
 def collect_keys(env: dict) -> list[str]:
@@ -183,8 +212,20 @@ class GeminiKeyPool:
     the whole point of building this before the keys exist.
     """
 
-    def __init__(self, keys, models, model_factory):
+    def __init__(
+        self,
+        keys,
+        models,
+        model_factory,
+        per_call_seconds: float = 12.0,
+        total_budget_seconds: float = 25.0,
+    ):
         self._factory = model_factory
+        # How long one attempt may take, and how long the whole failover may
+        # take. The second is the patient's limit; see gemini.py for the
+        # numbers and the measurements behind them.
+        self._per_call = per_call_seconds
+        self._budget = total_budget_seconds
         self._lock = threading.Lock()
         self._built: dict[tuple[int, str], object] = {}
         self.total_keys = len(keys)
@@ -254,11 +295,33 @@ class GeminiKeyPool:
             raise AllProvidersExhausted(0, "no Gemini API keys are configured")
 
         last_detail = ""
-        timed_out: set[int] = set()
+        skipped: set[int] = set()
+        started = time.monotonic()
+        attempts = 0
         while True:
-            combo = self._next_usable(timed_out)
+            combo = self._next_usable(skipped)
             if combo is None:
                 raise AllProvidersExhausted(len(self._combinations), last_detail)
+
+            # Stop before starting an attempt that cannot finish inside the
+            # patient's budget. Checked BEFORE the call, never during: killing
+            # a request mid-flight would waste the one that might have worked.
+            # The first attempt always runs — a budget that refuses to try at
+            # all is just a slower failure.
+            elapsed = time.monotonic() - started
+            if attempts and elapsed + self._per_call > self._budget:
+                log.error(
+                    "giving up after %.0fs and %d attempt(s): no combination "
+                    "answered inside the %.0fs budget",
+                    elapsed,
+                    attempts,
+                    self._budget,
+                )
+                raise AllProvidersExhausted(
+                    len(self._combinations),
+                    f"gave up after {elapsed:.0f}s and {attempts} attempt(s): {last_detail}",
+                )
+            attempts += 1
 
             try:
                 return call(self._model_for(combo))
@@ -272,22 +335,21 @@ class GeminiKeyPool:
                     # whole key rather than discovering the same typo again on
                     # the fallback model later.
                     self._retire_key(combo, last_detail)
-                elif is_timeout_error(exc):
+                elif is_transient_error(exc):
                     last_detail = _short(exc)
-                    # Skipped, NOT retired: the key is fine, the network was
-                    # slow. Trying the next combination is still worth it —
-                    # the block may be specific to one endpoint — but nothing
-                    # is spent and the next request starts from the top again.
-                    timed_out.add(id(combo))
-                    nxt = self._next_usable(timed_out)
+                    # Skipped, NOT retired. A timeout and a 503 both describe
+                    # this moment, not this key: it is spent nothing and the
+                    # next request starts from the top of the pool again.
+                    skipped.add(id(combo))
+                    nxt = self._next_usable(skipped)
                     log.warning(
-                        "key %d timed out on %s after %s; %s",
+                        "key %d %s on %s; %s",
                         combo.key_index,
+                        "is overloaded (503)" if is_unavailable_error(exc) else "timed out",
                         combo.model_name,
-                        "the request deadline",
                         f"trying key {nxt.key_index} on {nxt.model_name}"
                         if nxt
-                        else "no combinations left to try",
+                        else "nothing left to try",
                     )
                 else:
                     # Neither an allowance, a credential nor a timing problem.
@@ -296,11 +358,11 @@ class GeminiKeyPool:
                     # bad network.
                     raise
 
-    def _next_usable(self, timed_out=()):
-        """The next combination that is neither retired nor already timed out
+    def _next_usable(self, skipped=()):
+        """The next combination that is neither retired nor already skipped
         during this request."""
         for combo in self._combinations[self._cursor :]:
-            if not combo.exhausted and id(combo) not in timed_out:
+            if not combo.exhausted and id(combo) not in skipped:
                 return combo
         return None
 

@@ -422,6 +422,137 @@ class TestTimeoutsSkipButDoNotBurn(unittest.TestCase):
         self.assertFalse(is_timeout_error(AuthError()))
 
 
+class UnavailableError(Exception):
+    """Google's answer for an overloaded model. Observed live, repeatedly."""
+
+    def __init__(
+        self,
+        message="503 This model is currently experiencing high demand. "
+        "Spikes in demand are usually temporary. Please try again later.",
+    ):
+        super().__init__(message)
+
+
+class TestOverloadedModelsSkip(unittest.TestCase):
+    """A 503 must fail over, not reach the patient.
+
+    It matched no classifier at all, so it raised straight out of the pool and
+    put the error screen in front of the patient while the next key would very
+    often have answered at once.
+    """
+
+    def test_a_503_tries_the_next_combination(self):
+        pool, provider = build()
+        busy = {KEYS[0]}
+
+        def call(model):
+            provider.calls.append((model.key, model.model_name))
+            if model.key in busy:
+                raise UnavailableError()
+            return f"answer from {model.model_name}"
+
+        self.assertEqual(pool.execute(call), f"answer from {PRIMARY}")
+        self.assertEqual(provider.calls, [(KEYS[0], PRIMARY), (KEYS[1], PRIMARY)])
+
+    def test_a_503_retires_nothing(self):
+        pool, _ = build()
+        state = {"n": 0}
+
+        def call(model):
+            state["n"] += 1
+            if state["n"] == 1:
+                raise UnavailableError()
+            return "ok"
+
+        pool.execute(call)
+        st = pool.status()
+        self.assertEqual(st["pools_exhausted"], 0, "an overloaded model is not a spent quota")
+        self.assertEqual(st["pools_invalid"], 0)
+        self.assertEqual(st["pools_remaining"], 10)
+
+    def test_every_model_overloaded_raises_rather_than_surfacing_the_503(self):
+        pool, _ = build()
+        with self.assertRaises(AllProvidersExhausted):
+            pool.execute(lambda m: (_ for _ in ()).throw(UnavailableError()))
+        self.assertEqual(pool.status()["pools_remaining"], 10, "nothing spent")
+
+    def test_503_is_not_read_as_quota_auth_or_anything_fatal(self):
+        from ai.adapters.keypool import (
+            is_auth_error,
+            is_quota_error,
+            is_transient_error,
+            is_unavailable_error,
+        )
+
+        e = UnavailableError()
+        self.assertTrue(is_unavailable_error(e))
+        self.assertTrue(is_transient_error(e))
+        self.assertFalse(is_quota_error(e), "503 must never retire a key")
+        self.assertFalse(is_auth_error(e))
+        # And a real quota error is still a quota error.
+        self.assertFalse(is_unavailable_error(QuotaError()))
+
+
+class TestTotalBudget(unittest.TestCase):
+    """The patient's limit, not the network's.
+
+    Ten combinations at twelve seconds each is two minutes of silence. The
+    budget stops the failover walking the whole pool.
+    """
+
+    def _slow_pool(self, per_call=12.0, budget=25.0):
+        """A pool whose every attempt burns `per_call` seconds of fake clock."""
+        provider = StubProvider()
+        pool = GeminiKeyPool(
+            list(KEYS), [PRIMARY, FALLBACK], provider.factory,
+            per_call_seconds=per_call, total_budget_seconds=budget,
+        )
+        return pool, provider
+
+    def test_the_budget_stops_the_walk_well_before_the_pool_is_exhausted(self):
+        import time as _t
+
+        pool, provider = self._slow_pool()
+        clock = {"t": 0.0}
+        real = _t.monotonic
+        _t.monotonic = lambda: clock["t"]
+        try:
+            def call(model):
+                provider.calls.append((model.key, model.model_name))
+                clock["t"] += 12.0  # every attempt uses its full deadline
+                raise TimeoutError_()
+
+            with self.assertRaises(AllProvidersExhausted) as caught:
+                pool.execute(call)
+        finally:
+            _t.monotonic = real
+
+        self.assertEqual(
+            len(provider.calls), 2, "12s per attempt inside a 25s budget is two attempts"
+        )
+        self.assertIn("gave up after", str(caught.exception))
+        self.assertEqual(pool.status()["pools_remaining"], 10, "and nothing was spent")
+
+    def test_fast_failures_still_get_many_attempts(self):
+        """A 503 comes back in seconds, so the budget should not waste the pool."""
+        pool, provider = self._slow_pool()
+
+        def call(model):
+            provider.calls.append((model.key, model.model_name))
+            raise UnavailableError()
+
+        with self.assertRaises(AllProvidersExhausted):
+            pool.execute(call)
+        self.assertEqual(
+            len(provider.calls), 10, "instant failures cost no budget, so all ten are tried"
+        )
+
+    def test_the_first_attempt_always_runs(self):
+        """A budget that refuses to try at all is just a slower failure."""
+        pool, provider = self._slow_pool(per_call=60.0, budget=5.0)
+        self.assertEqual(pool.execute(lambda m: "ok"), "ok")
+
+
 class TestPoolSize(unittest.TestCase):
     def test_two_of_five_keys_configured_is_a_two_key_pool(self):
         env = {

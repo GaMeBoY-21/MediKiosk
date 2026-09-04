@@ -83,11 +83,24 @@ _SDK_LOCK = threading.Lock()
 # sits there forever. REST goes over the same HTTPS that already works.
 _TRANSPORT = "rest"
 
-# Nothing may hang. Ten seconds is longer than a healthy call (1-2s) and
-# shorter than a patient will stand at a kiosk wondering if it is broken.
-# Belt and braces alongside the transport: if REST is slow for some other
-# reason, the pool still moves on rather than freezing the screen.
-REQUEST_TIMEOUT_SECONDS = 10
+# Two limits, because one cannot do both jobs.
+#
+# PER CALL (12s): long enough that a healthy call is never cut off. Measured
+# against the live API, a healthy answer is 1.7-7s; the outlier that made 10s
+# too tight was 15.9s. Twelve is deliberately BELOW that outlier: when the
+# model is slow enough to take sixteen seconds it is congested, and a second
+# key answering in two seconds serves the patient better than waiting.
+#
+# TOTAL (25s): the patient's limit, not the network's. Ten combinations at
+# twelve seconds each is two minutes of silence, which in front of judges is
+# indistinguishable from broken. The budget stops the failover walking the
+# whole pool: at 12s per attempt it allows two full attempts, and more when
+# failures come back quickly (a 503 returns in 2-3s, so several fit).
+#
+# 12 and 25 rather than 12 and 24: the extra second absorbs the SDK's own
+# overhead so a second attempt is not refused by a hair.
+REQUEST_TIMEOUT_SECONDS = 12
+TOTAL_BUDGET_SECONDS = 25
 
 
 class _KeyedModel:
@@ -170,7 +183,13 @@ def _build_pool(env, model_factory) -> GeminiKeyPool:
         len(keys) * len(models),
         ", ".join(models),
     )
-    return GeminiKeyPool(keys, models, model_factory)
+    return GeminiKeyPool(
+        keys,
+        models,
+        model_factory,
+        per_call_seconds=REQUEST_TIMEOUT_SECONDS,
+        total_budget_seconds=TOTAL_BUDGET_SECONDS,
+    )
 
 
 def reset_pool() -> None:
