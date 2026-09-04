@@ -312,9 +312,114 @@ class TestInvalidKeysSkip(unittest.TestCase):
         pool, _ = build()
         with self.assertRaises(RuntimeError):
             pool.execute(
-                lambda m: (_ for _ in ()).throw(RuntimeError("session mk-4013fe timed out"))
+                lambda m: (_ for _ in ()).throw(RuntimeError("session mk-4013fe could not be parsed"))
             )
         self.assertEqual(pool.status()["pools_invalid"], 0)
+
+
+class TimeoutError_(Exception):
+    """Shaped like the SDK's when a request deadline passes."""
+
+    def __init__(self, message="504 Deadline Exceeded"):
+        super().__init__(message)
+
+
+class TestTimeoutsSkipButDoNotBurn(unittest.TestCase):
+    """A timeout is a network condition, not a spent allowance.
+
+    The kiosk hangs on a network that blocks gRPC, so every call now carries a
+    deadline. That deadline must not become a way to destroy the key pool: one
+    bad minute of wifi would otherwise retire all ten combinations and leave
+    nothing for the rest of the day.
+    """
+
+    def test_a_timeout_tries_the_next_combination(self):
+        pool, provider = build()
+        slow = {KEYS[0]}
+
+        def call(model):
+            provider.calls.append((model.key, model.model_name))
+            if model.key in slow:
+                raise TimeoutError_()
+            return f"answer from {model.model_name}"
+
+        self.assertEqual(pool.execute(call), f"answer from {PRIMARY}")
+        self.assertEqual(provider.calls, [(KEYS[0], PRIMARY), (KEYS[1], PRIMARY)])
+
+    def test_a_timeout_retires_nothing(self):
+        pool, provider = build()
+        state = {"n": 0}
+
+        def call(model):
+            state["n"] += 1
+            if state["n"] == 1:
+                raise TimeoutError_()
+            return "ok"
+
+        pool.execute(call)
+        st = pool.status()
+        self.assertEqual(st["pools_exhausted"], 0, "a timeout is not a spent quota")
+        self.assertEqual(st["pools_invalid"], 0, "a timeout is not a bad key")
+        self.assertEqual(st["pools_remaining"], 10)
+
+    def test_the_timed_out_key_is_usable_again_on_the_next_request(self):
+        """The skip lasts one request. It is not pool state."""
+        pool, provider = build()
+        state = {"n": 0}
+
+        def flaky(model):
+            state["n"] += 1
+            if state["n"] == 1:
+                raise TimeoutError_()
+            return "ok"
+
+        pool.execute(flaky)
+        provider.calls.clear()
+        pool.execute(lambda m: (provider.calls.append((m.key, m.model_name)), "ok")[1])
+        self.assertEqual(
+            provider.calls,
+            [(KEYS[0], PRIMARY)],
+            "the next request must start at key 1 again, not skip past it",
+        )
+
+    def test_everything_timing_out_raises_rather_than_hanging(self):
+        """The patient must never sit in front of an endless 'One moment'."""
+        pool, provider = build()
+        with self.assertRaises(AllProvidersExhausted):
+            pool.execute(lambda m: (_ for _ in ()).throw(TimeoutError_()))
+        self.assertEqual(len(provider.calls), 0)
+        # Nothing was spent, so the next patient still has the whole pool.
+        self.assertEqual(pool.status()["pools_remaining"], 10)
+
+    def test_timeout_wording_variants(self):
+        for message in (
+            "504 Deadline Exceeded",
+            "Timeout of 10.0s exceeded",
+            "the read operation timed out",
+            "DeadlineExceeded: deadline exceeded after 10s",
+        ):
+            with self.subTest(message=message):
+                pool, _ = build(keys=KEYS[:2], models=(PRIMARY,))
+                seen = {"n": 0}
+
+                def call(model, message=message):
+                    seen["n"] += 1
+                    if seen["n"] == 1:
+                        raise TimeoutError_(message)
+                    return "ok"
+
+                self.assertEqual(pool.execute(call), "ok")
+                self.assertEqual(pool.status()["pools_exhausted"], 0)
+
+    def test_a_timeout_is_not_confused_with_quota_or_auth(self):
+        from ai.adapters.keypool import is_auth_error, is_quota_error, is_timeout_error
+
+        self.assertTrue(is_timeout_error(TimeoutError_()))
+        self.assertFalse(is_quota_error(TimeoutError_()))
+        self.assertFalse(is_auth_error(TimeoutError_()))
+        # And the reverse: a quota error must not be read as a timeout.
+        self.assertFalse(is_timeout_error(QuotaError()))
+        self.assertFalse(is_timeout_error(AuthError()))
 
 
 class TestPoolSize(unittest.TestCase):

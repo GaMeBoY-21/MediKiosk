@@ -92,6 +92,25 @@ def is_auth_error(exc: Exception) -> bool:
     )
 
 
+def is_timeout_error(exc: Exception) -> bool:
+    """Whether the call ran out of time rather than out of allowance.
+
+    A timeout says something about the NETWORK, not about the key: the same
+    key will very likely work on the next request, and on the next patient.
+    So it must never retire anything — it only means "not this one, right
+    now". Retiring on a timeout would burn all ten combinations on one bad
+    minute of wifi and leave the kiosk with nothing for the rest of the day.
+    """
+    message = str(exc).lower()
+    return (
+        "deadline" in message
+        or "timeout" in message
+        or "timed out" in message
+        or re.search(r"\b504\b", message) is not None
+        or isinstance(exc, TimeoutError)
+    )
+
+
 def collect_keys(env: dict) -> list[str]:
     """The configured keys, in order, with blanks and duplicates dropped.
 
@@ -226,13 +245,18 @@ class GeminiKeyPool:
         forward, and only when something is actually spent. A request that
         succeeds on key 3 does not send the next request back to key 1 to
         rediscover that keys 1 and 2 are empty.
+
+        A timeout is different from both quota and auth: it is skipped for
+        THIS request only and left usable for the next one. `timed_out` is
+        local to the call for that reason — it is not pool state.
         """
         if not self._combinations:
             raise AllProvidersExhausted(0, "no Gemini API keys are configured")
 
         last_detail = ""
+        timed_out: set[int] = set()
         while True:
-            combo = self.active
+            combo = self._next_usable(timed_out)
             if combo is None:
                 raise AllProvidersExhausted(len(self._combinations), last_detail)
 
@@ -248,11 +272,37 @@ class GeminiKeyPool:
                     # whole key rather than discovering the same typo again on
                     # the fallback model later.
                     self._retire_key(combo, last_detail)
+                elif is_timeout_error(exc):
+                    last_detail = _short(exc)
+                    # Skipped, NOT retired: the key is fine, the network was
+                    # slow. Trying the next combination is still worth it —
+                    # the block may be specific to one endpoint — but nothing
+                    # is spent and the next request starts from the top again.
+                    timed_out.add(id(combo))
+                    nxt = self._next_usable(timed_out)
+                    log.warning(
+                        "key %d timed out on %s after %s; %s",
+                        combo.key_index,
+                        combo.model_name,
+                        "the request deadline",
+                        f"trying key {nxt.key_index} on {nxt.model_name}"
+                        if nxt
+                        else "no combinations left to try",
+                    )
                 else:
-                    # Neither an allowance nor a credential problem. The key is
-                    # fine; let the caller see the real failure rather than
-                    # silently spending four more keys on the same bad network.
+                    # Neither an allowance, a credential nor a timing problem.
+                    # The key is fine; let the caller see the real failure
+                    # rather than silently spending four more keys on the same
+                    # bad network.
                     raise
+
+    def _next_usable(self, timed_out=()):
+        """The next combination that is neither retired nor already timed out
+        during this request."""
+        for combo in self._combinations[self._cursor :]:
+            if not combo.exhausted and id(combo) not in timed_out:
+                return combo
+        return None
 
     def _model_for(self, combo: Combination):
         cache_key = (combo.key_index, combo.model_name)

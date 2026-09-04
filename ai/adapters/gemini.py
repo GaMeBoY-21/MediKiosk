@@ -76,6 +76,19 @@ def _resolve(value: str | None, env_var: str, hint: str) -> str:
 # certainly correct.
 _SDK_LOCK = threading.Lock()
 
+# google.generativeai defaults to gRPC. On a network that permits plain HTTPS
+# but blocks or stalls gRPC — a university or hospital wifi, which is exactly
+# where this runs — the call does not fail, it hangs: curl to
+# generativelanguage.googleapis.com answers (404, so reachable) while the SDK
+# sits there forever. REST goes over the same HTTPS that already works.
+_TRANSPORT = "rest"
+
+# Nothing may hang. Ten seconds is longer than a healthy call (1-2s) and
+# shorter than a patient will stand at a kiosk wondering if it is broken.
+# Belt and braces alongside the transport: if REST is slow for some other
+# reason, the pool still moves on rather than freezing the screen.
+REQUEST_TIMEOUT_SECONDS = 10
+
 
 class _KeyedModel:
     """One (key, model) pair, applied at call time rather than at build time."""
@@ -86,8 +99,11 @@ class _KeyedModel:
 
     def generate_content(self, payload):
         with _SDK_LOCK:
-            genai.configure(api_key=self._key)
-            return genai.GenerativeModel(self._name).generate_content(payload)
+            genai.configure(api_key=self._key, transport=_TRANSPORT)
+            return genai.GenerativeModel(self._name).generate_content(
+                payload,
+                request_options={"timeout": REQUEST_TIMEOUT_SECONDS},
+            )
 
 
 def _model_factory(api_key: str, model_name: str) -> _KeyedModel:

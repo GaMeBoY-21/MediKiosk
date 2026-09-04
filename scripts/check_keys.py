@@ -77,8 +77,13 @@ def main() -> int:
     working = 0
     for name, key in slots:
         try:
-            genai.configure(api_key=key)
-            genai.GenerativeModel(model).generate_content("Say OK")
+            # transport="rest": the SDK's default gRPC hangs outright on a
+            # network that blocks it, and a preflight check that hangs is
+            # worse than no preflight at all. The timeout is the backstop.
+            genai.configure(api_key=key, transport="rest")
+            genai.GenerativeModel(model).generate_content(
+                "Say OK", request_options={"timeout": 10}
+            )
             print(f"  {name:18} WORKS")
             working += 1
         except Exception as exc:  # the SDK raises its own exception types
