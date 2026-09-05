@@ -61,6 +61,32 @@ Expect one line per slot, all `WORKS`:
 
 ---
 
+## 2b. Clean the queue
+
+Testing leaves the database full of half-finished sessions. Two hundred rows
+of "ABC" all sharing one token is not a queue a doctor can read, and the token
+search cannot work while tokens repeat.
+
+```
+python3 scripts/reset_db.py --yes
+python3 scripts/seed_demo.py
+```
+
+Expect the reset to name the files it deletes, then:
+
+```
+  database reset: .../medikiosk.db
+```
+
+and the seeder to print one line per patient with a distinct token. It drives
+the real API, so the backend must already be running — do this step after
+`./dev.sh` if you are starting cold.
+
+Without `--yes` the reset asks you to type `reset` first. It refuses to run
+against anything but the local SQLite file.
+
+---
+
 ## 3. Start it
 
 ```
