@@ -265,6 +265,48 @@ function requireSession(sessionId, what) {
   throw new Error(`${what} called with no session id — the session is not open yet`);
 }
 
+/**
+ * The uploaded image itself, as a Blob.
+ *
+ * Not an <img src> pointing at the API: the endpoint is behind clinician auth,
+ * so the token has to travel on the request. The caller turns this into an
+ * object URL and revokes it when the viewer closes — the bytes are PHI and
+ * should not outlive the modal.
+ */
+export async function fetchDocumentImage(docId) {
+  if (replayActive || USE_MOCKS) {
+    throw new Error('document images are not part of the recorded session');
+  }
+  const res = await fetch(`${BASE}/physician/document/${docId}`, {
+    headers: accessToken() ? { Authorization: `Bearer ${accessToken()}` } : {},
+  });
+  if (!res.ok) {
+    // Say which failure it was; the viewer shows this to the doctor.
+    if (res.status === 401 || res.status === 403) throw new Error('You are not signed in.');
+    if (res.status === 404) throw new Error('This document is not in the record.');
+    if (res.status === 410) throw new Error('The image file is missing from storage.');
+    throw new Error(`The server returned ${res.status}.`);
+  }
+  return res.blob();
+}
+
+/**
+ * The doctor attaches their own document to this patient's record. Marked
+ * clinician-uploaded by the backend, never mixed with what the patient gave.
+ */
+export async function attachClinicianDocument(sessionId, file) {
+  requireSession(sessionId, 'attachClinicianDocument');
+  const body = new FormData();
+  body.append('file', file);
+  const res = await fetch(`${BASE}/physician/${sessionId}/document`, {
+    method: 'POST',
+    headers: accessToken() ? { Authorization: `Bearer ${accessToken()}` } : {},
+    body,
+  });
+  if (!res.ok) throw new Error(`Upload failed (${res.status}).`);
+  return res.json();
+}
+
 /* -------------------------------------------------------------------- session */
 
 export async function startSession(language = 'en') {

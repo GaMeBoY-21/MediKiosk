@@ -5,9 +5,12 @@
 // two columns, tables, no audio, no icons-as-controls. This user is a literate
 // doctor with about 90 seconds per patient.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import EditableField from './EditableField.jsx';
+import DocumentThumb from './DocumentThumb.jsx';
+import DocumentViewer from './DocumentViewer.jsx';
 import {
+  attachClinicianDocument,
   confirmCase,
   fetchCase,
   fetchCaseByToken,
@@ -85,6 +88,13 @@ export default function Physician({ auth, onSignOut }) {
   const [tokenQuery, setTokenQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
+  // Which document is open in the viewer, and the row that opened it — focus
+  // goes back there on close so a keyboard user is not dropped at the top of
+  // the page.
+  const [viewing, setViewing] = useState(null);
+  const openerRef = useRef(null);
+  const [attachError, setAttachError] = useState('');
+  const fileInput = useRef(null);
 
   // Poll the queue. A doctor leaves this open; a patient who finishes intake
   // while they are reading a case must appear without a manual refresh, and a
@@ -315,6 +325,17 @@ export default function Physician({ auth, onSignOut }) {
                 from the stored summary snapshot. This block is why that
                 matters: it is the view a doctor trusts, so it must never show
                 fewer flags than the queue row they clicked. */}
+            {viewing ? (
+              <DocumentViewer
+                doc={viewing}
+                onClose={() => {
+                  setViewing(null);
+                  // Back to the control that opened it.
+                  openerRef.current?.focus();
+                }}
+              />
+            ) : null}
+
             {(record.red_flags ?? []).length ? (
               <section className="flags" aria-label="Safety flags">
                 {record.red_flags.map((f) => (
@@ -350,30 +371,95 @@ export default function Physician({ auth, onSignOut }) {
 
               <section className="section section--wide">
                 <h2 className="section__title">Document timeline</h2>
+                <div className="timeline__attach">
+                  <button
+                    type="button"
+                    onClick={() => { setAttachError(''); fileInput.current?.click(); }}
+                  >
+                    Attach prescription
+                  </button>
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    hidden
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!file) return;
+                      try {
+                        await attachClinicianDocument(activeId, file);
+                        setRecord(await fetchCase(activeId));
+                        setNote('Prescription attached to this record');
+                      } catch (err) {
+                        setAttachError(err.message || 'Could not attach that file.');
+                      }
+                    }}
+                  />
+                  {attachError ? <span className="timeline__error">{attachError}</span> : null}
+                </div>
                 <table className="timeline">
                   <thead>
                     <tr>
                       <th>Date</th>
                       <th>Document</th>
                       <th>Findings</th>
+                      <th>Original</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(record.documents ?? []).map((doc) => (
-                      <tr key={doc.id}>
+                      <tr key={doc.doc_id || doc.id}>
                         <td className="timeline__date">{doc.date}</td>
-                        <td>{doc.title}</td>
+                        <td>
+                          {doc.title}
+                          {/* Who produced it. A prescription the clinician
+                              attached is not evidence the patient supplied. */}
+                          <span
+                            className={`timeline__by timeline__by--${
+                              doc.uploaded_by === 'clinician' ? 'clinician' : 'patient'
+                            }`}
+                          >
+                            {doc.uploaded_by === 'clinician' ? 'clinician' : 'patient'}
+                          </span>
+                        </td>
                         <td>
                           {(doc.findings ?? []).map((f) => (
                             <span
                               key={f.label}
                               className={`lab${f.out_of_range ? ' lab--out' : ''}`}
                             >
-                              {f.label} {f.value}
-                              {f.unit ? ` ${f.unit}` : ''}{' '}
-                              <span className="lab__ref">({f.ref})</span>
+                              {/* A diagnosis carries the same text as its
+                                  label and value; printing both said
+                                  "Anaemia with impaired fasting glucose
+                                  Anaemia with impaired fasting glucose". */}
+                              {String(f.value) === String(f.label) ? null : `${f.label} `}
+                              {f.value}
+                              {f.unit ? ` ${f.unit}` : ''}
+                              {/* Only when there IS a range. The model often
+                                  returns none, and an empty "()" after every
+                                  value reads as a missing number rather than
+                                  as an absent reference. */}
+                              {f.ref ? <span className="lab__ref"> ({f.ref})</span> : null}
                             </span>
                           ))}
+                        </td>
+                        <td>
+                          {doc.doc_id ? (
+                            <button
+                              type="button"
+                              className="timeline__view"
+                              onClick={(e) => {
+                                openerRef.current = e.currentTarget;
+                                setViewing(doc);
+                              }}
+                            >
+                              <DocumentThumb docId={doc.doc_id} />
+                              <span>View</span>
+                            </button>
+                          ) : (
+                            <span className="timeline__none">no image</span>
+                          )}
                         </td>
                       </tr>
                     ))}

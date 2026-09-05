@@ -32,6 +32,18 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 UPLOAD_DIR = Path("uploads")
 
+# What we are willing to write, and what each is called on disk. Anything not
+# listed is stored as .jpg — the bytes are kept exactly as sent either way;
+# this only decides the filename.
+SUFFIX_FOR = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/heic": ".heic",
+    "application/pdf": ".pdf",
+}
+
 
 def _to_schema(row: models.DocumentUpload) -> DocumentRecord:
     """ORM row -> API model, including the console's timeline fields."""
@@ -43,6 +55,7 @@ def _to_schema(row: models.DocumentUpload) -> DocumentRecord:
         extracted=row.extracted or {},
         title=row.title,
         date=row.doc_date,
+        uploaded_by=row.uploaded_by or "patient",
         findings=[DocumentFinding(**f) for f in (row.findings or [])],
     )
 
@@ -108,7 +121,10 @@ async def upload_document(
     doc_id = f"doc-{uuid.uuid4().hex[:12]}"
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    suffix = Path(file.filename or "page.jpg").suffix or ".jpg"
+    # Extension from the CONTENT TYPE, never from the uploaded filename. Only
+    # the suffix was ever taken, so this was not a traversal risk, but a
+    # patient-supplied string had no business shaping a path on disk.
+    suffix = SUFFIX_FOR.get((file.content_type or "").lower(), ".jpg")
     path = UPLOAD_DIR / f"{doc_id}{suffix}"
     path.write_bytes(await file.read())
 
@@ -118,6 +134,8 @@ async def upload_document(
         doc_type=DocumentType.other.value,
         status=DocumentStatus.queued.value,
         storage_path=str(path),
+        content_type=file.content_type or "image/jpeg",
+        uploaded_by="patient",
         title=file.filename,
     )
     db.add(row)

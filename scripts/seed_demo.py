@@ -24,7 +24,6 @@ of you is for.
 """
 
 import argparse
-import base64
 import json
 import pathlib
 import sys
@@ -36,10 +35,16 @@ sys.path.insert(0, str(ROOT))
 
 API = "http://localhost:8000/api"
 
-# A 1x1 PNG. The upload path is what is being exercised, not the image.
-TINY_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-)
+# The lab report the patient brought with them, drawn by
+# scripts/make_demo_documents.py.
+#
+# This was a 1x1 PNG until the document viewer existed. That was enough to
+# prove the upload path, and useless the moment a doctor could open the image:
+# the viewer's whole purpose is checking the extracted findings against the
+# page, and there is nothing to check against a grey pixel. If the asset is
+# missing, seeding still runs and says the document was skipped — a demo queue
+# without one document is far better than a seeder that will not start.
+DOCUMENT_PNG = ROOT / "assets" / "demo_lab_report.png"
 
 # Five patients. Different languages, different complaints, one red flag
 # (chest pain with breathlessness fires chest_pain_breathlessness), one with a
@@ -152,12 +157,15 @@ def call(method: str, path: str, body=None, timeout=90):
 
 def upload_document(session_id: str) -> bool:
     """A real multipart upload, so the timeline shows something that happened."""
+    if not DOCUMENT_PNG.is_file():
+        print(f"      no {DOCUMENT_PNG.name}; run scripts/make_demo_documents.py")
+        return False
     boundary = "----medikioskseed"
     body = (
         f"--{boundary}\r\n"
         f'Content-Disposition: form-data; name="file"; filename="report.png"\r\n'
         f"Content-Type: image/png\r\n\r\n"
-    ).encode() + TINY_PNG + f"\r\n--{boundary}--\r\n".encode()
+    ).encode() + DOCUMENT_PNG.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
     req = urllib.request.Request(
         f"{API}/documents/{session_id}/upload", data=body, method="POST",
         headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},

@@ -85,6 +85,17 @@ the real API, so the backend must already be running — do this step after
 Without `--yes` the reset asks you to type `reset` first. It refuses to run
 against anything but the local SQLite file.
 
+**Seed LAST.** `frontend/e2e/layout.mjs` walks a real interview at five
+viewports, so every sweep leaves ten more sessions named "ABC", age 123, in the
+queue — the exact mess this step exists to clear. Run the layout and viewer
+guards first, then reset, then seed. A sweep run after seeding buries the five
+demo patients under its own leftovers.
+
+The seeded queue deliberately ships **A-44 with the patient's lab report and no
+prescription**. Attaching one is the demo: open A-44, press *Attach
+prescription*, and it appears in the timeline marked CLINICIAN. Seeding it in
+advance would leave nothing to show.
+
 ---
 
 ## 3. Start it

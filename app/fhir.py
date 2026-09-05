@@ -95,6 +95,7 @@ def build_fhir_bundle(
     patient_id: str,
     history: Optional[Dict[str, Any]] = None,
     patient: Optional[Dict[str, Any]] = None,
+    documents: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Build a FHIR R4 document Bundle from a ClinicalSummary.
 
@@ -104,6 +105,11 @@ def build_fhir_bundle(
         history: structured ClinicalHistory data, when available. Conditions,
             medications and allergies are built from this and omitted without it.
         patient: name/age/sex/abha for the Patient resource.
+        documents: uploaded documents to represent as DocumentReference
+            resources — each one {doc_id, title, content_type, uploaded_by,
+            captured_at}. The bytes are NOT embedded: the bundle carries a
+            reference to the retrieval endpoint, which is behind clinician
+            auth, rather than base64 of a patient's photograph.
 
     Returns a plain dict, JSON-serialisable as-is.
     """
@@ -422,6 +428,41 @@ def build_fhir_bundle(
     entries.extend(allergy_entries)
     entries.extend(observation_entries)
     entries.extend(procedure_entries)
+
+    # ------------------------------------------------ DocumentReference
+    for doc in documents or []:
+        doc_id = doc.get("doc_id")
+        if not doc_id:
+            continue
+        uid = _uid(patient_id, f"document-{doc_id}")
+        entries.append(
+            {
+                "fullUrl": _urn(uid),
+                "resource": {
+                    "resourceType": "DocumentReference",
+                    "id": uid,
+                    "status": "current",
+                    "subject": patient_ref,
+                    "date": _iso(doc.get("captured_at")),
+                    "description": doc.get("title") or "Uploaded document",
+                    # Who produced it. A prescription the clinician attached is
+                    # a different provenance from a photo the patient brought,
+                    # and a receiving system must be able to tell them apart.
+                    "author": [_text(doc.get("uploaded_by") or "patient")],
+                    "content": [
+                        {
+                            "attachment": {
+                                "contentType": doc.get("content_type") or "image/jpeg",
+                                "title": doc.get("title") or doc_id,
+                                # A reference, not the bytes. The endpoint
+                                # behind it requires a clinician.
+                                "url": f"/api/physician/document/{doc_id}",
+                            }
+                        }
+                    ],
+                },
+            }
+        )
 
     return {
         "resourceType": "Bundle",

@@ -360,6 +360,14 @@ class DocumentRecord(BaseModel):
     )
     title: Optional[str] = Field(None, description="Display title for the console timeline.")
     date: Optional[str] = Field(None, description="Date printed on the document, ISO or as-read.")
+    uploaded_by: str = Field(
+        "patient",
+        description=(
+            "'patient' or 'clinician'. Shown distinctly in the timeline: a "
+            "prescription the doctor attached is not evidence the patient "
+            "provided, and conflating them would misrepresent the record."
+        ),
+    )
     findings: List[DocumentFinding] = Field(
         default_factory=list, description="Parsed line items for the timeline table."
     )

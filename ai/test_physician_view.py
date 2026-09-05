@@ -217,5 +217,176 @@ class TestDocumentTimelineIsHonest(unittest.TestCase):
         )
 
 
+class TestDocumentImageIsProtected(unittest.TestCase):
+    """The uploaded image is PHI and must never be reachable without a doctor.
+
+    Verified live with curl as well (401 unauthenticated, 401 with a bad
+    token, 200 for a clinician). This is the regression guard: it fails if the
+    clinician dependency is ever dropped from the route, which is the change
+    that would quietly expose patient documents.
+    """
+
+    def _route(self, path: str, method: str = "GET"):
+        from fastapi.routing import APIRoute
+
+        from app.main import app
+
+        for r in app.routes:
+            if isinstance(r, APIRoute) and r.path == path and method in r.methods:
+                return r
+        # Routers included with a prefix are not flattened in this FastAPI
+        # version; fall back to the OpenAPI schema for existence.
+        return None
+
+    def _dependency_names(self, path: str, method: str = "GET"):
+        import inspect
+
+        from app.routers import physician
+
+        fn = {
+            ("/document/{doc_id}", "GET"): physician.fetch_document_image,
+            ("/{session_id}/document", "POST"): physician.attach_clinician_document,
+        }[(path, method)]
+        return {
+            p.default.dependency.__name__
+            for p in inspect.signature(fn).parameters.values()
+            if hasattr(p.default, "dependency")
+        }
+
+    def test_serving_an_image_requires_a_clinician(self):
+        self.assertIn("require_clinician", self._dependency_names("/document/{doc_id}"))
+
+    def test_attaching_a_document_requires_a_clinician(self):
+        self.assertIn(
+            "require_clinician", self._dependency_names("/{session_id}/document", "POST")
+        )
+
+    def test_both_document_routes_are_registered(self):
+        from app.main import app
+
+        paths = app.openapi()["paths"]
+        self.assertIn("/api/physician/document/{doc_id}", paths)
+        self.assertIn("/api/physician/{session_id}/document", paths)
+
+    def test_reading_an_image_writes_an_audit_row(self):
+        """Every PHI read is audited, this one included."""
+        import inspect
+
+        from app.routers import physician
+
+        src = inspect.getsource(physician.fetch_document_image)
+        self.assertIn("write_audit", src)
+        self.assertIn("document.read", src)
+
+    def test_attaching_is_marked_as_clinician_uploaded(self):
+        """A doctor's prescription must not look like something the patient brought."""
+        import inspect
+
+        from app.routers import physician
+
+        src = inspect.getsource(physician.attach_clinician_document)
+        self.assertIn('uploaded_by="clinician"', src)
+        self.assertIn("document.attach", src)
+
+
+class TestTimelineIsReadLive(unittest.TestCase):
+    """The document timeline comes from the uploads table, not the summary.
+
+    `summary.document_timeline` is a snapshot written when the summary was
+    generated. Two things routinely happen afterwards and were invisible in
+    it: extraction finishing (the seeded lab report is summarised within a
+    second of upload and extracted several seconds later, so the console
+    showed it with zero findings while the database held seven), and a
+    clinician attaching a prescription during the consultation, which by
+    definition arrives after the summary exists.
+
+    Same fault as the summary being read from the session store rather than
+    the persisted record: a stale copy standing in for the live row.
+    """
+
+    def test_the_case_response_does_not_read_the_summary_snapshot(self):
+        import inspect
+
+        from app.routers import physician
+
+        src = inspect.getsource(physician._case_response)
+        self.assertNotIn("summary.document_timeline", src)
+        self.assertIn("documents_for(db", src)
+
+    def test_documents_for_queries_the_uploads_table(self):
+        import inspect
+
+        from app.routers import physician
+
+        src = inspect.getsource(physician._document_rows)
+        self.assertIn("models.DocumentUpload", src)
+
+    def test_the_bundle_and_the_timeline_share_one_query(self):
+        """Otherwise the FHIR push and the screen can disagree about what exists."""
+        import inspect
+
+        from app.routers import physician
+
+        for fn in (physician._bundle_for, physician._case_response):
+            self.assertIn("_document_rows(db", inspect.getsource(fn).replace("documents_for(db", "_document_rows(db"))
+
+
+class TestOutboundSharingRespectsConsent(unittest.TestCase):
+    """Block 1's consent governs the bundle, documents included.
+
+    Verified live: A-44 (consented) returns 200 with both DocumentReference
+    entries; A-43 (refused) returns 403 and writes an fhir.blocked audit row.
+    """
+
+    def test_the_bundle_route_checks_sharing_consent(self):
+        import inspect
+
+        from app.routers import physician
+
+        src = inspect.getsource(physician.fetch_fhir)
+        self.assertIn("sharing_consent(db", src)
+        self.assertIn("403", src.replace("HTTP_403_FORBIDDEN", "403"))
+
+    def test_a_refusal_is_audited_rather_than_silently_emptied(self):
+        """An empty bundle would look like a push that succeeded."""
+        import inspect
+
+        from app.routers import physician
+
+        src = inspect.getsource(physician.fetch_fhir)
+        self.assertIn("fhir.blocked", src)
+
+    def test_absent_consent_is_a_refusal(self):
+        """No consent row means no consent. Never a default yes."""
+        import inspect
+
+        from app.routers import physician
+
+        self.assertIn("False", inspect.getsource(physician.sharing_consent))
+
+
+class TestClinicianAttachmentIsComplete(unittest.TestCase):
+    def test_the_attachment_carries_a_date(self):
+        """Nothing extracts a date from the clinician's own document.
+
+        Without one the timeline showed the prescription with a blank Date
+        cell and no way to tell when it was written.
+        """
+        import inspect
+
+        from app.routers import physician
+
+        self.assertIn("doc_date=", inspect.getsource(physician.attach_clinician_document))
+
+    def test_no_extraction_is_run_on_it(self):
+        """The doctor wrote it. Reading it back to them with a model is noise."""
+        import inspect
+
+        from app.routers import physician
+
+        src = inspect.getsource(physician.attach_clinician_document)
+        self.assertNotIn("_extract_in_background", src)
+
+
 if __name__ == "__main__":
     unittest.main()

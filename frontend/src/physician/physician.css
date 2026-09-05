@@ -600,3 +600,194 @@
   background: #fff;
   cursor: pointer;
 }
+
+/* ------------------------------------------------------- document viewer */
+
+/* Provenance, in the row and in the modal. A clinician-attached prescription
+   and a photo the patient brought are different kinds of evidence and must
+   never read alike. */
+.timeline__by,
+.viewer__by {
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.timeline__by--patient,
+.viewer__by--patient {
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+.timeline__by--clinician,
+.viewer__by--clinician {
+  background: #e4efe9;
+  color: #14543c;
+}
+
+.timeline__view {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.timeline__view:hover { border-color: var(--primary); }
+
+.thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.thumb--empty { display: inline-block; }
+
+.timeline__none { color: var(--ink-soft); font-size: 13px; }
+
+.timeline__attach {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.timeline__attach button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.timeline__error { color: var(--alert); font-size: 13px; }
+
+/* The modal. Image and findings side by side: comparing the reading against
+   the paper is the reason this exists, so they must be visible together
+   without scrolling between them. */
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(16, 22, 19, 0.72);
+}
+
+.viewer__panel {
+  width: min(100%, 1160px);
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.viewer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: var(--border-w) solid var(--border);
+}
+
+.viewer__title { margin: 0; font-size: 20px; }
+.viewer__meta { margin: 4px 0 0; color: var(--ink-soft); font-size: 13px; }
+
+.viewer__close {
+  flex: none;
+  padding: 8px 16px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.viewer__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.viewer__image {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.viewer__img {
+  max-width: 100%;
+  object-fit: contain;
+  cursor: zoom-in;
+  background: var(--bg);
+}
+
+/* Prescriptions are often small handwriting, so zoom overflows the pane and
+   the pane scrolls rather than shrinking the page. */
+.viewer__img--zoom {
+  max-width: none;
+  width: 220%;
+  cursor: zoom-out;
+}
+
+.viewer__tools { display: flex; gap: 12px; align-items: center; }
+.viewer__tools button,
+.viewer__tools a {
+  padding: 6px 12px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.viewer__findings { min-height: 0; overflow: auto; }
+.viewer__findings h3 { margin: 0 0 10px; font-size: 15px; }
+.viewer__findings ul { margin: 0; padding: 0; list-style: none; }
+
+.viewer__note { color: var(--ink-soft); font-size: 14px; line-height: 1.45; }
+.viewer__note--error { color: #8a1f1f; }
+
+.finding {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.finding__label { font-weight: 600; }
+.finding__range { color: var(--ink-soft); font-size: 13px; }
+
+/* Out of range keeps the red-and-icon treatment it has in the case view. */
+.finding--flag .finding__value { color: #8a1f1f; font-weight: 700; }
+.finding__flag { margin-left: 6px; }

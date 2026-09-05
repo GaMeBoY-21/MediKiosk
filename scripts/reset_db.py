@@ -42,39 +42,51 @@ def main() -> int:
     relative = settings.database_url.split("sqlite:///", 1)[-1]
     db_path = (ROOT / relative.lstrip("./")).resolve()
 
-    # EMPTY the tables; do not delete the file.
+    # Work on the file in place; never delete it.
     #
     # Deleting it while the backend is running is silently catastrophic on
     # SQLite: the running process keeps its handle on the now-unlinked inode
     # and carries on writing there, while everything started afterwards opens
     # a fresh file. The queue then shows rows that no script can find and the
-    # seeder appears to succeed against nothing. Emptying the tables in place
-    # is visible to every connection immediately, including the live backend's.
-    from sqlalchemy import delete
+    # seeder appears to succeed against nothing. Dropping and recreating the
+    # tables inside the same file is visible to every connection immediately,
+    # including the live backend's.
+    from sqlalchemy import func, select
 
-    from app.database import SessionLocal, init_db
+    from app.database import SessionLocal, engine
     from app.models import Base
 
-    init_db()  # make sure the schema exists before we clear it
-
+    # Count what is about to go, for the report.
+    counts = {}
     db = SessionLocal()
-    cleared = {}
     try:
-        # Children first: audit and clinical rows reference sessions.
-        for table in reversed(Base.metadata.sorted_tables):
-            result = db.execute(delete(table))
-            if result.rowcount:
-                cleared[table.name] = result.rowcount
-        db.commit()
+        for table in Base.metadata.sorted_tables:
+            try:
+                n = db.execute(select(func.count()).select_from(table)).scalar() or 0
+            except Exception:
+                n = 0  # table does not exist yet, or is an older shape
+            if n:
+                counts[table.name] = n
     finally:
         db.close()
 
-    if cleared:
+    # DROP and recreate, rather than DELETE FROM.
+    #
+    # Emptying rows leaves the old COLUMNS in place, and create_all never
+    # alters an existing table — so a schema change (a new consent field, a
+    # document's provenance) would be invisible until someone deleted the file
+    # by hand, and every query would fail with "no such column". Dropping the
+    # tables applies the current schema and empties them in one step.
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+
+    if counts:
         print("cleared:")
-        for name, n in sorted(cleared.items()):
+        for name, n in sorted(counts.items()):
             print(f"  {n:5} rows from {name}")
     else:
         print("database was already empty")
+    print("  schema recreated from app/models.py")
 
     # Uploaded images are PHI and belong to the sessions just removed. Leaving
     # them behind means orphaned patient documents on disk after a "reset".

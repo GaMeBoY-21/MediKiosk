@@ -9,10 +9,13 @@ already calls those three; keeping one code path means one audit call site.
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session as DbSession
 
 from app import fixtures, models
@@ -20,6 +23,7 @@ from app.database import get_db
 from app.fhir import build_fhir_bundle
 from app.routers.auth import require_clinician
 from app.routers.session import load_session
+from app.routers.documents import SUFFIX_FOR, UPLOAD_DIR, _to_schema as _document_schema
 from app.routers.summary import _build_summary, current_red_flags
 
 from ai.summary import sections
@@ -29,6 +33,8 @@ from app.schemas import (
     FlatSummary,
     PhysicianCaseResponse,
     PhysicianPatient,
+    DocumentStatus,
+    DocumentType,
     PhysicianQueueItem,
     SessionStatus,
     VerifyAction,
@@ -87,10 +93,22 @@ def _bundle_for(db: DbSession, row: models.Session, summary: ClinicalSummary) ->
     )
     history = (record.history if record and record.history else None) or fixtures.DEMO_HISTORY
 
+    docs = [
+        {
+            "doc_id": d.doc_id,
+            "title": d.title,
+            "content_type": d.content_type,
+            "uploaded_by": d.uploaded_by or "patient",
+            "captured_at": d.captured_at,
+        }
+        for d in _document_rows(db, row.session_id)
+    ]
+
     return build_fhir_bundle(
         summary,
         patient_id=row.session_id,
         history=history,
+        documents=docs,
         patient={
             "name": row.patient_name or fixtures.DEMO_PATIENT["name"],
             "age": row.age or fixtures.DEMO_PATIENT["age"],
@@ -98,6 +116,35 @@ def _bundle_for(db: DbSession, row: models.Session, summary: ClinicalSummary) ->
             "abha": row.abha_id or fixtures.DEMO_PATIENT["abha"],
         },
     )
+
+
+def _document_rows(db: DbSession, session_id: str) -> List[models.DocumentUpload]:
+    """This session's uploads, oldest first. The one place they are queried."""
+    return (
+        db.query(models.DocumentUpload)
+        .filter(models.DocumentUpload.session_id == session_id)
+        .order_by(models.DocumentUpload.captured_at)
+        .all()
+    )
+
+
+def documents_for(db: DbSession, session_id: str) -> List[DocumentRecord]:
+    """The document timeline, read LIVE from the uploads table.
+
+    Not from summary.document_timeline. That field is a snapshot taken when
+    the summary was written, and everything that happens to a document
+    afterwards is invisible in it: extraction finishing (the seeded lab report
+    is summarised within a second of upload and extracted a few seconds
+    later, so the timeline showed the report with zero findings), and now a
+    prescription the clinician attaches during the consultation, which by
+    definition arrives after the summary exists.
+
+    This is the same fault as the summary being read from the session store
+    instead of the persisted record — a stale copy standing in for the row
+    that actually holds the data. The documents table is the source; the
+    summary snapshot is not.
+    """
+    return [_document_schema(d) for d in _document_rows(db, session_id)]
 
 
 def sharing_consent(db: DbSession, session_id: str) -> tuple[bool, Optional[datetime]]:
@@ -204,7 +251,7 @@ def _case_response(db: DbSession, row: models.Session) -> PhysicianCaseResponse:
         room=row.room,
         patient=patient,
         summary=_flatten(summary),
-        documents=summary.document_timeline,
+        documents=documents_for(db, row.session_id),
         red_flags=current_red_flags(db, row.session_id),
         low_confidence_fields=summary.low_confidence_fields,
         mocked_fields=mocked,
@@ -394,6 +441,103 @@ def amend_case(session_id: str, payload: Dict[str, str], db: DbSession = Depends
     """Alias for verify(amend). The console PUTs one edited field at a time."""
     amendments = {k: str(v) for k, v in (payload or {}).items() if k != "action"}
     return verify_case(session_id, VerifyRequest(action=VerifyAction.amend, amendments=amendments), db)
+
+
+@router.get("/document/{doc_id}")
+def fetch_document_image(
+    doc_id: str, db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)
+):
+    """The uploaded image itself, as it was uploaded.
+
+    Extraction is a draft; the paper is the source. A doctor asked to accept a
+    reading they cannot check against the original is being asked to trust it
+    blindly, which no clinician should do and this screen should not require.
+
+    PHI, so it is behind the clinician dependency like every other read here
+    and writes an audit row. The bytes go back untouched and with the content
+    type they arrived as: re-encoding would mean the doctor is comparing the
+    extraction against something that is no longer quite the photograph.
+    """
+    row = db.get(models.DocumentUpload, doc_id)
+    if row is None or not row.storage_path:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"unknown document {doc_id}")
+
+    path = Path(row.storage_path)
+    if not path.is_file():
+        # The row survived but the file did not. Say which, rather than
+        # returning an empty body the console would render as a broken image.
+        raise HTTPException(
+            status.HTTP_410_GONE,
+            f"document {doc_id} is recorded but its image is no longer on disk",
+        )
+
+    models.write_audit(
+        db,
+        action="document.read",
+        actor=claims.get("sub", "physician"),
+        session_id=row.session_id,
+        detail={"doc_id": doc_id},
+    )
+    db.commit()
+
+    return FileResponse(
+        path,
+        media_type=row.content_type or "image/jpeg",
+        # inline: the doctor is looking at it, not downloading it.
+        headers={"Content-Disposition": f'inline; filename="{doc_id}{path.suffix}"'},
+    )
+
+
+@router.post("/{session_id}/document", response_model=DocumentRecord)
+async def attach_clinician_document(
+    session_id: str,
+    file: UploadFile = File(...),
+    db: DbSession = Depends(get_db),
+    claims: dict = Depends(require_clinician),
+):
+    """The doctor attaches a prescription to this patient's record.
+
+    Marked `uploaded_by="clinician"` and shown distinctly in the timeline. A
+    prescription the doctor wrote is not evidence the patient supplied, and a
+    record that blurred the two would misstate where its contents came from.
+
+    No extraction is run: this is the clinician's own document, and reading it
+    back to them with a model is neither useful nor something they asked for.
+    """
+    load_session(db, session_id)
+
+    doc_id = f"doc-{uuid.uuid4().hex[:12]}"
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    suffix = SUFFIX_FOR.get((file.content_type or "").lower(), ".jpg")
+    path = UPLOAD_DIR / f"{doc_id}{suffix}"
+    path.write_bytes(await file.read())
+
+    row = models.DocumentUpload(
+        doc_id=doc_id,
+        session_id=session_id,
+        doc_type=DocumentType.prescription.value,
+        status=DocumentStatus.done.value,
+        storage_path=str(path),
+        content_type=file.content_type or "image/jpeg",
+        uploaded_by="clinician",
+        title=f"Prescription ({claims.get('sub', 'physician')})",
+        # Today, in the same dd-mm-yyyy the extractor writes. A patient's
+        # document gets its date read off the page; nothing reads this one, so
+        # without this the timeline showed the prescription with a blank date
+        # and no way to tell when it was written.
+        doc_date=datetime.now().strftime("%d-%m-%Y"),
+    )
+    db.add(row)
+    models.write_audit(
+        db,
+        action="document.attach",
+        actor=claims.get("sub", "physician"),
+        session_id=session_id,
+        detail={"doc_id": doc_id, "content_type": file.content_type},
+    )
+    db.commit()
+    db.refresh(row)
+    return _document_schema(row)
 
 
 @router.get("/{session_id}/fhir")

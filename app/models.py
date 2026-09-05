@@ -161,6 +161,13 @@ class DocumentUpload(Base):
     title: Mapped[str | None] = mapped_column(String(256), nullable=True)
     doc_date: Mapped[str | None] = mapped_column(String(32), nullable=True)
     storage_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # "patient" or "clinician". A prescription the doctor attached is not the
+    # same kind of evidence as a photo the patient brought in, and the console
+    # must never let the two look alike.
+    uploaded_by: Mapped[str] = mapped_column(String(16), default="patient", nullable=False)
+    # The exact bytes as uploaded. Serving a re-encoded image would mean the
+    # doctor is checking the extraction against something other than the paper.
+    content_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     extracted: Mapped[dict] = mapped_column(JSONType, default=dict)
     findings: Mapped[list] = mapped_column(JSONType, default=list)
