@@ -42,33 +42,52 @@ def main() -> int:
     relative = settings.database_url.split("sqlite:///", 1)[-1]
     db_path = (ROOT / relative.lstrip("./")).resolve()
 
-    existing = []
-    for path in (db_path, db_path.with_suffix(db_path.suffix + "-shm"),
-                 db_path.with_suffix(db_path.suffix + "-wal")):
-        if path.exists():
-            existing.append(path)
+    # EMPTY the tables; do not delete the file.
+    #
+    # Deleting it while the backend is running is silently catastrophic on
+    # SQLite: the running process keeps its handle on the now-unlinked inode
+    # and carries on writing there, while everything started afterwards opens
+    # a fresh file. The queue then shows rows that no script can find and the
+    # seeder appears to succeed against nothing. Emptying the tables in place
+    # is visible to every connection immediately, including the live backend's.
+    from sqlalchemy import delete
 
-    if existing:
-        total = sum(p.stat().st_size for p in existing)
-        print(f"about to delete {len(existing)} file(s), {total/1024:.0f} KB:")
-        for p in existing:
-            print(f"  {p}")
+    from app.database import SessionLocal, init_db
+    from app.models import Base
+
+    init_db()  # make sure the schema exists before we clear it
+
+    db = SessionLocal()
+    cleared = {}
+    try:
+        # Children first: audit and clinical rows reference sessions.
+        for table in reversed(Base.metadata.sorted_tables):
+            result = db.execute(delete(table))
+            if result.rowcount:
+                cleared[table.name] = result.rowcount
+        db.commit()
+    finally:
+        db.close()
+
+    if cleared:
+        print("cleared:")
+        for name, n in sorted(cleared.items()):
+            print(f"  {n:5} rows from {name}")
     else:
-        print(f"no database at {db_path} — nothing to delete, will create the schema")
+        print("database was already empty")
 
-    if existing and not args.yes:
-        if input("type 'reset' to confirm: ").strip().lower() != "reset":
-            print("cancelled, nothing deleted")
-            return 1
+    # Uploaded images are PHI and belong to the sessions just removed. Leaving
+    # them behind means orphaned patient documents on disk after a "reset".
+    uploads = ROOT / "uploads"
+    removed = 0
+    if uploads.is_dir():
+        for f in uploads.iterdir():
+            if f.is_file() and f.name != ".gitkeep":
+                f.unlink()
+                removed += 1
+    if removed:
+        print(f"  {removed:5} uploaded file(s) deleted from uploads/")
 
-    for p in existing:
-        p.unlink()
-
-    # Recreate the schema so the backend does not have to be restarted to
-    # find its tables.
-    from app.database import init_db
-
-    init_db()
     print(f"\ndatabase reset: {db_path}")
     print("the queue is now empty. Seed it with:  python3 scripts/seed_demo.py")
     return 0

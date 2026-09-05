@@ -49,6 +49,7 @@ PATIENTS = [
         "label": "chest pain, urgent",
         "language": "hi",
         "upload": False,
+        "share_government": True,
         "fields": {
             "patient_name": "Ramesh Kumar", "age": 58, "sex": "male", "consent_given": "yes",
             "chief_complaint": "chest", "symptom_site": "chest",
@@ -68,6 +69,9 @@ PATIENTS = [
         "label": "headache",
         "language": "te",
         "upload": False,
+        # One patient who declines sharing, so the console shows both states
+        # and the blocked outbound path can be demonstrated on a real record.
+        "share_government": False,
         "fields": {
             "patient_name": "Lakshmi Reddy", "age": 34, "sex": "female", "consent_given": "yes",
             "chief_complaint": "head", "symptom_site": "head",
@@ -83,6 +87,7 @@ PATIENTS = [
     },
     {
         "label": "back pain, with a document",
+        "share_government": True,
         "language": "en",
         "upload": True,
         "fields": {
@@ -99,6 +104,7 @@ PATIENTS = [
     },
     {
         "label": "fever",
+        "share_government": True,
         "language": "kn",
         "upload": False,
         "fields": {
@@ -115,6 +121,7 @@ PATIENTS = [
     },
     {
         "label": "stomach pain",
+        "share_government": True,
         "language": "ta",
         "upload": False,
         "fields": {
@@ -168,6 +175,17 @@ def seed_one(p: dict) -> dict:
     started = call("POST", "/session/start", {"language": p["language"]})
     sid = started["session_id"]
 
+    # Consent first, exactly as the kiosk does it — the record is not
+    # shareable unless the patient said so, and the seeded queue has to
+    # reflect that rather than leaving every case unconsented.
+    call("POST", f"/session/{sid}/consent", {
+        "history": True,
+        "documents": True,
+        "abha": False,
+        "government": p.get("share_government", False),
+        "language": p["language"],
+    })
+
     call("POST", f"/session/{sid}/fields", {"fields": p["fields"]})
 
     uploaded = upload_document(sid) if p["upload"] else False
@@ -183,7 +201,12 @@ def seed_one(p: dict) -> dict:
         print(f"      summary generation failed ({str(exc)[:50]}); sections fall back to fields")
         summarised = False
 
-    return {"session_id": sid, "uploaded": uploaded, "summarised": summarised}
+    return {
+        "session_id": sid,
+        "uploaded": uploaded,
+        "summarised": summarised,
+        "shared": p.get("share_government", False),
+    }
 
 
 def main() -> int:
@@ -223,6 +246,11 @@ def main() -> int:
     db = SessionLocal()
     for m in made:
         row = db.get(models.Session, m["session_id"])
+        if row is None:
+            # Should not happen now that reset empties tables instead of
+            # unlinking the file, but a summary line is not worth a traceback.
+            print(f"  ?????  {m['label']:28} seeded but not readable back")
+            continue
         rec = (
             db.query(models.ClinicalRecord)
             .filter(models.ClinicalRecord.session_id == m["session_id"])
@@ -238,6 +266,7 @@ def main() -> int:
         print(
             f"  {row.token:6} {m['label']:28} fields={fields:2} docs={docs} "
             f"summary={'yes' if (rec and rec.summary) else 'NO':3} "
+            f"share={'yes' if m['shared'] else 'NO ':3} "
             f"{'RED FLAG' if flags else ''}"
         )
 
