@@ -17,6 +17,8 @@ from app.routers.session import load_session
 from app.schemas import ClinicalSummary, DocumentRecord, ExtractedField, FieldSource, RedFlag
 from app.session_store import store
 
+from ai.summary import sections
+
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/summary", tags=["summary"])
 
@@ -29,14 +31,39 @@ def _build_summary(row: models.Session, db: DbSession | None = None) -> Clinical
     """
     state = store.get(row.session_id)
 
+    # The persisted record FIRST, the in-memory store on top of it.
+    #
+    # This used to read the store alone, which is wiped by any restart — so a
+    # doctor opening a case the next morning, or after uvicorn reloaded, got a
+    # summary generated from zero fields and a console reading "Not recorded"
+    # in every section while the database held a dozen answers. The store is
+    # still consulted because it carries per-field confidence and provenance
+    # that the record does not.
+    persisted: dict = {}
+    if db is not None:
+        record = (
+            db.query(models.ClinicalRecord)
+            .filter(models.ClinicalRecord.session_id == row.session_id)
+            .one_or_none()
+        )
+        persisted = (record.history if record else None) or {}
+
+    merged = dict(persisted)
+    if state:
+        merged.update(state.extracted)
+
     extracted_fields = [
         ExtractedField(
             name=name,
             value=value,
             confidence=(state.field_confidence.get(name, 1.0) if state else 1.0),
-            source=FieldSource.speech,
+            source=FieldSource(
+                state.field_source.get(name, FieldSource.speech.value)
+                if state
+                else FieldSource.speech.value
+            ),
         )
-        for name, value in (state.extracted.items() if state else {}.items())
+        for name, value in merged.items()
     ]
 
     red_flags: List[RedFlag] = []
@@ -76,7 +103,19 @@ def _build_summary(row: models.Session, db: DbSession | None = None) -> Clinical
 
     # Genuinely live — no fallback. chief_complaint, hpi_narrative and
     # sections all come from what the patient actually said this session.
-    summary = ai_bridge.generate_summary(extracted_fields, documents)
+    try:
+        summary = ai_bridge.generate_summary(extracted_fields, documents)
+    except Exception as exc:
+        # A summary the model could not write is not a summary the doctor
+        # should be denied. The deterministic mapping below still shows every
+        # recorded answer; losing the prose is survivable, losing the fields
+        # is not.
+        log.warning("summary generation failed (%s); falling back to the field mapping", exc)
+        summary = ClinicalSummary(session_id=row.session_id)
+
+    # Floor beneath the model: any section it left blank is filled from the
+    # recorded fields, so "Not recorded" means the patient was not asked.
+    summary = sections.fill_missing(summary, merged)
     summary.red_flags = red_flags
     summary.token = row.token or fixtures.DEMO_TOKEN
     summary.room = row.room or fixtures.DEMO_ROOM

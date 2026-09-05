@@ -21,6 +21,8 @@ from app.fhir import build_fhir_bundle
 from app.routers.auth import require_clinician
 from app.routers.session import load_session
 from app.routers.summary import _build_summary, current_red_flags
+
+from ai.summary import sections
 from app.schemas import (
     ClinicalSummary,
     DocumentRecord,
@@ -153,10 +155,24 @@ def _load_summary(db: DbSession, row: models.Session) -> ClinicalSummary:
     )
     if record is not None and record.summary:
         summary = ClinicalSummary.model_validate(record.summary)
+        # A stored summary written before the field mapping existed can still
+        # be all-empty. Fill it from the record rather than showing the doctor
+        # seven "Not recorded" rows over a record that holds the answers.
+        summary = sections.fill_missing(summary, (record.history or {}))
         # Live flags win over the snapshot - see current_red_flags().
         summary.red_flags = current_red_flags(db, row.session_id) or summary.red_flags
         return summary
-    return _build_summary(row, db)
+
+    # No stored summary. A session reaches the queue whenever it has a clinical
+    # record, which does not require the patient to have pressed through the
+    # Confirm screen — an abandoned or red-flagged session has answers worth
+    # reading and no summary. Build one now and KEEP it, so the next doctor to
+    # open this case does not pay for it again.
+    summary = _build_summary(row, db)
+    if record is not None:
+        record.summary = summary.model_dump(mode="json")
+        db.commit()
+    return summary
 
 
 def _case_response(db: DbSession, row: models.Session) -> PhysicianCaseResponse:

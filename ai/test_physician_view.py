@@ -88,5 +88,109 @@ class TestOneIdentitySource(unittest.TestCase):
         self.assertNotIn("age", mocked)
 
 
+class TestEveryRecordedFieldIsRendered(unittest.TestCase):
+    """A session with N recorded fields must show those N.
+
+    The fifth time data has been stored correctly and dropped before it
+    reached the screen, so this asserts the property directly rather than the
+    mechanism: take a full record, render it, and look for every value.
+    """
+
+    RECORD = {
+        "patient_name": "NIKKI",
+        "age": 21,
+        "sex": "male",
+        "consent_given": "yes",
+        "chief_complaint": "chest",
+        "symptom_site": "chest",
+        "symptom_duration": "2_days",
+        "symptom_onset": "2_days",
+        "symptom_character": "burning",
+        "symptom_severity": "severe",
+        "symptom_timing": "morning",
+        "associated_symptoms": ["breathlessness"],
+        "ros_screen": "none",
+        "past_medical_conditions": "diabetes",
+        "past_surgeries": "appendectomy",
+        "current_medications": "metformin",
+        "known_allergies": "penicillin",
+        "family_history": "heart disease",
+        "smoking_status": "never",
+        "alcohol_use": "occasionally",
+        "diet": "vegetarian",
+    }
+
+    def test_every_clinical_field_maps_to_a_section(self):
+        """A field with nowhere to go is a field that vanishes."""
+        from ai.summary.sections import FIELD_TO_SECTION, section_for
+
+        # Identity, consent and the document flags belong elsewhere on screen.
+        elsewhere = {"patient_name", "age", "sex", "consent_given"}
+        for name in self.RECORD:
+            if name in elsewhere:
+                continue
+            with self.subTest(field=name):
+                self.assertIsNotNone(
+                    section_for(name),
+                    f"{name} has no section, so it would never be rendered",
+                )
+        self.assertTrue(FIELD_TO_SECTION, "the mapping must not be empty")
+
+    def test_a_blank_summary_still_renders_every_recorded_answer(self):
+        """The model wrote nothing — the doctor must still see the record."""
+        from app.schemas import ClinicalSummary
+        from ai.summary.sections import fill_missing
+
+        summary = fill_missing(ClinicalSummary(session_id="mk-test"), self.RECORD)
+        rendered = " ".join(
+            [summary.chief_complaint or "", summary.hpi_narrative or ""]
+            + [str(v) for v in (summary.sections or {}).values()]
+        ).lower()
+
+        missing = []
+        for name, value in self.RECORD.items():
+            if name in {"patient_name", "age", "sex", "consent_given"}:
+                continue
+            needle = (value[0] if isinstance(value, list) else str(value)).lower()
+            needle = needle.replace("_", " ")
+            if needle not in rendered:
+                missing.append(f"{name}={value!r}")
+        self.assertEqual(missing, [], f"recorded but not rendered: {missing}")
+
+    def test_sections_the_model_wrote_are_not_overwritten(self):
+        """Prose beats a field list; the mapping is only a floor."""
+        from app.schemas import ClinicalSummary
+        from ai.summary.sections import fill_missing
+
+        summary = ClinicalSummary(
+            session_id="mk-test",
+            chief_complaint="Burning chest pain for two days.",
+            sections={"personal": "Non-smoker, vegetarian."},
+        )
+        fill_missing(summary, self.RECORD)
+        self.assertEqual(summary.chief_complaint, "Burning chest pain for two days.")
+        self.assertEqual(summary.sections["personal"], "Non-smoker, vegetarian.")
+
+    def test_not_recorded_still_means_not_recorded(self):
+        """An empty record must not invent content."""
+        from app.schemas import ClinicalSummary
+        from ai.summary.sections import fill_missing
+
+        summary = fill_missing(ClinicalSummary(session_id="mk-test"), {})
+        self.assertIsNone(summary.chief_complaint)
+        self.assertIsNone(summary.hpi_narrative)
+        self.assertEqual({k: v for k, v in (summary.sections or {}).items() if v}, {})
+
+    def test_a_field_added_to_a_node_lands_in_that_nodes_section(self):
+        """The mapping is derived, so it cannot drift from the interview."""
+        from ai.interview.nodes import NODES
+        from ai.summary.sections import NODE_TO_SECTION, section_for
+
+        for node_id, section in NODE_TO_SECTION.items():
+            for field in NODES[node_id].required_fields:
+                with self.subTest(node=node_id, field=field):
+                    self.assertEqual(section_for(field), section)
+
+
 if __name__ == "__main__":
     unittest.main()
