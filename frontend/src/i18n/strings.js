@@ -116,6 +116,8 @@ export const strings = {
       },
     },
     complaint: {
+      describeTitle: { label: 'Please describe your problem in your own words', audio: 'Please describe your problem in your own words. Take as long as you need.' },
+      describeTiles: { label: 'Or tap where it hurts', audio: '' },
       title: { label: 'What is troubling you today?', audio: 'What is troubling you today? You may speak, or tap a picture.' },
       head: { label: 'Head', audio: 'Head.' },
       chest: { label: 'Chest', audio: 'Chest.' },
@@ -258,6 +260,8 @@ export const strings = {
       },
     },
     complaint: {
+      describeTitle: { label: 'कृपया अपनी समस्या अपने शब्दों में बताइए', audio: 'कृपया अपनी समस्या अपने शब्दों में बताइए। जितना समय चाहिए लीजिए।' },
+      describeTiles: { label: 'या जहाँ दर्द है वहाँ छुएँ', audio: '' },
       title: { label: 'आज आपको क्या तकलीफ़ है?', audio: 'आज आपको क्या तकलीफ़ है? आप बोल सकते हैं, या तस्वीर दबा सकते हैं।' },
       head: { label: 'सिर', audio: 'सिर।' },
       chest: { label: 'छाती', audio: 'छाती।' },
@@ -400,6 +404,8 @@ export const strings = {
       },
     },
     complaint: {
+      describeTitle: { label: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ನಿಮ್ಮದೇ ಮಾತಿನಲ್ಲಿ ಹೇಳಿ', audio: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ನಿಮ್ಮದೇ ಮಾತಿನಲ್ಲಿ ಹೇಳಿ. ಬೇಕಾದಷ್ಟು ಸಮಯ ತೆಗೆದುಕೊಳ್ಳಿ.' },
+      describeTiles: { label: 'ಅಥವಾ ಎಲ್ಲಿ ನೋವಿದೆ ಎಂದು ಒತ್ತಿ', audio: '' },
       title: { label: 'ಇಂದು ನಿಮಗೆ ಏನು ತೊಂದರೆ?', audio: 'ಇಂದು ನಿಮಗೆ ಏನು ತೊಂದರೆ? ನೀವು ಮಾತನಾಡಬಹುದು ಅಥವಾ ಚಿತ್ರವನ್ನು ಒತ್ತಬಹುದು.' },
       head: { label: 'ತಲೆ', audio: 'ತಲೆ.' },
       chest: { label: 'ಎದೆ', audio: 'ಎದೆ.' },
@@ -542,6 +548,8 @@ export const strings = {
       },
     },
     complaint: {
+      describeTitle: { label: 'உங்கள் பிரச்சினையை உங்கள் சொந்த வார்த்தைகளில் சொல்லுங்கள்', audio: 'உங்கள் பிரச்சினையை உங்கள் சொந்த வார்த்தைகளில் சொல்லுங்கள். நேரம் எடுத்துக் கொள்ளுங்கள்.' },
+      describeTiles: { label: 'அல்லது எங்கே வலிக்கிறது என்று தொடுங்கள்', audio: '' },
       title: { label: 'இன்று உங்களுக்கு என்ன பிரச்சனை?', audio: 'இன்று உங்களுக்கு என்ன பிரச்சனை? நீங்கள் பேசலாம், அல்லது படத்தைத் தொடலாம்.' },
       head: { label: 'தலை', audio: 'தலை.' },
       chest: { label: 'மார்பு', audio: 'மார்பு.' },
@@ -684,6 +692,8 @@ export const strings = {
       },
     },
     complaint: {
+      describeTitle: { label: 'దయచేసి మీ సమస్యను మీ స్వంత మాటల్లో చెప్పండి', audio: 'దయచేసి మీ సమస్యను మీ స్వంత మాటల్లో చెప్పండి. ఎంత సమయం కావాలంటే అంత తీసుకోండి.' },
+      describeTiles: { label: 'లేదా ఎక్కడ నొప్పి ఉందో తాకండి', audio: '' },
       title: { label: 'ఈ రోజు మీకు ఏమి ఇబ్బంది?', audio: 'ఈ రోజు మీకు ఏమి ఇబ్బంది? మీరు మాట్లాడవచ్చు, లేదా బొమ్మను నొక్కవచ్చు.' },
       head: { label: 'తల', audio: 'తల.' },
       chest: { label: 'ఛాతీ', audio: 'ఛాతీ.' },
@@ -826,6 +836,8 @@ export const strings = {
       },
     },
     complaint: {
+      describeTitle: { label: 'कृपया तुमची तक्रार तुमच्या शब्दांत सांगा', audio: 'कृपया तुमची तक्रार तुमच्या शब्दांत सांगा. हवा तितका वेळ घ्या.' },
+      describeTiles: { label: 'किंवा कुठे दुखते ते स्पर्श करा', audio: '' },
       title: { label: 'आज तुम्हाला काय त्रास होतोय?', audio: 'आज तुम्हाला काय त्रास होतोय? तुम्ही बोलू शकता, किंवा चित्रावर दाबू शकता.' },
       head: { label: 'डोके', audio: 'डोके.' },
       chest: { label: 'छाती', audio: 'छाती.' },
@@ -968,6 +980,8 @@ export const strings = {
       },
     },
     complaint: {
+      describeTitle: { label: 'অনুগ্রহ করে আপনার সমস্যা নিজের ভাষায় বলুন', audio: 'অনুগ্রহ করে আপনার সমস্যা নিজের ভাষায় বলুন। যত সময় লাগে নিন।' },
+      describeTiles: { label: 'অথবা কোথায় ব্যথা তা স্পর্শ করুন', audio: '' },
       title: { label: 'আজ আপনার কী সমস্যা?', audio: 'আজ আপনার কী সমস্যা? আপনি বলতে পারেন, অথবা ছবিতে চাপ দিতে পারেন।' },
       head: { label: 'মাথা', audio: 'মাথা।' },
       chest: { label: 'বুক', audio: 'বুক।' },

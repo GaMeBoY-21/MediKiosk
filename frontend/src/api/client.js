@@ -333,6 +333,21 @@ export async function endSession(sessionId) {
  * Returns { done } | { red_flag } | a question node.
  * The Interview screen renders whatever comes back — it holds no clinical content.
  */
+/**
+ * The patient's opening description, extracted across every clinical stage at
+ * once. Same response shape as an answer — the next question, or a red flag —
+ * because from the screen's point of view nothing else is different.
+ */
+export async function submitNarration(sessionId, payload) {
+  requireSession(sessionId, 'submitNarration');
+  if (replayActive || USE_MOCKS) {
+    // The recording has no narration turn. Fall through to the ordinary first
+    // question, which is exactly what an unusable narration does live.
+    return submitAnswer(sessionId, { ...payload, text: '' });
+  }
+  return request(`/interview/${sessionId}/narration`, { method: 'POST', body: payload });
+}
+
 export async function submitAnswer(sessionId, payload) {
   requireSession(sessionId, 'submitAnswer');
   if (replayActive) {

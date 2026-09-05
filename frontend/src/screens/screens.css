@@ -75,6 +75,18 @@
   color: var(--ink-soft);
 }
 
+/* ------------------------------------------------------ Opening description */
+
+/* Separates "tell me in your own words" from the tap-instead fallback under
+   it. Quiet on purpose: speaking is the path this screen is trying to open,
+   and the tiles are the alternative, not the instruction. */
+.describe__or {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: var(--fs-caption);
+  color: var(--ink-soft);
+}
+
 /* --------------------------------------------------------- Role selection */
 
 /* The first screen: patient or clinician. The kiosk flow proper starts

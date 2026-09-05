@@ -22,7 +22,7 @@ import UnderstandingPanel from '../components/UnderstandingPanel.jsx';
 import { useT } from '../i18n/useT.js';
 import { useSpeechRecognition } from '../speech/useSpeechRecognition.js';
 import { useSession, SCREENS } from '../state/SessionContext.jsx';
-import { recordKnownFields, submitAnswer } from '../api/client.js';
+import { recordKnownFields, submitAnswer, submitNarration } from '../api/client.js';
 import BilingualText from '../components/BilingualText.jsx';
 
 // Interview stages that are rendered by their own screen instead of as a
@@ -125,6 +125,28 @@ export default function Interview({ onError }) {
     [raiseRedFlag, setCurrentNode, go, reset, setUnderstood, noteAnswerFields],
   );
 
+  const narrate = useCallback(
+    async (payload) => {
+      setThinking(true);
+      stop();
+      try {
+        applyResponse(await submitNarration(sessionId, { ...payload, lang }));
+      } catch (e) {
+        // A narration that cannot be processed must not end the session. Fall
+        // through to the ordinary first question — the patient simply gets
+        // asked what they would have been asked before this screen existed.
+        console.warn('[interview] narration failed, falling back to questions:', e);
+        try {
+          applyResponse(await submitAnswer(sessionId, { node_id: 'chief_complaint', value: null, text: '', lang }));
+        } catch (inner) {
+          console.error('[interview] fallback also failed:', inner);
+          onError?.(inner);
+        }
+      }
+    },
+    [sessionId, lang, stop, applyResponse, onError],
+  );
+
   const ask = useCallback(
     async (payload) => {
       setThinking(true);
@@ -183,6 +205,15 @@ export default function Interview({ onError }) {
         key: previous.key || `${previous.node_id}:${previous.question}`,
         before: new Set(),
       };
+    }
+
+    // An opening description goes down the multi-stage extraction path: one
+    // pass over every clinical field, then reconciliation, then the safety
+    // check, then whatever the state machine still needs. A tapped body area
+    // is not a narration and takes the ordinary path below.
+    if (previous?.narration && (previous.text || '').trim()) {
+      narrate({ transcript: previous.text });
+      return;
     }
 
     const firstAsk = () =>

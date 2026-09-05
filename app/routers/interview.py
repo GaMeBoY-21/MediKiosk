@@ -22,6 +22,7 @@ from app.routers.session import load_session
 from app.schemas import (
     AnswerRequest,
     AnswerResponse,
+    NarrationRequest,
     Language,
     NodeType,
     Progress,
@@ -77,6 +78,83 @@ def _to_response(node: dict | None, answered: int, red_flag=None, state=None) ->
         phase=node.get("phase") or None,
         extracted=extracted,
     )
+
+
+@router.post("/{session_id}/narration", response_model=AnswerResponse)
+def submit_narration(session_id: str, payload: NarrationRequest, db: DbSession = Depends(get_db)):
+    """The patient's opening description, before any question is put to them.
+
+    One extraction pass across every clinical stage, then reconciliation, then
+    the safety check, then the state machine. The ordering is the same as the
+    answer path and matters for the same reason: a patient who opens with
+    "my face is drooping and my arm is weak" must reach the emergency screen
+    from that sentence, not four questions later.
+
+    The state machine is unchanged and still authoritative. It simply finds
+    more fields already filled, so it asks for fewer — a stage whose required
+    fields the narration covered is skipped entirely.
+    """
+    row = load_session(db, session_id)
+    state = store.get_or_create(session_id)
+    state.language = payload.language.value
+
+    transcript = (payload.transcript or "").strip()
+    extracted_fields, merged = ai_bridge.narration_turn(
+        transcript, state.extracted, payload.language.value
+    )
+
+    if extracted_fields:
+        state.extracted.update({f.name: f.value for f in extracted_fields})
+        for f in extracted_fields:
+            state.field_confidence[f.name] = f.confidence
+            state.field_source[f.name] = f.source.value
+            if f.display:
+                state.field_display[f.name] = f.display
+        clinical_state.persist_extracted_fields(
+            db, session_id, {f.name: f.value for f in extracted_fields}
+        )
+    store.save(state)
+
+    models.write_audit(
+        db,
+        action="interview.narration",
+        actor="kiosk",
+        session_id=session_id,
+        detail={"characters": len(transcript), "fields_filled": len(extracted_fields)},
+    )
+    db.commit()
+
+    # Immediately, on the opening sentence — not after the scaffold.
+    red_flag = ai_bridge.check_red_flags(state.extracted)
+    if red_flag is not None:
+        state.red_flags.append(red_flag.model_dump(mode="json"))
+        store.save(state)
+        clinical_state.persist_red_flag(db, session_id, red_flag)
+        models.write_audit(
+            db,
+            action="interview.red_flag",
+            actor="kiosk",
+            session_id=session_id,
+            detail={"rule_id": red_flag.rule_id, "from": "opening narration"},
+        )
+        db.commit()
+        log.warning(
+            "red flag %s on session %s, raised from the opening description",
+            red_flag.rule_id,
+            session_id,
+        )
+        return _to_response(None, state.answered_count(), red_flag=red_flag, state=state)
+
+    node = ai_bridge.next_node(
+        state.extracted, state.follow_up_counts, payload.language.value, state.field_ask_counts
+    )
+    state.current_node = node["node_id"] if node else None
+    if node:
+        state.rendered_nodes[node["node_id"]] = node
+    store.save(state)
+    row.current_node = state.current_node
+    db.commit()
+    return _to_response(node, state.answered_count(), state=state)
 
 
 @router.post("/{session_id}/answer", response_model=AnswerResponse)

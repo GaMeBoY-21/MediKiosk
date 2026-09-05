@@ -18,6 +18,7 @@ import SexEntry from './screens/SexEntry.jsx';
 import Consent from './screens/Consent.jsx';
 import ConsentDeclined from './screens/ConsentDeclined.jsx';
 import ChiefComplaint from './screens/ChiefComplaint.jsx';
+import Describe from './screens/Describe.jsx';
 import Interview from './screens/Interview.jsx';
 import Documents from './screens/Documents.jsx';
 import Confirm from './screens/Confirm.jsx';
@@ -33,6 +34,7 @@ import { subscribeReplay } from './api/client.js';
 // session endpoint, which is what gives the start call time to land.
 const NEEDS_SESSION = new Set([
   SCREENS.CONSENT,
+  SCREENS.DESCRIBE,
   SCREENS.INTERVIEW,
   SCREENS.DOCUMENTS,
   SCREENS.CONFIRM,
@@ -95,6 +97,7 @@ export default function Kiosk() {
     [SCREENS.SEX]: <SexEntry />,
     [SCREENS.CONSENT]: <Consent />,
     [SCREENS.CONSENT_DECLINED]: <ConsentDeclined />,
+    [SCREENS.DESCRIBE]: <Describe />,
     [SCREENS.COMPLAINT]: <ChiefComplaint />,
     [SCREENS.INTERVIEW]: <Interview onError={() => setFailed(true)} />,
     [SCREENS.DOCUMENTS]: <Documents />,

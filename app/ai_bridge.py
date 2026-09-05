@@ -352,6 +352,46 @@ def _node_if_current_completes(fields: Dict[str, Any], node, follow_up_counts: D
     return sm_next_node({"fields": hypothetical, "follow_up_counts": dict(follow_up_counts)})
 
 
+def narration_turn(
+    transcript: str,
+    fields: Dict[str, Any],
+    language: str,
+) -> tuple[List[ExtractedField], Dict[str, Any]]:
+    """One free description -> every field it can fill, across all stages.
+
+    The opening narration is the one moment the patient speaks without being
+    steered, so it is extracted against the whole clinical field set rather
+    than the current stage. Reconciliation runs on the result exactly as it
+    does after an ordinary answer, so a stated complaint still derives the
+    body site without being asked.
+
+    Returns (extracted fields, merged field map). The caller runs the red-flag
+    check and the state machine; this does not decide anything about the flow.
+    """
+    from ai.interview.extraction import extract_narration
+
+    if not (transcript or "").strip():
+        return [], dict(fields)
+
+    try:
+        found = extract_narration(transcript, _llm())
+    except Exception as exc:
+        # A narration that cannot be extracted is not a failed session. The
+        # patient simply gets the ordinary questions, which is what would have
+        # happened without this screen at all.
+        log.warning("opening narration extraction failed (%s); falling through to questions", exc)
+        return [], dict(fields)
+
+    coerced = _coerce_fields(found)
+    merged = dict(fields)
+    merged.update({f.name: f.value for f in coerced})
+
+    derived = reconcile_fields(merged)
+    merged.update({f.name: f.value for f in derived})
+
+    return coerced + derived, merged
+
+
 def answer_turn(
     node_id: str,
     transcript: str,

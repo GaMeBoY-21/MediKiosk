@@ -609,6 +609,32 @@ class SessionEndResponse(BaseModel):
     )
 
 
+class NarrationRequest(BaseModel):
+    """POST /api/interview/{id}/narration — the patient's opening description.
+
+    Deliberately NOT an AnswerRequest. A narration is not an answer to a
+    question: there is no node it belongs to, because it is said before the
+    kiosk has asked anything. Requiring a node_id here would mean inventing
+    one, and an invented node is exactly the sort of thing that later gets
+    read back as though the patient had been asked something they were not.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    transcript: str = Field(
+        "",
+        description=(
+            "Everything the patient said or typed, in their own language and "
+            "at whatever length they chose. No limit."
+        ),
+    )
+    language: Language = Field(
+        Language.en,
+        validation_alias=AliasChoices("language", "lang"),
+        description="Language the description was given in.",
+    )
+
+
 class AnswerRequest(BaseModel):
     """POST /api/interview/{id}/answer
 

@@ -21,6 +21,7 @@ export const SCREENS = {
   CONSENT_DECLINED: 'consent-declined',
   COMPLAINT: 'complaint',
   INTERVIEW: 'interview',
+  DESCRIBE: 'describe',
   DOCUMENTS: 'documents',
   CONFIRM: 'confirm',
   DONE: 'done',

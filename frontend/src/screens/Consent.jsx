@@ -37,7 +37,7 @@ export default function Consent() {
     });
     // Fire and forget: the patient should never wait on the network here.
     recordConsent(sessionId, opts).catch((e) => console.warn('[consent] not saved:', e));
-    go(SCREENS.COMPLAINT);
+    go(SCREENS.DESCRIBE);
   };
 
   const decline = () => {
