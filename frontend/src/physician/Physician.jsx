@@ -283,6 +283,21 @@ export default function Physician({ auth, onSignOut }) {
           <main className="case">
             <header className="case__header">
               <span className="case__name">{record.patient.name}</span>
+              {/* Stated before Accept, not after. Accepting a record that
+                  cannot leave the facility is a different decision from
+                  accepting one that can, and the doctor should not have to go
+                  looking for which this is. */}
+              <span
+                className={`case__sharing ${
+                  record.share_government
+                    ? 'case__sharing--allowed'
+                    : 'case__sharing--withheld'
+                }`}
+              >
+                {record.share_government
+                  ? 'Sharing with government programmes: CONSENTED'
+                  : 'Sharing with government programmes: REFUSED — this record stays in the facility'}
+              </span>
               <span className="case__meta">
                 {record.patient.age}/{record.patient.sex} · ABHA {record.patient.abha ?? '—'} ·
                 token {activeToken ?? '—'} · session {record.session_id}

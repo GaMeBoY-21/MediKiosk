@@ -175,6 +175,27 @@
   font-weight: 600;
 }
 
+.case__sharing {
+  display: block;
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Withheld is the state that changes what the doctor may do, so it is the one
+   that is coloured. Consented is stated plainly and does not shout. */
+.case__sharing--allowed {
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+.case__sharing--withheld {
+  background: #fdecec;
+  color: #8a1f1f;
+}
+
 .case__meta {
   color: var(--ink-soft);
   font-size: var(--fs-caption);

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DbSession
@@ -100,6 +100,24 @@ def _bundle_for(db: DbSession, row: models.Session, summary: ClinicalSummary) ->
     )
 
 
+def sharing_consent(db: DbSession, session_id: str) -> tuple[bool, Optional[datetime]]:
+    """May this record leave the facility, and when was that agreed?
+
+    Absence of a consent row is a NO. A record with no recorded permission is
+    not a record with implied permission, and the one direction this must
+    never fail in is outwards.
+    """
+    row = (
+        db.query(models.ConsentRecord)
+        .filter(models.ConsentRecord.session_id == session_id)
+        .order_by(models.ConsentRecord.timestamp.desc())
+        .first()
+    )
+    if row is None:
+        return False, None
+    return bool(row.share_government), row.share_government_at
+
+
 def _history_for(db: DbSession, session_id: str) -> Dict[str, Any]:
     """The persisted extracted fields for a session. {} when there are none."""
     record = (
@@ -178,6 +196,7 @@ def _load_summary(db: DbSession, row: models.Session) -> ClinicalSummary:
 def _case_response(db: DbSession, row: models.Session) -> PhysicianCaseResponse:
     summary = _load_summary(db, row)
     patient, mocked = _identity(row, _history_for(db, row.session_id))
+    shared, shared_at = sharing_consent(db, row.session_id)
 
     return PhysicianCaseResponse(
         session_id=row.session_id,
@@ -190,6 +209,8 @@ def _case_response(db: DbSession, row: models.Session) -> PhysicianCaseResponse:
         low_confidence_fields=summary.low_confidence_fields,
         mocked_fields=mocked,
         fhir=_bundle_for(db, row, summary),
+        share_government=shared,
+        share_government_at=shared_at,
         verified_by=summary.verified_by,
         verified_at=summary.verified_at,
     )
@@ -377,10 +398,30 @@ def amend_case(session_id: str, payload: Dict[str, str], db: DbSession = Depends
 
 @router.get("/{session_id}/fhir")
 def fetch_fhir(session_id: str, db: DbSession = Depends(get_db), claims: dict = Depends(require_clinician)) -> Dict[str, Any]:
-    """The FHIR R4 bundle as raw JSON, for the console's collapsible panel."""
-    row = load_session(db, session_id)
-    summary = _load_summary(db, row)
+    """The FHIR R4 bundle as raw JSON, for the console's collapsible panel.
 
+    This is the outbound representation — what would be pushed to ABHA or to a
+    government programme — so it is gated on the patient's sharing consent.
+    Refused means refused: a 403 that says why, not a quietly emptied bundle
+    that looks like the push succeeded.
+    """
+    row = load_session(db, session_id)
+    shared, _ = sharing_consent(db, session_id)
+    if not shared:
+        models.write_audit(
+            db,
+            action="fhir.blocked",
+            actor=claims.get("sub", "physician"),
+            session_id=session_id,
+            detail={"reason": "patient refused sharing with government health programmes"},
+        )
+        db.commit()
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "the patient did not consent to sharing this record outside the facility",
+        )
+
+    summary = _load_summary(db, row)
     models.write_audit(db, action="fhir.read", actor=claims.get("sub", "physician"), session_id=session_id)
     db.commit()
     return _bundle_for(db, row, summary)

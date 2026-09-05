@@ -92,6 +92,18 @@ class ConsentRecord(Base):
     read_documents: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     link_abha: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # Sharing with government health programmes, recorded SEPARATELY.
+    #
+    # DPDP requires consent to be granular and specific: one blanket "I agree"
+    # cannot stand in for permission to send a record outside the facility.
+    # It carries its own timestamp because the moment THIS permission was
+    # given is what has to be evidenced later, and it is independent of the
+    # rest — refusing it withholds the outward sharing and nothing else.
+    share_government: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    share_government_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     language: Mapped[str] = mapped_column(String(8), default="en", nullable=False)
     method: Mapped[str] = mapped_column(String(32), default="audio_guided", nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

@@ -1,6 +1,8 @@
 // Owner: Ranjith
-// A consent toggle. Speaks its own label aloud when tapped, so a patient who
-// cannot read still hears exactly what they just agreed to.
+// A consent toggle. SILENT when tapped: audio in this app plays only on an
+// explicit press of the speaker button, so this no longer reads itself back.
+// The comment used to claim it spoke, which stopped being true when tap-to-
+// speak was removed app-wide.
 
 import { Check } from './Icons.jsx';
 

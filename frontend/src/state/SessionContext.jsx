@@ -53,7 +53,10 @@ const INITIAL = {
   sessionStatus: SESSION_STATUS.IDLE,
   patient: { name: '', age: '', sex: '', idKind: null, idMasked: null },
   consentGiven: null, // null = not asked, false = refused
-  consentOptions: { history: true, documents: true, abha: false },
+  // government defaults to FALSE. Sharing a record outside the facility is
+  // the one permission that must be actively given, never inherited from a
+  // screen the patient tapped through.
+  consentOptions: { history: true, documents: true, abha: false, government: false },
   currentNode: null,
   answers: [],
   // Every field the backend has understood so far, cumulative. Held here

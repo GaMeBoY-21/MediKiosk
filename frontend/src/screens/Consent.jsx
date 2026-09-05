@@ -68,6 +68,14 @@ export default function Consent() {
           onChange={set('abha')}
           label={tx('consent.optAbha').label}
         />
+        {/* Independent of the other three. Refusing it withholds only the
+            outward sharing — the interview, the summary and seeing the doctor
+            all proceed exactly the same way. */}
+        <Toggle
+          checked={opts.government}
+          onChange={set('government')}
+          label={tx('consent.optGovernment').label}
+        />
       </div>
 
       <div className="consent__actions">

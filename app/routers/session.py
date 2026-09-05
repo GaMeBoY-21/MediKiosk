@@ -170,10 +170,11 @@ def record_known_fields(
 
 @router.post("/{session_id}/consent", response_model=ConsentResponse)
 def record_consent(session_id: str, payload: ConsentRequest, db: DbSession = Depends(get_db)):
-    """Store the three consent toggles.
+    """Store the four consent toggles.
 
     Recorded per purpose, so refusing document reading does not refuse the
-    interview. Replaces any earlier consent row for this session.
+    interview, and refusing government sharing withholds only the outward
+    push. Replaces any earlier consent row for this session.
     """
     load_session(db, session_id)
 
@@ -190,6 +191,10 @@ def record_consent(session_id: str, payload: ConsentRequest, db: DbSession = Dep
         record_history=payload.record_history,
         read_documents=payload.read_documents,
         link_abha=payload.link_abha,
+        share_government=payload.share_government,
+        # Stamped only when the answer is yes. A refusal is the absence of a
+        # permission, and there is no moment of granting to evidence.
+        share_government_at=datetime.now(timezone.utc) if payload.share_government else None,
         language=payload.language.value,
         method="audio_guided",
     )
@@ -203,6 +208,7 @@ def record_consent(session_id: str, payload: ConsentRequest, db: DbSession = Dep
             "record_history": payload.record_history,
             "read_documents": payload.read_documents,
             "link_abha": payload.link_abha,
+            "share_government": payload.share_government,
         },
     )
     db.commit()
@@ -214,6 +220,8 @@ def record_consent(session_id: str, payload: ConsentRequest, db: DbSession = Dep
             record_history=row.record_history,
             read_documents=row.read_documents,
             link_abha=row.link_abha,
+            share_government=row.share_government,
+            share_government_at=row.share_government_at,
             timestamp=row.timestamp,
             language=payload.language,
             method=row.method,

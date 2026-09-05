@@ -178,15 +178,28 @@ class Identity(BaseModel):
 
 
 class ConsentRecord(BaseModel):
-    """The three consent toggles, captured before any clinical question is asked.
+    """The four consent toggles, captured before any clinical question is asked.
 
     Consent is recorded per-purpose rather than as one blanket flag so a patient
-    can allow the interview but refuse document reading or ABHA linkage.
+    can allow the interview but refuse document reading, ABHA linkage or
+    sharing with government health programmes. Each is independent: refusing
+    any one of them withholds that purpose alone and never the consultation.
     """
 
     record_history: bool = Field(..., description="May we record the medical history interview?")
     read_documents: bool = Field(..., description="May we read photographed prescriptions/reports?")
     link_abha: bool = Field(..., description="May we link this encounter to the ABHA record?")
+    share_government: bool = Field(
+        False, description="May this record be shared with government health programmes?"
+    )
+    share_government_at: Optional[datetime] = Field(
+        None,
+        description=(
+            "When the sharing choice was made. Separate from `timestamp` because "
+            "DPDP wants each purpose evidenced on its own, not inferred from a "
+            "single blanket agreement."
+        ),
+    )
     timestamp: datetime = Field(default_factory=_utcnow, description="When consent was given.")
     language: Language = Field(
         Language.en, description="Language the consent was played and understood in."
@@ -517,6 +530,15 @@ class ConsentRequest(BaseModel):
         validation_alias=AliasChoices("record_history", "history"),
         description="Consent to record the interview.",
     )
+    share_government: bool = Field(
+        False,
+        validation_alias=AliasChoices("share_government", "government"),
+        description=(
+            "Consent to share this record with government health programmes. "
+            "Defaults to FALSE: sharing outside the facility is the one thing "
+            "that must never happen because a field was omitted."
+        ),
+    )
     read_documents: bool = Field(
         ...,
         validation_alias=AliasChoices("read_documents", "documents"),
@@ -756,6 +778,17 @@ class PhysicianCaseResponse(BaseModel):
     session_id: str = Field(..., description="Session being reviewed.")
     token: Optional[str] = Field(None, description="Queue token shown on the kiosk's Done screen.")
     room: Optional[str] = Field(None, description="Consulting room number shown to the patient.")
+    share_government: bool = Field(
+        False,
+        description=(
+            "Whether this record may be shared with government health programmes. "
+            "Shown to the doctor before they accept, because accepting a record "
+            "they cannot share is a different decision from accepting one they can."
+        ),
+    )
+    share_government_at: Optional[datetime] = Field(
+        None, description="When the patient agreed to sharing, if they did."
+    )
     patient: PhysicianPatient = Field(..., description="Patient header.")
     summary: FlatSummary = Field(..., description="Flattened clinical sections.")
     documents: List[DocumentRecord] = Field(
