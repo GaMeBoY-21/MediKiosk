@@ -16,12 +16,37 @@ import { useSession, SCREENS } from '../state/SessionContext.jsx';
 import { recordConsent } from '../api/client.js';
 import BilingualText from '../components/BilingualText.jsx';
 
+// Two steps, not one screen.
+//
+// The explanation and four bilingual toggles do not fit together at 1280x800:
+// in Tamil the agree/decline buttons ended up 46px BEHIND the bottom bar,
+// which on the one screen that legally must be reachable is not a cosmetic
+// problem. Splitting is the right answer rather than shrinking the type —
+// this text is what the patient is agreeing to and it is already at the
+// app's body size.
+//
+// Step 1 explains. Step 2 is the choices. Both are readable on their own, and
+// the patient can go back.
 export default function Consent() {
   const { tx, voice } = useT();
   const { sessionId, consentOptions, setConsent, addAnswer, go } = useSession();
   const [opts, setOpts] = useState(consentOptions);
+  const [step, setStep] = useState(0);
 
   const explanation = tx('consent.explanation');
+
+  // What Listen reads out: the explanation, then each toggle in order.
+  //
+  // Tapping a toggle is silent — audio plays only on an explicit press, and
+  // per-tap noise was intolerable in a shared hall. But that left a patient
+  // who cannot read agreeing to four things they had never heard, which is
+  // not informed consent in any sense DPDP would recognise. One press, one
+  // utterance, numbered so they can be told apart.
+  const OPTIONS = ['optHistory', 'optDocuments', 'optAbha', 'optGovernment'];
+  const spokenConsent = [
+    explanation.audio,
+    ...OPTIONS.map((key, i) => `${i + 1}. ${tx(`consent.${key}`).audio || tx(`consent.${key}`).label}`),
+  ].join(' ');
 
   const set = (key) => (value) => setOpts((o) => ({ ...o, [key]: value }));
 
@@ -47,11 +72,14 @@ export default function Consent() {
 
   return (
     <ScreenShell
-      prompt={{ label: tx('consent.title').label, audio: explanation.audio }}
-      repeatAudio={explanation.audio}
+      prompt={{ label: tx('consent.title').label, audio: spokenConsent }}
+      repeatAudio={spokenConsent}
     >
-      <BilingualText as="p" className="consent__text">{explanation.label}</BilingualText>
+      {step === 0 ? (
+        <BilingualText as="p" className="consent__text">{explanation.label}</BilingualText>
+      ) : null}
 
+      {step === 1 ? (
       <div className="stack">
         <Toggle
           checked={opts.history}
@@ -78,6 +106,15 @@ export default function Consent() {
         />
       </div>
 
+      ) : null}
+
+      {step === 0 ? (
+        <BigButton variant="primary" center onClick={() => setStep(1)}>
+          {tx('common.next').label}
+        </BigButton>
+      ) : null}
+
+      {step === 1 ? (
       <div className="consent__actions">
         <BigButton variant="primary" center onClick={agree}>
           {tx('consent.agree').label}
@@ -86,6 +123,7 @@ export default function Consent() {
           {tx('consent.decline').label}
         </BigButton>
       </div>
+      ) : null}
     </ScreenShell>
   );
 }

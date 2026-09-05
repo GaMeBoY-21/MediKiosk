@@ -5,6 +5,7 @@
 // speak was removed app-wide.
 
 import { Check } from './Icons.jsx';
+import BilingualText from './BilingualText.jsx';
 
 export default function Toggle({ checked, onChange, label }) {
   const handleClick = () => {
@@ -22,7 +23,7 @@ export default function Toggle({ checked, onChange, label }) {
       <span className="toggle__box">
         <Check />
       </span>
-      <span>{label}</span>
+      <BilingualText>{label}</BilingualText>
     </button>
   );
 }
