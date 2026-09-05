@@ -207,26 +207,30 @@ export default function Interview({ onError }) {
       };
     }
 
-    // An opening description goes down the multi-stage extraction path: one
-    // pass over every clinical field, then reconciliation, then the safety
-    // check, then whatever the state machine still needs. A tapped body area
-    // is not a narration and takes the ordinary path below.
-    if (previous?.narration && (previous.text || '').trim()) {
-      narrate({ transcript: previous.text });
-      return;
-    }
+    // What the opening exchange is. A description goes down the multi-stage
+    // extraction path — one pass over every clinical field, then
+    // reconciliation, then the safety check. A tapped body area is not a
+    // description and takes the ordinary single-node path.
+    //
+    // Either way it runs AFTER seeding, never instead of it. Returning early
+    // here to narrate skipped recordKnownFields entirely, and the state
+    // machine then asked a patient who had just typed their name, age and
+    // consent for their name, age and consent again.
+    const narrating = Boolean(previous?.narration && (previous.text || '').trim());
 
-    const firstAsk = () =>
-      ask({
-        node_id: previous?.node_id ?? 'chief_complaint',
-        value: null,
-        // Free speech still goes as a transcript for extraction; a tapped tile
-        // has already been seeded above and sends nothing.
-        text: previous?.value ? '' : previous?.text ?? '',
-      });
+    const firstStep = narrating
+      ? () => narrate({ transcript: previous.text })
+      : () =>
+          ask({
+            node_id: previous?.node_id ?? 'chief_complaint',
+            value: null,
+            // Free speech still goes as a transcript for extraction; a tapped
+            // tile has already been seeded above and sends nothing.
+            text: previous?.value ? '' : previous?.text ?? '',
+          });
 
     if (!Object.keys(known).length) {
-      firstAsk();
+      firstStep();
       return;
     }
     // Seed first, ask second. A failed seed must not strand the patient on a
@@ -234,8 +238,8 @@ export default function Interview({ onError }) {
     // identity questions being asked again.
     recordKnownFields(sessionId, known)
       .catch((e) => console.warn('[interview] could not seed known fields:', e))
-      .finally(firstAsk);
-  }, [answers, currentNode, ask, sessionId, patient, consentGiven]);
+      .finally(firstStep);
+  }, [answers, currentNode, ask, narrate, sessionId, patient, consentGiven]);
 
   useEffect(() => stop, [stop]);
 
