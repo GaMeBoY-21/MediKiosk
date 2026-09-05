@@ -98,6 +98,53 @@ def _bundle_for(db: DbSession, row: models.Session, summary: ClinicalSummary) ->
     )
 
 
+def _history_for(db: DbSession, session_id: str) -> Dict[str, Any]:
+    """The persisted extracted fields for a session. {} when there are none."""
+    record = (
+        db.query(models.ClinicalRecord)
+        .filter(models.ClinicalRecord.session_id == session_id)
+        .one_or_none()
+    )
+    return (record.history if record else None) or {}
+
+
+def _identity(row: models.Session, history: Dict[str, Any]) -> tuple[PhysicianPatient, List[str]]:
+    """Who this patient is, and which parts of that are invented.
+
+    ONE source, used by both the queue and the case header. They used to
+    disagree: the queue fell back to the clinical record (the patient's real
+    answers) while the header fell back to fixtures.DEMO_PATIENT without ever
+    reading the record. The same session showed as "NIKKI · 21 · male" in the
+    list and "Lakshmi Devi · 65 · F" in the header a click later — a doctor
+    reading a name that belongs to nobody in the room.
+
+    Order is: what the session row was told, then what the patient actually
+    answered, and only then a demo value. `mocked` names the fields that fell
+    all the way through, for THIS session — so the DEMO DATA badge marks the
+    fields that are invented rather than labelling the whole record.
+    """
+    name = row.patient_name or history.get("patient_name")
+    age = row.age if row.age is not None else history.get("age")
+    sex = row.sex or history.get("sex")
+    abha = row.abha_id or history.get("abha_id") or history.get("abha")
+
+    mocked: List[str] = []
+    if not name:
+        mocked.append("name")
+        name = fixtures.DEMO_PATIENT["name"]
+    if age is None:
+        mocked.append("age")
+        age = fixtures.DEMO_PATIENT["age"]
+    if not sex:
+        mocked.append("sex")
+        sex = fixtures.DEMO_PATIENT["sex"]
+    if not abha:
+        mocked.append("abha")
+        abha = fixtures.DEMO_PATIENT["abha"]
+
+    return PhysicianPatient(name=name, age=age, sex=sex, abha=abha), mocked
+
+
 def _load_summary(db: DbSession, row: models.Session) -> ClinicalSummary:
     record = (
         db.query(models.ClinicalRecord)
@@ -114,27 +161,13 @@ def _load_summary(db: DbSession, row: models.Session) -> ClinicalSummary:
 
 def _case_response(db: DbSession, row: models.Session) -> PhysicianCaseResponse:
     summary = _load_summary(db, row)
-
-    mocked: List[str] = []
-    if not row.patient_name:
-        mocked.append("name")
-    if row.age is None:
-        mocked.append("age")
-    if not row.sex:
-        mocked.append("sex")
-    if not row.abha_id:
-        mocked.append("abha")
+    patient, mocked = _identity(row, _history_for(db, row.session_id))
 
     return PhysicianCaseResponse(
         session_id=row.session_id,
         token=row.token,
         room=row.room,
-        patient=PhysicianPatient(
-            name=row.patient_name or fixtures.DEMO_PATIENT["name"],
-            age=row.age or fixtures.DEMO_PATIENT["age"],
-            sex=row.sex or fixtures.DEMO_PATIENT["sex"],
-            abha=row.abha_id or fixtures.DEMO_PATIENT["abha"],
-        ),
+        patient=patient,
         summary=_flatten(summary),
         documents=summary.document_timeline,
         red_flags=current_red_flags(db, row.session_id),
@@ -176,16 +209,17 @@ def physician_queue(db: DbSession = Depends(get_db), claims: dict = Depends(requ
         # summary's one-liner, fall back to the extracted field.
         complaint = stored.get("chief_complaint") or history.get("chief_complaint")
 
+        # Exactly what the case header will show for this session. Same
+        # helper, same order, so the row and the header cannot disagree.
+        patient, _ = _identity(row, history)
+
         items.append(
             PhysicianQueueItem(
                 session_id=row.session_id,
                 token=row.token,
-                # Demographics are still demo values; the case view names them
-                # in mocked_fields. Left as the row's own (possibly empty)
-                # values here rather than inventing a name per queue row.
-                name=row.patient_name or history.get("patient_name"),
-                age=row.age if row.age is not None else history.get("age"),
-                sex=row.sex or history.get("sex"),
+                name=patient.name,
+                age=patient.age,
+                sex=patient.sex,
                 complaint=str(complaint) if complaint else None,
                 # Worst flag, not merely the first: a critical must not be
                 # hidden behind a high that happened to be recorded earlier.
