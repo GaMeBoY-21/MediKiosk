@@ -96,10 +96,17 @@ def _build_summary(row: models.Session, db: DbSession | None = None) -> Clinical
             .order_by(models.DocumentUpload.captured_at)
             .all()
         ]
-    if not documents:
-        # ai.documents.extract isn't wired live yet (not part of this pass) —
-        # this is the one piece of _build_summary still canned.
-        documents = [DocumentRecord(**d) for d in fixtures.DEMO_DOCUMENTS]
+    # NO fallback to fixtures.DEMO_DOCUMENTS.
+    #
+    # A session with no upload showed a lipid profile and an HbA1c that the
+    # patient never provided — invented lab values on a clinical screen, next
+    # to that patient's real name, with no marking to say they were fake. A
+    # doctor could read a cholesterol result and act on it. An empty timeline
+    # is the truth and the console renders it as such.
+    #
+    # Sample documents for a demo are attached by scripts/seed_demo.py doing a
+    # real upload against a real session, so what the console shows is always
+    # something that genuinely happened.
 
     # Genuinely live — no fallback. chief_complaint, hpi_narrative and
     # sections all come from what the patient actually said this session.

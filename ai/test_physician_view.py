@@ -192,5 +192,30 @@ class TestEveryRecordedFieldIsRendered(unittest.TestCase):
                     self.assertEqual(section_for(field), section)
 
 
+class TestDocumentTimelineIsHonest(unittest.TestCase):
+    """A document the patient never uploaded must never appear.
+
+    The console showed a lipid profile and an HbA1c for sessions with no
+    upload at all, because _build_summary fell back to fixtures.DEMO_DOCUMENTS
+    when the query came back empty. Invented lab values sitting under a real
+    patient's name, unmarked, is the worst thing a clinical screen can do.
+    """
+
+    def test_the_demo_documents_are_not_a_render_time_fallback(self):
+        import inspect
+
+        from app.routers import summary as summary_router
+
+        source = inspect.getsource(summary_router._build_summary)
+        code = "\n".join(
+            line for line in source.splitlines() if not line.strip().startswith("#")
+        )
+        self.assertNotIn(
+            "DEMO_DOCUMENTS",
+            code,
+            "a session with no upload would show documents the patient never gave",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

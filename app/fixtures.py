@@ -13,7 +13,11 @@ note further down where they were.
 Everything else here is still a live dependency, not a leftover:
   - DEMO_TOKEN / DEMO_ROOM: app/routers/session.py and app/routers/summary.py
     fall back to these — there is no real token/room allocation system.
-  - DEMO_DOCUMENTS: app/routers/summary.py and app/routers/physician.py fall
+  - DEMO_DOCUMENTS: NO LONGER used as a render-time fallback. A session with
+    no upload now shows an empty timeline, because inventing lab results next
+    to a real patient's name is the worst thing this screen could do. Kept
+    only as sample content for scripts/seed_demo.py, which attaches them by
+    performing a real upload. Previously summary.py and physician.py fell
     back to this when a session has no uploaded documents — ai.documents.extract
     isn't wired live yet, that's a separate pass.
   - DEMO_HISTORY / DEMO_PATIENT / DEMO_CHIEF_COMPLAINT / DEMO_QUEUE: only
